@@ -1315,7 +1315,7 @@ async function onMessage(env, msg) {
     const managerAction = await getManagerAction(env, uid);
     if (managerAction === "add" || managerAction === "remove") {
       const idText = String(text).trim();
-      if (!/^\\d{5,15}$/.test(idText)) {
+      if (!/^\d{5,15}$/.test(idText)) {
         await send(env, uid, "⚠️ Введите корректный Telegram ID — только цифры.\nНапример: <code>123456789</code>.");
         return;
       }
