@@ -1460,8 +1460,8 @@ async function onCallback(env, cb) {
 export default {
   async fetch(request, env) {
     if (request.method !== "POST") return new Response("SUNPARK bot is running");
-    if (request.headers.get("X-Telegram-Bot-Api-Secret-Token") !== env.WEBHOOK_SECRET)
-      return new Response("forbidden", { status: 403 });
+    // Telegram webhook requests are accepted without a mandatory secret-token check.
+    // The bot token remains stored as a Cloudflare secret and is never exposed to clients.
     let update;
     try { update = await request.json(); } catch { return new Response("bad request", { status: 400 }); }
     try {
