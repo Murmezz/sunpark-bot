@@ -1163,7 +1163,7 @@ function guestLabel(user) {
 const homeText = () =>
   "👋 <b>Здравствуйте!</b>\n\n🌿 Это меню <b>SUNPARK</b>.\nВыберите, что хотите посмотреть:";
 const banquetText = () =>
-  "🎉 <b>Банкетное меню</b>\n\nЗдесь вы можете посмотреть варианты банкетных блюд или связаться с менеджером.";
+  "🎉 <b>Банкетное меню</b>\n\nЗдесь вы можете посмотреть варианты банкетных блюд или связаться с менеджером.\n\n📞 <b>Телефон для связи:</b> " + esc(PHONE || "+76767676767");
 const banquetContactText = () =>
   "💬 <b>Связь с менеджером по банкетам</b>\n\n" +
   "Напишите здесь ваш вопрос — сообщение получат наши менеджеры.\n\n" +
@@ -1524,8 +1524,9 @@ async function onCallback(env, cb) {
     const what = data.slice(6);
     if (what === "panel") await edit(env, msg, await adminPanelText(env), adminPanelKeyboard());
     else if (what === "managers") {
+      await clearManagerAction(env, uid);
       const ids = [...managerSet(env)];
-      const list = ids.length ? ids.map((id, i) => `${i + 1}. <code>${id}</code>`).join("\\n") : "Список пуст.";
+      const list = ids.length ? ids.map((id, i) => `${i + 1}. <code>${id}</code>`).join("\n") : "Список пуст.";
       await edit(env, msg,
         `👥 <b>Менеджеры</b>\n\n${list}\n\nВсе менеджеры имеют одинаковые права: получают новые обращения и могут добавлять или удалять менеджеров.`,
         managersKeyboard());
