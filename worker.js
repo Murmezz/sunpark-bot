@@ -1091,7 +1091,15 @@ async function tg(env, method, params) {
     body: JSON.stringify(params),
   });
   const data = await r.json();
-  if (!data.ok) throw new Error(`${method}: ${data.description}`);
+  if (!data.ok) {
+    console.error("Telegram API error", {
+      method,
+      http_status: r.status,
+      description: data.description || "unknown error",
+      error_code: data.error_code || null,
+    });
+    throw new Error(`${method}: ${data.description || "Telegram API error"}`);
+  }
   return data.result;
 }
 const send = (env, chat_id, text, reply_markup) =>
