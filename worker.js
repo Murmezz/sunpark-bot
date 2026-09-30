@@ -1055,6 +1055,8 @@ let cfgAt = 0;
 
 async function applyConfig(env) {
   if (Date.now() - cfgAt < 30000) return;
+  // Keep the Cloudflare MANAGER_IDS fallback active even if D1 has a temporary error.
+  if (env.MANAGER_IDS) MANAGERS_CFG = String(env.MANAGER_IDS);
   try {
     await env.DB.prepare("CREATE TABLE IF NOT EXISTS manager_states (user_id INTEGER PRIMARY KEY, action TEXT NOT NULL)").run();
     const { results } = await env.DB.prepare("SELECT key, value FROM config").all();
@@ -1073,7 +1075,7 @@ async function applyConfig(env) {
     MENU_SECTIONS = m.MENU_SECTIONS;
     INFO_TEXT = m.INFO_TEXT;
     PHONE = cfg.phone || "+76767676767";
-    MANAGERS_CFG = cfg.manager_ids || env.MANAGER_IDS || "";
+    MANAGERS_CFG = [cfg.manager_ids, env.MANAGER_IDS].filter(Boolean).join(",");
     cfgAt = Date.now();
   } catch (e) {
     console.error("config", e.message);
