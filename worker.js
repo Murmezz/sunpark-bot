@@ -1311,6 +1311,47 @@ async function onMessage(env, msg) {
   const uid = msg.from.id;
   const mgr = isManager(env, uid);
 
+  if (mgr) {
+    const managerAction = await getManagerAction(env, uid);
+    if (managerAction === "add" || managerAction === "remove") {
+      const idText = String(text).trim();
+      if (!/^\\d{5,15}$/.test(idText)) {
+        await send(env, uid, "⚠️ Введите корректный Telegram ID — только цифры.\\nНапример: <code>123456789</code>.");
+        return;
+      }
+      const targetId = Number(idText);
+      const ids = [...managerSet(env)];
+
+      if (managerAction === "add") {
+        if (ids.includes(targetId)) {
+          await clearManagerAction(env, uid);
+          await send(env, uid, `ℹ️ Менеджер <code>${targetId}</code> уже есть в списке.`, persistentKeyboard(env, uid));
+          return;
+        }
+        ids.push(targetId);
+        await saveManagerIds(env, ids);
+        await clearManagerAction(env, uid);
+        await send(env, uid, `✅ Менеджер <code>${targetId}</code> добавлен.\\n\\nТеперь он будет получать новые обращения гостей.`, persistentKeyboard(env, uid));
+        return;
+      }
+
+      if (ids.length <= 1) {
+        await clearManagerAction(env, uid);
+        await send(env, uid, "⚠️ Нельзя удалить последнего менеджера. В списке должен остаться хотя бы один.", persistentKeyboard(env, uid));
+        return;
+      }
+      if (!ids.includes(targetId)) {
+        await clearManagerAction(env, uid);
+        await send(env, uid, `ℹ️ Менеджера <code>${targetId}</code> нет в списке.`, persistentKeyboard(env, uid));
+        return;
+      }
+      const nextIds = ids.filter((id) => id !== targetId);
+      await saveManagerIds(env, nextIds);
+      await clearManagerAction(env, uid);
+      await send(env, uid, `✅ Менеджер <code>${targetId}</code> удалён.\\n\\nОн больше не будет получать новые обращения.`, persistentKeyboard(env, uid));
+      return;
+    }
+  }
   if (text.startsWith("/start")) {
     await send(env, uid, homeText(), homeKeyboard());
     await send(env, uid, "Нижняя кнопка «🏠 Главное меню» всегда вернёт вас сюда.", persistentKeyboard(env, uid));
