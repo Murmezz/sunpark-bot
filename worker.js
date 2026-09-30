@@ -1126,6 +1126,30 @@ const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
 const managerSet = (env) =>
   new Set(String(MANAGERS_CFG || env.MANAGER_IDS || "").split(",").map((s) => Number(s.trim())).filter(Boolean));
 const isManager = (env, id) => managerSet(env).has(id);
+
+async function saveManagerIds(env, ids) {
+  const value = [...new Set(ids.map(Number).filter(Boolean))].join(",");
+  await env.DB.prepare(
+    "INSERT INTO config (key, value) VALUES ('manager_ids', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value"
+  ).bind(value).run();
+  MANAGERS_CFG = value;
+}
+
+async function getManagerAction(env, userId) {
+  const row = await env.DB.prepare("SELECT action FROM manager_states WHERE user_id=?").bind(userId).first();
+  return row?.action || "";
+}
+
+async function setManagerAction(env, userId, action) {
+  await env.DB.prepare(
+    "INSERT INTO manager_states (user_id, action) VALUES (?, ?) ON CONFLICT(user_id) DO UPDATE SET action=excluded.action"
+  ).bind(userId, action).run();
+}
+
+async function clearManagerAction(env, userId) {
+  await env.DB.prepare("DELETE FROM manager_states WHERE user_id=?").bind(userId).run();
+}
+
 const btn = (text, callback_data) => ({ text, callback_data });
 const kb = (rows) => ({ inline_keyboard: rows });
 
