@@ -1061,6 +1061,7 @@ let cfgAt = 0;
 async function applyConfig(env) {
   if (Date.now() - cfgAt < 30000) return;
   try {
+    await env.DB.prepare("CREATE TABLE IF NOT EXISTS manager_states (user_id INTEGER PRIMARY KEY, action TEXT NOT NULL)").run();
     const { results } = await env.DB.prepare("SELECT key, value FROM config").all();
     const cfg = Object.fromEntries(results.map((r) => [r.key, r.value]));
     if (!cfg.menu) {
@@ -1075,7 +1076,7 @@ async function applyConfig(env) {
     MENU = m.MENU;
     MENU_SECTIONS = m.MENU_SECTIONS;
     INFO_TEXT = m.INFO_TEXT;
-    PHONE = cfg.phone || "";
+    PHONE = cfg.phone || "+76767676767";
     MANAGERS_CFG = cfg.manager_ids || "";
     cfgAt = Date.now();
   } catch (e) {
