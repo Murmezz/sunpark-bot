@@ -1199,7 +1199,15 @@ const adminPanelKeyboard = () =>
     [btn("📥 Активные обращения", "admin:active")],
     [btn("✅ Закрытые обращения", "admin:closed")],
     [btn("📊 Статистика", "admin:stats")],
+    [btn("👥 Менеджеры", "admin:managers")],
     [btn("👀 Открыть как гость", "admin:guest")],
+  ]);
+
+const managersKeyboard = () =>
+  kb([
+    [btn("➕ Добавить менеджера", "admin:manager_add")],
+    [btn("➖ Удалить менеджера", "admin:manager_remove")],
+    [btn("◀️ В админ-панель", "admin:panel")],
   ]);
 const adminBackKeyboard = () =>
   kb([[btn("◀️ В админ-панель", "admin:panel")], [btn("🏠 На главную", "back")]]);
