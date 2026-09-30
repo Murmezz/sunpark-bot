@@ -1523,6 +1523,25 @@ async function onCallback(env, cb) {
     if (!mgr) return void (await answer(env, cb.id, "Доступ запрещён.", true));
     const what = data.slice(6);
     if (what === "panel") await edit(env, msg, await adminPanelText(env), adminPanelKeyboard());
+    else if (what === "managers") {
+      const ids = [...managerSet(env)];
+      const list = ids.length ? ids.map((id, i) => `${i + 1}. <code>${id}</code>`).join("\\n") : "Список пуст.";
+      await edit(env, msg,
+        `👥 <b>Менеджеры</b>\\n\\n${list}\\n\\nВсе менеджеры имеют одинаковые права: получают новые обращения и могут добавлять или удалять менеджеров.`,
+        managersKeyboard());
+    }
+    else if (what === "manager_add") {
+      await setManagerAction(env, uid, "add");
+      await edit(env, msg,
+        "➕ <b>Добавление менеджера</b>\\n\\nОтправьте следующим сообщением Telegram ID нового менеджера.\\n\\nНапример: <code>123456789</code>",
+        kb([[btn("❌ Отмена", "admin:managers")]]));
+    }
+    else if (what === "manager_remove") {
+      await setManagerAction(env, uid, "remove");
+      await edit(env, msg,
+        "➖ <b>Удаление менеджера</b>\\n\\nОтправьте следующим сообщением Telegram ID менеджера, которого нужно удалить.",
+        kb([[btn("❌ Отмена", "admin:managers")]]));
+    }
     else if (what === "active") await edit(env, msg, await adminActiveText(env), adminBackKeyboard());
     else if (what === "closed") await edit(env, msg, await adminClosedText(env), adminBackKeyboard());
     else if (what === "guest") await edit(env, msg, homeText(), homeKeyboard());
