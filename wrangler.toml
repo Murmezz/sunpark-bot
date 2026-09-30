@@ -5,4 +5,4 @@ compatibility_date = "2026-09-30"
 [[d1_databases]]
 binding = "DB"
 database_name = "sunpark-bot-db"
-database_id = "2cc6aea9-56fd-4956-a2cb-7f2c493ca2d5"
+database_id = "2cca6ea9-56fd-4956-a2cb-7f2c493ca2d5"
