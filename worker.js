@@ -1182,6 +1182,21 @@ const banquetStartKeyboard = () =>
     [btn("💬 Связаться с менеджером", "manager:start")],
     [btn("🏠 На главную", "back")],
   ]);
+
+const banquetMenuKeyboard = () =>
+  kb([
+    [btn("— БАНКЕТНЫЕ ПАКЕТЫ —", "noop")],
+    [btn("🥂 Банкет №1 · 3300 ₽/чел.", "item:banquet:0")],
+    [btn("🍽 Банкет №2 · 4200 ₽/чел.", "item:banquet:1")],
+    [btn("✨ Банкет №3 · 5000 ₽/чел.", "item:banquet:2")],
+    [btn("— СПЕЦИАЛЬНЫЕ МЕНЮ —", "noop")],
+    [btn("🎓 Меню для выпускного · 3300 ₽/чел.", "item:banquet:3")],
+    [btn("🧒 Детское банкетное меню", "item:banquet:4")],
+    [btn("— ДОПОЛНИТЕЛЬНО —", "noop")],
+    [btn("📋 Цены детского меню", "item:banquet:5")],
+    [btn("ℹ️ Условия и информация", "item:banquet:6")],
+    [btn("◀️ Назад", "home:banquet"), btn("🏠 На главную", "back")],
+  ]);
 const contactChoiceText = () => "💬 <b>Связаться с менеджером</b>\n\nКак вам удобнее?";
 const contactChoiceKeyboard = () =>
   kb([
@@ -1269,8 +1284,15 @@ function formatItem(key, index) {
   return lines.join("\n");
 }
 
-const itemBackKeyboard = (key) =>
-  kb([[btn("◀️ К списку блюд", `cat:${key}`)], [btn("🏠 На главную", "back")]]);
+const itemBackKeyboard = (key) => {
+  if (key === "banquet") {
+    return kb([
+      [btn("◀️ К банкетному меню", "banquet:list")],
+      [btn("🏠 На главную", "back")],
+    ]);
+  }
+  return kb([[btn("◀️ К списку блюд", `cat:${key}`)], [btn("🏠 На главную", "back")]]);
+};
 
 // ---------- Обращения (D1) ----------
 async function counts(env) {
@@ -1459,7 +1481,10 @@ async function onCallback(env, cb) {
   }
   if (data === "home:banquet") { await edit(env, msg, banquetText(), banquetStartKeyboard()); return void (await done()); }
   if (data === "banquet:list") {
-    await edit(env, msg, "🎉 <b>Банкетное меню</b>\n\nВыберите позицию:", categoryKeyboard("banquet"));
+    await edit(env, msg,
+      "🎉 <b>Банкетное меню SUNPARK · 2026</b>\n\nВыберите вариант — внутри будет подробное описание состава, порций и стоимости:",
+      banquetMenuKeyboard()
+    );
     return void (await done());
   }
   if (data === "info") {
@@ -1598,11 +1623,3 @@ export default {
     try { update = await request.json(); } catch { return new Response("bad request", { status: 400 }); }
     try {
       await applyConfig(env);
-      if (update.message) await onMessage(env, update.message);
-      else if (update.callback_query) await onCallback(env, update.callback_query);
-    } catch (e) {
-      console.error(e);
-    }
-    return new Response("ok");
-  },
-};
