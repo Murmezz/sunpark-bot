@@ -1073,7 +1073,7 @@ async function applyConfig(env) {
     MENU_SECTIONS = m.MENU_SECTIONS;
     INFO_TEXT = m.INFO_TEXT;
     PHONE = cfg.phone || "+76767676767";
-    MANAGERS_CFG = cfg.manager_ids || "";
+    MANAGERS_CFG = cfg.manager_ids || env.MANAGER_IDS || "";
     cfgAt = Date.now();
   } catch (e) {
     console.error("config", e.message);
@@ -1120,7 +1120,12 @@ const clearMarkup = (env, msg) =>
 // ---------- Helpers ----------
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const managerSet = (env) =>
-  new Set(String(MANAGERS_CFG || env.MANAGER_IDS || "").split(",").map((s) => Number(s.trim())).filter(Boolean));
+  new Set(
+    String([MANAGERS_CFG, env.MANAGER_IDS].filter(Boolean).join(","))
+      .split(",")
+      .map((s) => Number(s.trim()))
+      .filter(Boolean)
+  );
 const isManager = (env, id) => managerSet(env).has(id);
 
 async function saveManagerIds(env, ids) {
