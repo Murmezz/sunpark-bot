@@ -1059,6 +1059,7 @@ async function applyConfig(env) {
   if (env.MANAGER_IDS) MANAGERS_CFG = String(env.MANAGER_IDS);
   try {
     await env.DB.prepare("CREATE TABLE IF NOT EXISTS manager_states (user_id INTEGER PRIMARY KEY, action TEXT NOT NULL)").run();
+    await env.DB.prepare("CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, username TEXT, first_name TEXT, last_name TEXT, updated_at TEXT NOT NULL)").run();
     const { results } = await env.DB.prepare("SELECT key, value FROM config").all();
     const cfg = Object.fromEntries(results.map((r) => [r.key, r.value]));
     if (!cfg.menu) {
@@ -1312,17 +1313,43 @@ async function onMessage(env, msg) {
   const text = msg.text;
   if (!text || !msg.from || msg.chat.type !== "private") return;
   const uid = msg.from.id;
+
+  await env.DB.prepare(
+    "INSERT INTO users (user_id, username, first_name, last_name, updated_at) VALUES (?, ?, ?, ?, ?) " +
+    "ON CONFLICT(user_id) DO UPDATE SET username=excluded.username, first_name=excluded.first_name, " +
+    "last_name=excluded.last_name, updated_at=excluded.updated_at"
+  ).bind(
+    uid,
+    msg.from.username || null,
+    msg.from.first_name || null,
+    msg.from.last_name || null,
+    new Date().toISOString()
+  ).run();
+
   const mgr = isManager(env, uid);
 
   if (mgr) {
     const managerAction = await getManagerAction(env, uid);
     if (managerAction === "add" || managerAction === "remove") {
-      const idText = String(text).trim();
-      if (!/^\d{5,15}$/.test(idText)) {
-        await send(env, uid, "⚠️ Введите корректный Telegram ID — только цифры.\nНапример: <code>123456789</code>.");
+      const tag = String(text).trim().replace(/^@/, "").toLowerCase();
+      if (!/^[a-z0-9_]{5,32}$/i.test(tag)) {
+        await send(env, uid, "⚠️ Введите юзернейм Telegram в формате <code>@username</code>.\n\nВажно: этот пользователь должен хотя бы один раз написать боту.");
         return;
       }
-      const targetId = Number(idText);
+
+      const target = await env.DB.prepare(
+        "SELECT user_id, username, first_name, last_name FROM users WHERE lower(username)=? LIMIT 1"
+      ).bind(tag).first();
+
+      if (!target) {
+        await send(env, uid,
+          "❌ Пользователь <b>@" + esc(tag) + "</b> ещё не найден.\n\n" +
+          "Пусть этот человек сначала нажмёт /start и напишет боту хотя бы одно сообщение, после чего его можно будет добавить по юзернейму."
+        );
+        return;
+      }
+
+      const targetId = Number(target.user_id);
       const ids = [...managerSet(env)];
 
       if (managerAction === "add") {
@@ -1334,7 +1361,7 @@ async function onMessage(env, msg) {
         ids.push(targetId);
         await saveManagerIds(env, ids);
         await clearManagerAction(env, uid);
-        await send(env, uid, `✅ Менеджер <code>${targetId}</code> добавлен.\n\nТеперь он будет получать новые обращения гостей.`, persistentKeyboard(env, uid));
+        await send(env, uid, "✅ Менеджер <b>@" + esc(target.username || tag) + "</b> добавлен.\n\nТеперь он будет получать новые обращения гостей.", persistentKeyboard(env, uid));
         return;
       }
 
@@ -1351,7 +1378,7 @@ async function onMessage(env, msg) {
       const nextIds = ids.filter((id) => id !== targetId);
       await saveManagerIds(env, nextIds);
       await clearManagerAction(env, uid);
-      await send(env, uid, `✅ Менеджер <code>${targetId}</code> удалён.\n\nОн больше не будет получать новые обращения.`, persistentKeyboard(env, uid));
+      await send(env, uid, "✅ Менеджер <b>@" + esc(target.username || tag) + "</b> удалён.\n\nОн больше не будет получать новые обращения.", persistentKeyboard(env, uid));
       return;
     }
   }
