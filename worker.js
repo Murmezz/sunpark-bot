@@ -1639,7 +1639,7 @@ async function onCallback(env, cb) {
       return void (await answer(env, cb.id, "Раздел не найден", true));
     }
     if (sectionIndex === 8) {
-      const info = itemList(MENU.banquet)[31]?.[2] || "Информация отсутствует.";
+      const info = itemList(MENU.banquet)[33]?.[2] || "Информация отсутствует.";
       await edit(env, msg, "<b>ℹ️ Информация</b>\n\n" + esc(info), kb([
         [btn("◀️ К банкетному меню", "banquet:list")],
         [btn("🏠 На главную", "back")]
