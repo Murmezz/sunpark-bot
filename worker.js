@@ -1300,9 +1300,11 @@ const BANQUET_MAIN_SECTIONS = [
 ];
 
 function banquetMainKeyboard() {
-  return kb(BANQUET_MAIN_SECTIONS.map((section, i) => [
+  const rows = BANQUET_MAIN_SECTIONS.map((section, i) => [
     btn(section[0], "banquet:section:" + i)
-  ]));
+  ]);
+  rows.push([btn("🏠 На главную", "back")]);
+  return kb(rows);
 }
 
 function banquetSectionEntries(sectionIndex) {
@@ -1638,6 +1640,7 @@ async function onCallback(env, cb) {
     if (!Number.isInteger(sectionIndex) || !BANQUET_MAIN_SECTIONS[sectionIndex]) {
       return void (await answer(env, cb.id, "Раздел не найден", true));
     }
+
     if (sectionIndex === 8) {
       const info = itemList(MENU.banquet)[33]?.[2] || "Информация отсутствует.";
       await edit(env, msg, "<b>ℹ️ Информация</b>\n\n" + esc(info), kb([
@@ -1646,6 +1649,18 @@ async function onCallback(env, cb) {
       ]));
       return void (await done());
     }
+
+    // Детское меню открывается сразу списком блюд — без повторной кнопки «Детское меню».
+    if (sectionIndex === 7) {
+      await edit(
+        env,
+        msg,
+        "🧒 <b>Детское меню</b>\n\nВыберите блюдо:",
+        banquetSubmenuKeyboard(32)
+      );
+      return void (await done());
+    }
+
     await edit(
       env,
       msg,
@@ -1672,15 +1687,9 @@ async function onCallback(env, cb) {
     const index = Number(parts[2]);
     if (parts.length !== 3 || !Number.isInteger(index)) return void (await answer(env, cb.id, "Позиция не найдена", true));
     if (!MENU[parts[1]]) return void (await answer(env, cb.id, "Раздел не найден", true));
-    if (parts[1] === "banquet" && BANQUET_SUBMENUS[index]) {
-      await edit(
-        env,
-        msg,
-        "🎉 <b>" + esc(banquetGroupTitle(index)) + "</b>\n\nВыберите позицию:",
-        banquetSubmenuKeyboard(index)
-      );
-      return void (await done());
-    }
+
+    // В банкетных пакетах не делаем вложенные кнопки:
+    // при нажатии на пакет сразу показываем его состав обычным текстом.
     await edit(env, msg, formatItem(parts[1], index), itemBackKeyboard(parts[1]));
     return void (await done());
   }
