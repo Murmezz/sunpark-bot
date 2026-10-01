@@ -1287,6 +1287,43 @@ function categoryKeyboard(key) {
   rows.push([btn("🏠 На главную", "back")]);
   return kb(rows);
 }
+const BANQUET_MAIN_SECTIONS = [
+  ["🥂 Банкетные пакеты", [0, 1, 2, 31]],
+  ["🥗 Холодные закуски", [3, 4, 5, 6, 7, 8, 9]],
+  ["🍤 Горячие закуски", [10, 11]],
+  ["🥗 Салаты", [12, 13, 14, 15, 16]],
+  ["🍖 Горячие блюда", [17, 18, 19]],
+  ["🥂 Фуршет", [20, 21, 22, 23, 24, 25, 26, 27, 28, 29]],
+  ["🍰 Десерты", [30]],
+  ["🧒 Детское меню", [32]],
+  ["ℹ️ Информация", []]
+];
+
+function banquetMainKeyboard() {
+  return kb(BANQUET_MAIN_SECTIONS.map((section, i) => [
+    btn(section[0], "banquet:section:" + i)
+  ]));
+}
+
+function banquetSectionEntries(sectionIndex) {
+  const indexes = BANQUET_MAIN_SECTIONS[sectionIndex]?.[1] || [];
+  const all = itemList(MENU.banquet);
+  return indexes.map((sourceIndex) => ({
+    sourceIndex,
+    item: all[sourceIndex]
+  })).filter((x) => x.item);
+}
+
+function banquetSectionKeyboard(sectionIndex) {
+  const entries = banquetSectionEntries(sectionIndex);
+  const rows = entries.map((entry) => [
+    btn(entry.item[1] || entry.item[0], "item:banquet:" + entry.sourceIndex)
+  ]);
+  rows.push([btn("◀️ К банкетному меню", "banquet:list")]);
+  rows.push([btn("🏠 На главную", "back")]);
+  return kb(rows);
+}
+
 const BANQUET_SUBMENUS = {
   0: [
     ["🥩 Мясное плато", "Буженина, говяжий язык, колбаса сырокопчёная", "В составе пакета"],
@@ -1593,7 +1630,28 @@ async function onCallback(env, cb) {
   }
   if (data === "home:banquet") { await edit(env, msg, banquetText(), banquetStartKeyboard()); return void (await done()); }
   if (data === "banquet:list") {
-    await edit(env, msg, "🎉 <b>Банкетное меню SUNPARK · 2026</b>\n\nВыберите раздел и вариант меню:", categoryKeyboard("banquet"));
+    await edit(env, msg, "🎉 <b>Банкетное меню SUNPARK · 2026</b>", banquetMainKeyboard());
+    return void (await done());
+  }
+  if (data.startsWith("banquet:section:")) {
+    const sectionIndex = Number(data.slice("banquet:section:".length));
+    if (!Number.isInteger(sectionIndex) || !BANQUET_MAIN_SECTIONS[sectionIndex]) {
+      return void (await answer(env, cb.id, "Раздел не найден", true));
+    }
+    if (sectionIndex === 8) {
+      const info = itemList(MENU.banquet)[31]?.[2] || "Информация отсутствует.";
+      await edit(env, msg, "<b>ℹ️ Информация</b>\n\n" + esc(info), kb([
+        [btn("◀️ К банкетному меню", "banquet:list")],
+        [btn("🏠 На главную", "back")]
+      ]));
+      return void (await done());
+    }
+    await edit(
+      env,
+      msg,
+      "🎉 <b>" + esc(BANQUET_MAIN_SECTIONS[sectionIndex][0]) + "</b>\n\nВыберите позицию:",
+      banquetSectionKeyboard(sectionIndex)
+    );
     return void (await done());
   }
   if (data === "info") {
