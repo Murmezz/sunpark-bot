@@ -1191,8 +1191,14 @@ const banquetContactText = () =>
   "Первый менеджер, который возьмёт обращение, продолжит общение с вами через этого бота.\n\n" +
   "Например: количество гостей, дата банкета, пожелания по меню и другие вопросы.";
 
-const homeKeyboard = () =>
-  kb([[btn("🍽 Основное меню", "home:menu")], [btn("🎉 Банкетное меню", "home:banquet")]]);
+function homeKeyboard(env, userId) {
+  const rows = [
+    [btn("🍽 Основное меню", "home:menu")],
+    [btn("🎉 Банкетное меню", "home:banquet")]
+  ];
+  if (isManager(env, userId)) rows.push([btn("⚙️ Админ-панель", "admin:panel")]);
+  return kb(rows);
+}
 const banquetStartKeyboard = () =>
   kb([
     [btn("📋 Посмотреть банкетное меню", "banquet:list")],
@@ -1556,13 +1562,19 @@ async function onMessage(env, msg) {
     }
   }
   if (text.startsWith("/start")) {
-    await send(env, uid, homeText(), homeKeyboard());
+    await send(env, uid, homeText(), homeKeyboard(env, uid));
     await send(env, uid, "Нижняя кнопка «🏠 Главное меню» всегда вернёт вас сюда.", persistentKeyboard(env, uid));
     return;
   }
-  if (text === "🏠 Главное меню") return void (await send(env, uid, homeText(), homeKeyboard()));
+  if (text === "/admin" && mgr)
+    return void (await send(env, uid, await adminPanelText(env), adminPanelKeyboard()));
+  if (text === "🏠 Главное меню") {
+    await send(env, uid, homeText(), homeKeyboard(env, uid));
+    await send(env, uid, "Меню обновлено.", persistentKeyboard(env, uid));
+    return;
+  }
   if (text === "👀 Как гость" && mgr)
-    return void (await send(env, uid, "👀 <b>Режим просмотра как гость</b>", homeKeyboard()));
+    return void (await send(env, uid, "👀 <b>Режим просмотра как гость</b>", homeKeyboard(env, uid));
   if (text === "⚙️ Админ-панель" && mgr)
     return void (await send(env, uid, await adminPanelText(env), adminPanelKeyboard()));
   if ((text === "👀 Как гость" || text === "⚙️ Админ-панель") && !mgr) return;
