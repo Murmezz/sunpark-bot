@@ -1614,7 +1614,41 @@ async function onCallback(env, cb) {
     const index = Number(parts[2]);
     if (parts.length !== 3 || !Number.isInteger(index)) return void (await answer(env, cb.id, "Позиция не найдена", true));
     if (!MENU[parts[1]]) return void (await answer(env, cb.id, "Раздел не найден", true));
+    if (parts[1] === "banquet" && BANQUET_SUBMENUS[index]) {
+      await edit(
+        env,
+        msg,
+        "🎉 <b>" + esc(banquetGroupTitle(index)) + "</b>\\n\\nВыберите позицию:",
+        banquetSubmenuKeyboard(index)
+      );
+      return void (await done());
+    }
     await edit(env, msg, formatItem(parts[1], index), itemBackKeyboard(parts[1]));
+    return void (await done());
+  }
+
+  if (data.startsWith("bsub:")) {
+    const parts = data.split(":");
+    const groupIndex = Number(parts[1]);
+    const itemIndex = Number(parts[2]);
+    if (!Number.isInteger(groupIndex) || !Number.isInteger(itemIndex) || !BANQUET_SUBMENUS[groupIndex]?.[itemIndex]) {
+      return void (await answer(env, cb.id, "Позиция не найдена", true));
+    }
+    await edit(env, msg, formatBanquetSubitem(groupIndex, itemIndex), kb([
+      [btn("◀️ К списку позиций", "banquet:group:" + groupIndex)],
+      [btn("🏠 На главную", "back")]
+    ]));
+    return void (await done());
+  }
+  if (data.startsWith("banquet:group:")) {
+    const groupIndex = Number(data.slice("banquet:group:".length));
+    if (!BANQUET_SUBMENUS[groupIndex]) return void (await answer(env, cb.id, "Раздел не найден", true));
+    await edit(
+      env,
+      msg,
+      "🎉 <b>" + esc(banquetGroupTitle(groupIndex)) + "</b>\\n\\nВыберите позицию:",
+      banquetSubmenuKeyboard(groupIndex)
+    );
     return void (await done());
   }
 
