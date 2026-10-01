@@ -1269,13 +1269,13 @@ function categoryKeyboard(key) {
     let index = 0;
     for (const [sectionTitle, sectionItems] of cat.sections) {
       rows.push([btn("— " + sectionTitle + " —", "noop")]);
-      let row = [];
       for (const it of sectionItems) {
-        row.push(btn((it[0] + " — " + it[2]).slice(0, 64), "item:" + key + ":" + index));
+        // Банкетное меню: одна позиция в строке и без дублирования цены.
+        // Так Telegram не обрезает половину названия из-за двух колонок.
+        const label = key === "banquet" ? it[0] : (it[0] + " — " + it[2]).slice(0, 64);
+        rows.push([btn(label, "item:" + key + ":" + index)]);
         index++;
-        if (row.length === 2) { rows.push(row); row = []; }
       }
-      if (row.length) rows.push(row);
     }
   } else {
     const items = itemList(cat);
@@ -1283,10 +1283,10 @@ function categoryKeyboard(key) {
       rows.push([btn((items[i][0] + " — " + items[i][2]).slice(0, 64), "item:" + key + ":" + i)]);
     }
   }
+  if (key === "banquet") rows.push([btn("◀️ К разделам", "home:banquet")]);
   rows.push([btn("🏠 На главную", "back")]);
   return kb(rows);
 }
-
 function formatItem(key, index) {
   const cat = MENU[key];
   const items = itemList(cat);
