@@ -1383,7 +1383,7 @@ function banquetGroupTitle(groupIndex) {
 function formatBanquetSubitem(groupIndex, itemIndex) {
   const item = BANQUET_SUBMENUS[groupIndex]?.[itemIndex];
   if (!item) return "Позиция не найдена.";
-  return "<b>" + esc(item[0]) + "</b>\\n\\n" + esc(item[1]) + "\\n\\n💰 <b>" + esc(item[2]) + "</b>";
+  return "<b>" + esc(item[0]) + "</b>\n\n" + esc(item[1]) + "\n\n💰 <b>" + esc(item[2]) + "</b>";
 }
 
 function formatItem(key, index) {
@@ -1618,7 +1618,7 @@ async function onCallback(env, cb) {
       await edit(
         env,
         msg,
-        "🎉 <b>" + esc(banquetGroupTitle(index)) + "</b>\\n\\nВыберите позицию:",
+        "🎉 <b>" + esc(banquetGroupTitle(index)) + "</b>\n\nВыберите позицию:",
         banquetSubmenuKeyboard(index)
       );
       return void (await done());
@@ -1646,7 +1646,7 @@ async function onCallback(env, cb) {
     await edit(
       env,
       msg,
-      "🎉 <b>" + esc(banquetGroupTitle(groupIndex)) + "</b>\\n\\nВыберите позицию:",
+      "🎉 <b>" + esc(banquetGroupTitle(groupIndex)) + "</b>\n\nВыберите позицию:",
       banquetSubmenuKeyboard(groupIndex)
     );
     return void (await done());
