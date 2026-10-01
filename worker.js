@@ -1637,7 +1637,7 @@ async function onCallback(env, cb) {
   const done = () => answer(env, cb.id);
 
   if (data === "noop") return void (await done());
-  if (data === "back") { await edit(env, msg, homeText(), homeKeyboard()); return void (await done()); }
+  if (data === "back") { await edit(env, msg, homeText(), homeKeyboard(env, uid)); return void (await done()); }
   if (data === "home:menu") {
     await edit(env, msg, "🍽 <b>Основное меню SUNPARK</b>\n\nВыберите раздел:", mainMenuKeyboard());
     return void (await done());
@@ -1822,7 +1822,7 @@ async function onCallback(env, cb) {
     }
     else if (what === "active") await edit(env, msg, await adminActiveText(env), adminBackKeyboard());
     else if (what === "closed") await edit(env, msg, await adminClosedText(env), adminBackKeyboard());
-    else if (what === "guest") await edit(env, msg, homeText(), homeKeyboard());
+    else if (what === "guest") await edit(env, msg, homeText(), homeKeyboard(env, uid));
     else if (what === "stats") {
       const { active, waiting, closed } = await counts(env);
       await edit(env, msg,
