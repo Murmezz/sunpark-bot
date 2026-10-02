@@ -1156,6 +1156,15 @@ async function saveManagerIds(env, ids) {
   MANAGERS_CFG = value;
 }
 
+async function getManagerNames(env) {
+  const row = await env.DB.prepare("SELECT value FROM config WHERE key='manager_names'").first();
+  try { return row?.value ? JSON.parse(row.value) : {}; } catch { return {}; }
+}
+async function saveManagerNames(env, names) {
+  await env.DB.prepare("INSERT INTO config (key, value) VALUES ('manager_names', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(JSON.stringify(names)).run();
+}
+function managerDisplayName(names, id) { return names[String(id)] || ("ID " + id); }
+
 async function getManagerAction(env, userId) {
   const row = await env.DB.prepare("SELECT action FROM manager_states WHERE user_id=?").bind(userId).first();
   return row?.action || "";
@@ -1233,6 +1242,7 @@ const adminPanelKeyboard = () =>
 const managersKeyboard = () =>
   kb([
     [btn("➕ Добавить менеджера", "admin:manager_add")],
+    [btn("✏️ Изменить имя", "admin:manager_rename")],
     [btn("➖ Удалить менеджера", "admin:manager_remove")],
     [btn("◀️ В админ-панель", "admin:panel")],
   ]);
@@ -1472,6 +1482,7 @@ async function adminActiveText(env) {
     "FROM tickets t LEFT JOIN users u ON u.user_id=t.guest_id " +
     "WHERE t.status='active' ORDER BY t.number"
   ).all();
+  const managerNames = await getManagerNames(env);
   if (!results.length) return "📥 <b>Активные обращения</b>\n\nСейчас активных обращений нет.";
 
   return ["📥 <b>Активные обращения</b>", ""]
@@ -1487,12 +1498,13 @@ async function adminActiveText(env) {
 }
 async function adminClosedText(env) {
   const { results } = await env.DB.prepare(
-    "SELECT number, guest_id, manager_id FROM tickets WHERE status='closed' ORDER BY closed_at DESC, number DESC LIMIT 20"
+    "SELECT t.number, t.guest_id, t.manager_id, u.username, u.first_name, u.last_name FROM tickets t LEFT JOIN users u ON u.user_id=t.guest_id WHERE t.status='closed' ORDER BY t.closed_at DESC, t.number DESC LIMIT 20"
   ).all();
+  const managerNames = await getManagerNames(env);
   if (!results.length) return "✅ <b>Закрытые обращения</b>\n\nЗакрытых обращений пока нет.";
   return ["✅ <b>Последние закрытые обращения</b>", ""]
     .concat(results.map((t) =>
-      `#${t.number} — гость <code>${t.guest_id}</code> — менеджер <code>${t.manager_id}</code>`))
+      `#${t.number} — гость ${t.username ? "<b>@" + esc(t.username) + "</b>" : "<b>" + esc([t.first_name, t.last_name].filter(Boolean).join(" ") || "без username") + "</b>"} — менеджер <b>${esc(managerDisplayName(managerNames, t.manager_id))}</b>`))
     .join("\n");
 }
 
@@ -1518,55 +1530,72 @@ async function onMessage(env, msg) {
 
   if (mgr) {
     const managerAction = await getManagerAction(env, uid);
-    if (managerAction === "add" || managerAction === "remove") {
+    if (managerAction.startsWith("add_name:") || managerAction.startsWith("rename_name:")) {
+      const targetId = Number(managerAction.split(":")[1]);
+      const name = String(text).trim();
+      if (!targetId || !name || name.length > 50) {
+        await send(env, uid, "⚠️ Введите имя от 1 до 50 символов.");
+        return;
+      }
+      const names = await getManagerNames(env);
+      names[String(targetId)] = name;
+      await saveManagerNames(env, names);
+      await clearManagerAction(env, uid);
+      await send(env, uid, "✅ Имя менеджера изменено на <b>" + esc(name) + "</b>.", persistentKeyboard(env, uid));
+      return;
+    }
+    if (managerAction === "add" || managerAction === "remove" || managerAction === "rename") {
       const tag = String(text).trim().replace(/^@/, "").toLowerCase();
       if (!/^[a-z0-9_]{5,32}$/i.test(tag)) {
-        await send(env, uid, "⚠️ Введите юзернейм Telegram в формате <code>@username</code>.\n\nВажно: этот пользователь должен хотя бы один раз написать боту.");
+        await send(env, uid, "⚠️ Введите @username Telegram.");
         return;
       }
-
-      const target = await env.DB.prepare(
-        "SELECT user_id, username, first_name, last_name FROM users WHERE lower(username)=? LIMIT 1"
-      ).bind(tag).first();
-
+      const target = await env.DB.prepare("SELECT user_id, username FROM users WHERE lower(username)=? LIMIT 1").bind(tag).first();
       if (!target) {
-        await send(env, uid,
-          "❌ Пользователь <b>@" + esc(tag) + "</b> ещё не найден.\n\n" +
-          "Пусть этот человек сначала нажмёт /start и напишет боту хотя бы одно сообщение, после чего его можно будет добавить по юзернейму."
-        );
+        await send(env, uid, "❌ Пользователь <b>@" + esc(tag) + "</b> ещё не найден. Пусть он сначала напишет боту.");
         return;
       }
-
       const targetId = Number(target.user_id);
       const ids = [...managerSet(env)];
-
+      if (managerAction === "rename") {
+        if (!ids.includes(targetId)) {
+          await clearManagerAction(env, uid);
+          await send(env, uid, "ℹ️ Этот пользователь не является менеджером.", persistentKeyboard(env, uid));
+          return;
+        }
+        await setManagerAction(env, uid, "rename_name:" + targetId);
+        await send(env, uid, "✏️ Введите новое имя менеджера.");
+        return;
+      }
       if (managerAction === "add") {
         if (ids.includes(targetId)) {
           await clearManagerAction(env, uid);
-          await send(env, uid, `ℹ️ Менеджер <code>${targetId}</code> уже есть в списке.`, persistentKeyboard(env, uid));
+          await send(env, uid, "ℹ️ Этот менеджер уже есть в списке.", persistentKeyboard(env, uid));
           return;
         }
         ids.push(targetId);
         await saveManagerIds(env, ids);
-        await clearManagerAction(env, uid);
-        await send(env, uid, "✅ Менеджер <b>@" + esc(target.username || tag) + "</b> добавлен.\n\nТеперь он будет получать новые обращения гостей.", persistentKeyboard(env, uid));
+        await setManagerAction(env, uid, "add_name:" + targetId);
+        await send(env, uid, "✏️ Введите имя менеджера, которое будет отображаться везде.\nНапример: <b>Алексей</b>");
         return;
       }
-
       if (ids.length <= 1) {
         await clearManagerAction(env, uid);
-        await send(env, uid, "⚠️ Нельзя удалить последнего менеджера. В списке должен остаться хотя бы один.", persistentKeyboard(env, uid));
+        await send(env, uid, "⚠️ Нельзя удалить последнего менеджера.", persistentKeyboard(env, uid));
         return;
       }
       if (!ids.includes(targetId)) {
         await clearManagerAction(env, uid);
-        await send(env, uid, `ℹ️ Менеджера <code>${targetId}</code> нет в списке.`, persistentKeyboard(env, uid));
+        await send(env, uid, "ℹ️ Этого менеджера нет в списке.", persistentKeyboard(env, uid));
         return;
       }
       const nextIds = ids.filter((id) => id !== targetId);
       await saveManagerIds(env, nextIds);
+      const names = await getManagerNames(env);
+      delete names[String(targetId)];
+      await saveManagerNames(env, names);
       await clearManagerAction(env, uid);
-      await send(env, uid, "✅ Менеджер <b>@" + esc(target.username || tag) + "</b> удалён.\n\nОн больше не будет получать новые обращения.", persistentKeyboard(env, uid));
+      await send(env, uid, "✅ Менеджер удалён.", persistentKeyboard(env, uid));
       return;
     }
   }
@@ -1812,7 +1841,8 @@ async function onCallback(env, cb) {
     else if (what === "managers") {
       await clearManagerAction(env, uid);
       const ids = [...managerSet(env)];
-      const list = ids.length ? ids.map((id, i) => `${i + 1}. <code>${id}</code>`).join("\n") : "Список пуст.";
+      const names = await getManagerNames(env);
+      const list = ids.length ? ids.map((id, i) => (i + 1) + ". <b>" + esc(managerDisplayName(names, id)) + "</b>").join("\n") : "Список пуст.";
       await edit(env, msg,
         `👥 <b>Менеджеры</b>\n\n${list}\n\nВсе менеджеры имеют одинаковые права: получают новые обращения и могут добавлять или удалять менеджеров.`,
         managersKeyboard());
