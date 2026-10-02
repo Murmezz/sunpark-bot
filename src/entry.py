@@ -493,9 +493,11 @@ class Bot(WorkerEntrypoint):
 
     async def send_ticket_attachments(self, chat_id, ticket_number):
         messages = await self.db_all(
-            "SELECT sender_role,body FROM ticket_messages WHERE ticket_number=? ORDER BY id DESC LIMIT 30",
+            "SELECT sender_role,body,created_at FROM ticket_messages WHERE ticket_number=? ORDER BY id DESC LIMIT 30",
             ticket_number,
         )
+        photos = []
+        documents = []
         for item in reversed(messages.results):
             body = str(item.body or "")
             if not body.startswith("ATTACH:"):
@@ -505,16 +507,49 @@ class Bot(WorkerEntrypoint):
                 if not attachment.get("file_id"):
                     continue
                 author = "гостя" if item.sender_role == "guest" else "менеджера"
-                title = "📷 Фото" if attachment.get("type") == "photo" else "📄 PDF"
-                if attachment.get("file_name"):
-                    title += ": " + esc(attachment["file_name"])
-                caption = f"{title} от {author}"
+                timestamp = esc(str(item.created_at or ""))
+                caption = f"📷 Фото от {author} · {timestamp}"
                 note = str(attachment.get("caption") or "")
                 if note:
                     caption += "\n" + esc(note[:700])
-                await self.send_ticket_content(chat_id, caption, attachment)
+                if attachment.get("type") == "photo":
+                    photos.append({
+                        "type": "photo",
+                        "media": attachment["file_id"],
+                        "caption": caption,
+                        "parse_mode": "HTML",
+                    })
+                else:
+                    name = str(attachment.get("file_name") or "document.pdf")
+                    doc_caption = f"📄 PDF от {author} · {timestamp}\n{esc(name)}"
+                    if note:
+                        doc_caption += "\n" + esc(note[:700])
+                    documents.append((attachment, doc_caption))
             except Exception as e:
                 print("SUNPARK ATTACHMENT HISTORY ERROR:", repr(e))
+
+        for start in range(0, len(photos), 10):
+            album = photos[start:start + 10]
+            if len(album) == 1:
+                await self.send_ticket_content(
+                    chat_id,
+                    album[0].get("caption", "📷 Фото"),
+                    {"type": "photo", "file_id": album[0]["media"]},
+                )
+                continue
+            try:
+                await self.tg("sendMediaGroup", {"chat_id": chat_id, "media": album})
+            except Exception as e:
+                print("SUNPARK PHOTO ALBUM ERROR:", repr(e))
+                for photo in album:
+                    await self.send_ticket_content(
+                        chat_id,
+                        photo.get("caption", "📷 Фото"),
+                        {"type": "photo", "file_id": photo["media"]},
+                    )
+
+        for attachment, caption in documents:
+            await self.send_ticket_content(chat_id, caption, attachment)
 
     async def closed_text(self, names):
         r = await self.db_all(
