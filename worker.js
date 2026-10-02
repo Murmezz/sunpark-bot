@@ -1468,12 +1468,21 @@ async function adminPanelText(env) {
 }
 async function adminActiveText(env) {
   const { results } = await env.DB.prepare(
-    "SELECT number, guest_id, manager_id FROM tickets WHERE status='active' ORDER BY number"
+    "SELECT t.number, t.guest_id, t.manager_id, u.username, u.first_name, u.last_name " +
+    "FROM tickets t LEFT JOIN users u ON u.user_id=t.guest_id " +
+    "WHERE t.status='active' ORDER BY t.number"
   ).all();
   if (!results.length) return "📥 <b>Активные обращения</b>\n\nСейчас активных обращений нет.";
+
   return ["📥 <b>Активные обращения</b>", ""]
-    .concat(results.map((t) =>
-      `🟡 Обращение #${t.number} — гость <code>${t.guest_id}</code> — менеджер <code>${t.manager_id}</code>`))
+    .concat(results.map((t) => {
+      const name = [t.first_name, t.last_name].filter(Boolean).join(" ");
+      const guest = t.username
+        ? "@" + t.username
+        : (name || "без username");
+      const manager = t.manager_id ? "<code>" + t.manager_id + "</code>" : "не назначен";
+      return `🟡 Обращение #${t.number} — гость <b>${esc(guest)}</b> — менеджер ${manager}`;
+    }))
     .join("\n");
 }
 async function adminClosedText(env) {
