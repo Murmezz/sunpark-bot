@@ -597,15 +597,39 @@ class Bot(WorkerEntrypoint):
             try:
                 has_token = bool(getattr(self.env, "BOT_TOKEN", None))
                 has_db = bool(getattr(self.env, "DB", None))
+
+                db_status = "SKIP"
+                if has_db:
+                    try:
+                        test = await self.db_first("SELECT 1 AS ok")
+                        db_status = "OK:" + str(test.ok)
+                    except Exception as e:
+                        db_status = "ERROR:" + repr(e)
+
+                tg_status = "SKIP"
+                if has_token:
+                    try:
+                        r = await fetch(
+                            f"https://api.telegram.org/bot{self.env.BOT_TOKEN}/getMe",
+                            {"method": "GET"},
+                        )
+                        data = await r.json()
+                        tg_status = "OK" if data.ok else "ERROR:" + str(data.description)
+                    except Exception as e:
+                        tg_status = "ERROR:" + repr(e)
+
                 return Response(
-                    "SUNPARK bot is running | DB=" + ("OK" if has_db else "MISSING") +
-                    " | BOT_TOKEN=" + ("OK" if has_token else "MISSING")
+                    "SUNPARK | DB=" + ("OK" if has_db else "MISSING") +
+                    " | DB_TEST=" + db_status +
+                    " | BOT_TOKEN=" + ("OK" if has_token else "MISSING") +
+                    " | TG_TEST=" + tg_status
                 )
             except Exception as e:
                 import traceback
                 print("SUNPARK HEALTH ERROR:", repr(e))
                 print(traceback.format_exc())
                 return Response("SUNPARK health error: " + repr(e), status=500)
+
         try:
             update = await request.json()
             print("SUNPARK UPDATE RECEIVED:", "message" if update.get("message") else "callback_query" if update.get("callback_query") else "other")
