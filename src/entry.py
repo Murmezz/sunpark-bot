@@ -88,9 +88,11 @@ class Bot(WorkerEntrypoint):
         return await self.tg("sendMessage", p)
 
     async def edit(self, msg, text, markup=None):
+        chat_id = msg.get("chat", {}).get("id")
+        message_id = msg.get("message_id")
         p = {
-            "chat_id": msg.get("chat", {}).get("id"),
-            "message_id": msg.get("message_id"),
+            "chat_id": chat_id,
+            "message_id": message_id,
             "text": text,
             "parse_mode": "HTML",
         }
@@ -98,8 +100,16 @@ class Bot(WorkerEntrypoint):
             p["reply_markup"] = markup
         try:
             await self.tg("editMessageText", p)
+            return
         except Exception as e:
-            if "not modified" not in str(e).lower():
+            # If Telegram refuses to edit the existing message, send the
+            # requested screen as a new message instead of failing the whole callback.
+            if "not modified" in str(e).lower():
+                return
+            print("SUNPARK EDIT FALLBACK:", repr(e))
+            try:
+                await self.send(chat_id, text, markup)
+            except Exception:
                 raise
 
     async def answer(self, callback_id, text="", alert=False):
