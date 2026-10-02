@@ -491,6 +491,31 @@ class Bot(WorkerEntrypoint):
         out.extend(["", "✍️ Режим ответа включён: отправляйте сообщения в этот чат, они пойдут этому гостю. Чтобы переключиться, снова откройте список активных заявок."])
         return "\n".join(out)
 
+    async def send_ticket_attachments(self, chat_id, ticket_number):
+        messages = await self.db_all(
+            "SELECT sender_role,body FROM ticket_messages WHERE ticket_number=? ORDER BY id DESC LIMIT 30",
+            ticket_number,
+        )
+        for item in reversed(messages.results):
+            body = str(item.body or "")
+            if not body.startswith("ATTACH:"):
+                continue
+            try:
+                attachment = json.loads(body[7:])
+                if not attachment.get("file_id"):
+                    continue
+                author = "гостя" if item.sender_role == "guest" else "менеджера"
+                title = "📷 Фото" if attachment.get("type") == "photo" else "📄 PDF"
+                if attachment.get("file_name"):
+                    title += ": " + esc(attachment["file_name"])
+                caption = f"{title} от {author}"
+                note = str(attachment.get("caption") or "")
+                if note:
+                    caption += "\n" + esc(note[:700])
+                await self.send_ticket_content(chat_id, caption, attachment)
+            except Exception as e:
+                print("SUNPARK ATTACHMENT HISTORY ERROR:", repr(e))
+
     async def closed_text(self, names):
         r = await self.db_all(
             "SELECT t.number,t.manager_id,u.username,u.first_name,u.last_name FROM tickets t LEFT JOIN users u ON u.user_id=t.guest_id WHERE t.status='closed' ORDER BY t.closed_at DESC,t.number DESC LIMIT 20"
@@ -866,6 +891,7 @@ class Bot(WorkerEntrypoint):
                 history = await self.ticket_history(ticket_number)
                 markup = ikb([[btn("🟡 Выбрать другой чат", "admin:active")], [btn(f"✅ Закрыть заявку #{ticket_number}", f"close:{guest_id}")]])
                 await self.edit(msg, history, markup)
+                await self.send_ticket_attachments(uid, ticket_number)
             else:
                 await self.clear_action(uid)
             if what == "panel":
