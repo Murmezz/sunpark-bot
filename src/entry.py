@@ -1,5 +1,4 @@
-from workers import WorkerEntrypoint, Response
-from js import fetch, JSON
+from workers import WorkerEntrypoint, Response, fetch
 from urllib.parse import urlparse
 import json
 import html
