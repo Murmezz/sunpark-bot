@@ -141,7 +141,8 @@ class Bot(WorkerEntrypoint):
             return {}, [], "", cfg
 
     async def manager_ids(self, cfg):
-        raw = ",".join([str(cfg.get("manager_ids") or ""), str(self.env.MANAGER_IDS or "")]).strip(",")
+        env_ids = getattr(self.env, "MANAGER_IDS", "") or ""
+        raw = ",".join([str(cfg.get("manager_ids") or ""), str(env_ids)]).strip(",")
         out = set()
         for x in raw.split(","):
             try:
@@ -604,7 +605,19 @@ class Bot(WorkerEntrypoint):
             elif update.get("callback_query"):
                 await self.callback(update["callback_query"], menu, sections, info, cfg)
         except Exception as e:
-            print("worker error:", e)
+            import traceback
+            print("SUNPARK WORKER ERROR:", repr(e))
+            print(traceback.format_exc())
+            try:
+                source = update.get("message") or update.get("callback_query") or {}
+                chat = (source.get("chat") or
+                        (source.get("message") or {}).get("chat") or {})
+                chat_id = chat.get("id")
+                if chat_id:
+                    await self.send(int(chat_id),
+                                    "⚠️ Временно произошла ошибка бота. Попробуйте ещё раз через несколько секунд.")
+            except Exception as notify_error:
+                print("SUNPARK ERROR NOTIFY FAILED:", repr(notify_error))
         return Response("ok")
 
 
