@@ -199,13 +199,21 @@ class Bot(WorkerEntrypoint):
             rows.append([btn("⚙️ Админ-панель", "admin:panel")])
         return ikb(rows)
 
-    def persistent(self, manager):
+    def persistent(self, manager, has_open_ticket=False):
         rows = [[{"text": "🏠 Главное меню"}]]
-        if not manager:
+        if not manager and has_open_ticket:
             rows.insert(0, [{"text": "💬 Ответить менеджеру"}])
         if manager:
             rows.append([{"text": "👀 Как гость"}, {"text": "⚙️ Админ-панель"}])
         return {"keyboard": rows, "resize_keyboard": True, "is_persistent": True}
+
+    async def guest_persistent(self, uid, manager=False):
+        if manager:
+            return self.persistent(True)
+        ticket = await self.db_first(
+            "SELECT 1 FROM tickets WHERE guest_id=? AND status IN ('waiting','active') LIMIT 1", uid
+        )
+        return self.persistent(False, bool(ticket))
 
     def main_keyboard(self, menu, sections):
         rows = []
@@ -367,7 +375,7 @@ class Bot(WorkerEntrypoint):
                 await self.send(mid, body, ikb([[btn("🤝 Взять заявку", f"claim:{uid}")]]))
             except Exception as e:
                 print("SUNPARK MANAGER DELIVERY ERROR:", repr(e))
-        await self.send(uid, "✅ Заявка отправлена менеджерам. Ожидайте ответа: бронирование пока не подтверждено.")
+        await self.send(uid, "✅ Заявка отправлена менеджерам. Ожидайте ответа: бронирование пока не подтверждено.", await self.guest_persistent(uid))
         return True
 
     def admin_back(self):
@@ -525,7 +533,7 @@ class Bot(WorkerEntrypoint):
 
         if text.startswith("/start"):
             await self.send(uid, self.home_text(), self.home_keyboard(mgr))
-            await self.send(uid, "Нижняя кнопка «🏠 Главное меню» всегда вернёт вас сюда.", self.persistent(mgr))
+            await self.send(uid, "Нижняя кнопка «🏠 Главное меню» всегда вернёт вас сюда.", await self.guest_persistent(uid, mgr))
             return
         if text == "/admin" and mgr:
             await self.send(uid, await self.admin_panel_text(), self.admin_keyboard())
@@ -533,7 +541,7 @@ class Bot(WorkerEntrypoint):
         if text == "🏠 Главное меню":
             await self.send(uid, self.home_text(), self.home_keyboard(mgr))
             note = "Нажмите «💬 Ответить менеджеру», чтобы написать по открытой заявке. Ответ отправьте следующим сообщением."
-            await self.send(uid, note, self.persistent(mgr))
+            await self.send(uid, note, await self.guest_persistent(uid, mgr))
             return
         if text == "👀 Как гость" and mgr:
             await self.send(uid, "👀 <b>Режим просмотра как гость</b>", self.home_keyboard(mgr))
@@ -547,13 +555,13 @@ class Bot(WorkerEntrypoint):
         if text == "💬 Ответить менеджеру":
             own = await self.db_first("SELECT number,status FROM tickets WHERE guest_id=? AND status IN ('draft','waiting','active') ORDER BY number DESC LIMIT 1", uid)
             if not own:
-                await self.send(uid, "Сейчас у вас нет открытой заявки. Откройте главное меню и выберите «Связаться с менеджером» или оформите бронь.", self.persistent(mgr))
+                await self.send(uid, "Сейчас у вас нет открытой заявки. Откройте главное меню и выберите «Связаться с менеджером» или оформите бронь.", await self.guest_persistent(uid, mgr))
             elif own.status == "active":
-                await self.send(uid, f"💬 Заявка #{own.number} открыта. Напишите сообщение следующим сообщением — оно уйдёт менеджеру по этой заявке. Ответ менеджера появится здесь, даже если вы сейчас смотрите меню.", self.persistent(mgr))
+                await self.send(uid, f"💬 Заявка #{own.number} открыта. Напишите сообщение следующим сообщением — оно уйдёт менеджеру по этой заявке. Ответ менеджера появится здесь, даже если вы сейчас смотрите меню.", await self.guest_persistent(uid, mgr))
             elif own.status == "waiting":
-                await self.send(uid, f"⏳ Заявка #{own.number} уже у менеджеров. Напишите дополнение следующим сообщением — оно прикрепится к заявке.", self.persistent(mgr))
+                await self.send(uid, f"⏳ Заявка #{own.number} уже у менеджеров. Напишите дополнение следующим сообщением — оно прикрепится к заявке.", await self.guest_persistent(uid, mgr))
             else:
-                await self.send(uid, "Вы ещё заполняете заявку. Продолжите отвечать на вопросы формы; после отправки можно будет писать менеджеру по кнопке «💬 Ответить менеджеру».", self.persistent(mgr))
+                await self.send(uid, "Вы ещё заполняете заявку. Продолжите отвечать на вопросы формы; после отправки можно будет писать менеджеру.", await self.guest_persistent(uid, mgr))
             return
 
         if await self.accept_form_answer(uid, text, frm, managers):
@@ -562,7 +570,7 @@ class Bot(WorkerEntrypoint):
         if mgr:
             t = await self.db_first("SELECT guest_id FROM tickets WHERE manager_id=? AND status='active' ORDER BY claimed_at DESC,number DESC LIMIT 1", uid)
             if t:
-                await self.send(int(t.guest_id), f"👨‍💼 <b>Менеджер по заявке отвечает:</b>\n{esc(text)}", self.persistent(False))
+                await self.send(int(t.guest_id), f"👨‍💼 <b>Менеджер по заявке отвечает:</b>\n{esc(text)}", await self.guest_persistent(int(t.guest_id)))
                 await self.send(uid, "✅ Сообщение отправлено гостю.")
                 return
 
@@ -572,7 +580,7 @@ class Bot(WorkerEntrypoint):
         if own.status == "active":
             await self.send(int(own.manager_id), f"💬 <b>Обращение #{own.number}</b>\n👤 {self.guest_label(frm)}\n\n{esc(text)}",
                             ikb([[btn(f"✅ Закрыть заявку #{own.number}", f"close:{uid}")]]))
-            await self.send(uid, f"📨 Сообщение по заявке #{own.number} отправлено менеджеру. Его ответ появится в этом чате; можно продолжать смотреть меню.", self.persistent(False))
+            await self.send(uid, f"📨 Сообщение по заявке #{own.number} отправлено менеджеру. Его ответ появится в этом чате; можно продолжать смотреть меню.", await self.guest_persistent(uid))
             return
         prefix = "➕ <b>Дополнение к заявке" if own.status == "waiting" else "🆕 <b>Новое обращение"
         body = f"{prefix} #{own.number}</b>\n\n👤 <b>Гость:</b> {self.guest_label(frm)}\n🆔 <b>ID:</b> <code>{uid}</code>\n\n💬 <b>Сообщение:</b>\n{esc(text)}"
@@ -582,7 +590,7 @@ class Bot(WorkerEntrypoint):
             except Exception:
                 pass
         await self.db_run("UPDATE tickets SET status='waiting' WHERE number=?", own.number)
-        await self.send(uid, f"📨 Сообщение добавлено к заявке #{own.number} и отправлено менеджерам SUNPARK. Ответ придёт в этот чат.", self.persistent(False))
+        await self.send(uid, f"📨 Сообщение добавлено к заявке #{own.number} и отправлено менеджерам SUNPARK. Ответ придёт в этот чат.", await self.guest_persistent(uid))
 
     async def callback(self, cb, menu, sections, info, cfg):
         data = cb.get("data", "")
@@ -624,7 +632,7 @@ class Bot(WorkerEntrypoint):
                 await self.db_run("DELETE FROM guest_flows WHERE user_id=?", uid)
                 await self.db_run("DELETE FROM ticket_details WHERE ticket_number=?", flow.ticket_number)
                 await self.db_run("DELETE FROM tickets WHERE number=? AND status='draft'", flow.ticket_number)
-            await self.send(uid, "Заявка отменена.", self.persistent(mgr)); await self.answer(cb.get("id")); return
+            await self.send(uid, "Заявка отменена.", await self.guest_persistent(uid, mgr)); await self.answer(cb.get("id")); return
         if data == "banquet:list":
             await self.edit(msg, "🎉 <b>Банкетное меню SUNPARK · 2026</b>", self.banquet_keyboard()); await self.answer(cb.get("id")); return
         if data.startswith("banquet:section:"):
@@ -678,8 +686,12 @@ class Bot(WorkerEntrypoint):
                 await self.db_run("INSERT INTO tickets(guest_id,status) VALUES(?,'draft')", uid)
             await self.edit(msg, "💬 <b>Связь с менеджером по банкетам</b>\n\nНапишите здесь ваш вопрос — сообщение получат наши менеджеры.\n\nПервый менеджер, который возьмёт обращение, продолжит общение с вами через этого бота.\n\nНапример: количество гостей, дата банкета, пожелания по меню и другие вопросы.\n\n<b>✍️ Напишите сообщение следующим сообщением.</b>", kb1(btn("❌ Отменить обращение","manager:cancel"))); await self.answer(cb.get("id")); return
         if data == "manager:cancel":
+            tickets = await self.db_all("SELECT number FROM tickets WHERE guest_id=? AND status IN ('draft','waiting')", uid)
+            for ticket in tickets.results:
+                await self.db_run("DELETE FROM ticket_details WHERE ticket_number=?", ticket.number)
             await self.db_run("DELETE FROM tickets WHERE guest_id=? AND status IN ('draft','waiting')", uid)
-            await self.edit(msg, "🎉 <b>Банкетное меню</b>\n\nЗдесь вы можете посмотреть варианты банкетных блюд или связаться с менеджером.", ikb([[btn("📋 Посмотреть банкетное меню","banquet:list")],[btn("💬 Связаться с менеджером","manager:start")],[btn("🏠 На главную","back")]])); await self.answer(cb.get("id")); return
+            await self.edit(msg, "🎉 <b>Банкетное меню</b>\n\nЗдесь вы можете посмотреть варианты банкетных блюд или связаться с менеджером.", ikb([[btn("📋 Посмотреть банкетное меню","banquet:list")],[btn("💬 Связаться с менеджером","manager:start")],[btn("🏠 На главную","back")]]))
+            await self.send(uid, "Заявка отменена.", await self.guest_persistent(uid, mgr)); await self.answer(cb.get("id")); return
         if data.startswith("claim:"):
             if not mgr:
                 await self.answer(cb.get("id"), "Эта кнопка доступна только менеджерам.", True); return
@@ -692,7 +704,7 @@ class Bot(WorkerEntrypoint):
             t = await self.db_first("SELECT number FROM tickets WHERE guest_id=? AND manager_id=? AND status='active' ORDER BY number DESC", guest_id, uid)
             await self.tg("editMessageReplyMarkup", {"chat_id": msg.get("chat", {}).get("id"), "message_id": msg.get("message_id"), "reply_markup": ikb([[btn(f"✅ Закрыть заявку #{t.number}",f"close:{guest_id}")]])})
             await self.send(msg.get("chat", {}).get("id"), f"✅ <b>Заявка #{t.number} закреплена за вами.</b>\n\nОтветьте гостю обычным сообщением. Закрыть заявку можно кнопкой «✅ Закрыть заявку #{t.number}» здесь или в разделе активных заявок админ-панели.")
-            await self.send(guest_id, "👨‍💼 <b>Менеджер SUNPARK взял заявку в работу.</b>\n\nЧтобы ответить, нажмите «💬 Ответить менеджеру» внизу и отправьте следующее сообщение. Меню можно открывать — переписка по заявке сохранится здесь.", self.persistent(False))
+            await self.send(guest_id, "👨‍💼 <b>Менеджер SUNPARK взял заявку в работу.</b>\n\nЧтобы ответить, нажмите «💬 Ответить менеджеру» внизу и отправьте следующее сообщение. Меню можно открывать — переписка по заявке сохранится здесь.", await self.guest_persistent(guest_id))
             await self.answer(cb.get("id"), "Обращение закреплено за вами."); return
         if data.startswith("close:"):
             if not mgr:
@@ -708,7 +720,7 @@ class Bot(WorkerEntrypoint):
             else:
                 await self.clear_markup(msg)
             await self.send(msg.get("chat", {}).get("id"), f"✅ Заявка #{t.number} закрыта.")
-            await self.send(guest_id, "✅ <b>Заявка закрыта.</b>\n\nЧтобы задать новый вопрос или оформить другую заявку, откройте главное меню.", self.persistent(False))
+            await self.send(guest_id, "✅ <b>Заявка закрыта.</b>\n\nЧтобы задать новый вопрос или оформить другую заявку, откройте главное меню.", await self.guest_persistent(guest_id))
             await self.answer(cb.get("id")); return
         if data.startswith("admin:"):
             if not mgr:
