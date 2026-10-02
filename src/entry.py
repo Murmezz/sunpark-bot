@@ -89,6 +89,36 @@ class Bot(WorkerEntrypoint):
             p["reply_markup"] = markup
         return await self.tg("sendMessage", p)
 
+    def message_attachment(self, msg):
+        photos = msg.get("photo") or []
+        if photos:
+            return {"type": "photo", "file_id": photos[-1].get("file_id")}, None
+        doc = msg.get("document")
+        if doc:
+            name = str(doc.get("file_name") or "document.pdf")
+            mime = str(doc.get("mime_type") or "").lower()
+            if mime == "application/pdf" or name.lower().endswith(".pdf"):
+                return {"type": "document", "file_id": doc.get("file_id"), "file_name": name}, None
+            return None, "unsupported"
+        return None, None
+
+    def stored_message_body(self, text, attachment=None):
+        if attachment:
+            record = dict(attachment)
+            record["caption"] = str(text or "")
+            return "ATTACH:" + json.dumps(record, ensure_ascii=False)
+        return str(text or "")
+
+    async def send_ticket_content(self, chat_id, text, attachment=None, markup=None):
+        if not attachment:
+            return await self.send(chat_id, text, markup)
+        method = "sendPhoto" if attachment.get("type") == "photo" else "sendDocument"
+        key = "photo" if method == "sendPhoto" else "document"
+        params = {"chat_id": chat_id, key: attachment.get("file_id"), "caption": text[:950], "parse_mode": "HTML"}
+        if markup is not None:
+            params["reply_markup"] = markup
+        return await self.tg(method, params)
+
     async def edit(self, msg, text, markup=None):
         chat_id = msg.get("chat", {}).get("id")
         message_id = msg.get("message_id")
@@ -442,6 +472,13 @@ class Bot(WorkerEntrypoint):
         for item in reversed(messages.results):
             author = "👤 Гость" if item.sender_role == "guest" else "👨‍💼 Менеджер"
             body = str(item.body or "")
+            if body.startswith("ATTACH:"):
+                try:
+                    attachment = json.loads(body[7:])
+                    label = "📷 Фото" if attachment.get("type") == "photo" else "📄 PDF: " + str(attachment.get("file_name") or "document.pdf")
+                    body = label + ("\n" + str(attachment.get("caption")) if attachment.get("caption") else "")
+                except Exception:
+                    body = "📎 Вложение"
             if len(body) > 400:
                 body = body[:397] + "…"
             history.append(f"\n<b>{author}</b> · {esc(item.created_at)}\n{esc(body)}")
@@ -505,10 +542,11 @@ class Bot(WorkerEntrypoint):
         return esc(name) + (f" @{esc(user.get('username'))}" if user.get("username") else "")
 
     async def message(self, msg, menu, sections, info, cfg):
-        text = msg.get("text")
+        text = msg.get("text") or msg.get("caption") or ""
+        attachment, attachment_error = self.message_attachment(msg)
         frm = msg.get("from") or {}
         chat = msg.get("chat") or {}
-        if not text or chat.get("type") != "private":
+        if (not text and not attachment and not attachment_error) or chat.get("type") != "private":
             return
         uid = int(frm.get("id"))
 
@@ -520,6 +558,13 @@ class Bot(WorkerEntrypoint):
         managers = await self.manager_ids(cfg)
         mgr = uid in managers
         action = await self.get_action(uid) if mgr else ""
+
+        if attachment_error:
+            await self.send(uid, "Пока можно отправить только фото или PDF.")
+            return
+        if mgr and attachment and not action.startswith("reply:"):
+            await self.send(uid, "Сначала откройте конкретную заявку через «Мои активные → Ответить», затем отправьте фото или PDF.")
+            return
 
         if mgr and action.startswith("reply:") and (text.startswith("/start") or text == "/admin" or text in ("🏠 Главное меню", "⚙️ Админ-панель", "👀 Как гость")):
             await self.clear_action(uid)
@@ -610,11 +655,15 @@ class Bot(WorkerEntrypoint):
             if not own:
                 await self.send(uid, "Сейчас у вас нет открытой заявки. Откройте главное меню и выберите «Связаться с менеджером» или оформите бронь.", await self.guest_persistent(uid, mgr))
             elif own.status == "active":
-                await self.send(uid, f"💬 Заявка #{own.number} открыта. Напишите сообщение следующим сообщением — оно уйдёт менеджеру по этой заявке. Ответ менеджера появится здесь, даже если вы сейчас смотрите меню.", await self.guest_persistent(uid, mgr))
+                await self.send(uid, "Ваша заявка открыта. Напишите следующим сообщением — оно уйдёт менеджеру. Ответ придёт сюда, даже если вы сейчас смотрите меню.", await self.guest_persistent(uid, mgr))
             elif own.status == "waiting":
-                await self.send(uid, f"⏳ Заявка #{own.number} уже у менеджеров. Напишите дополнение следующим сообщением — оно прикрепится к заявке.", await self.guest_persistent(uid, mgr))
+                await self.send(uid, "⏳ Ваша заявка уже у менеджеров. Напишите дополнение следующим сообщением — оно прикрепится к заявке.", await self.guest_persistent(uid, mgr))
             else:
                 await self.send(uid, "Вы ещё заполняете заявку. Продолжите отвечать на вопросы формы; после отправки можно будет писать менеджеру.", await self.guest_persistent(uid, mgr))
+            return
+
+        if attachment and not mgr and await self.db_first("SELECT 1 FROM guest_flows WHERE user_id=?", uid):
+            await self.send(uid, "Сначала закончите форму текстовыми ответами. После отправки заявки можно будет приложить фото или PDF.")
             return
 
         if await self.accept_form_answer(uid, text, frm, managers):
@@ -635,8 +684,9 @@ class Bot(WorkerEntrypoint):
                     await self.send(uid, "Эта заявка уже закрыта или передана другому менеджеру. Откройте список своих активных заявок.")
                     return
                 guest_id = int(ticket.guest_id)
-                await self.save_ticket_message(ticket_number, uid, "manager", text)
-                await self.send(guest_id, f"👨‍💼 <b>Менеджер · заявка #{ticket_number}:</b>\n{esc(text)}", await self.guest_persistent(guest_id))
+                await self.save_ticket_message(ticket_number, uid, "manager", self.stored_message_body(text, attachment))
+                caption = f"👨‍💼 <b>Менеджер:</b>\n{esc(text)}" if text else "👨‍💼 <b>Менеджер отправил вложение.</b>"
+                await self.send_ticket_content(guest_id, caption, attachment, await self.guest_persistent(guest_id))
                 await self.send(uid, f"✅ Ответ отправлен гостю по заявке #{ticket_number}. Можно продолжать писать — выбран этот чат.", ikb([[btn(f"📜 История #{ticket_number}", f"admin:chat:{guest_id}")], [btn("🟡 Выбрать другой чат", "admin:active")], [btn(f"✅ Закрыть заявку #{ticket_number}", f"close:{guest_id}")]]))
                 return
             await self.send(uid, "Чтобы ответить конкретному гостю, откройте «Админ-панель → Мои активные» и нажмите «💬 Ответить» у нужной заявки.")
@@ -644,23 +694,28 @@ class Bot(WorkerEntrypoint):
 
         own = await self.db_first("SELECT * FROM tickets WHERE guest_id=? AND status IN ('draft','waiting','active') ORDER BY number DESC LIMIT 1", uid)
         if not own:
+            if attachment:
+                await self.send(uid, "Чтобы отправить фото или PDF, сначала оставьте заявку через «Связаться с менеджером» или оформите бронь.", await self.guest_persistent(uid))
             return
         if own.status == "active":
-            await self.save_ticket_message(own.number, uid, "guest", text)
-            await self.send(int(own.manager_id), f"💬 <b>Обращение #{own.number}</b>\n👤 {self.guest_label(frm)}\n\n{esc(text)}",
-                            ikb([[btn(f"📜 История / ответить #{own.number}", f"admin:chat:{uid}"), btn(f"✅ Закрыть #{own.number}", f"close:{uid}")]]))
-            await self.send(uid, f"📨 Сообщение по заявке #{own.number} отправлено менеджеру. Его ответ появится в этом чате; можно продолжать смотреть меню.", await self.guest_persistent(uid))
+            await self.save_ticket_message(own.number, uid, "guest", self.stored_message_body(text, attachment))
+            content = esc(text) if text else ("📷 Фото во вложении." if attachment.get("type") == "photo" else "📄 PDF во вложении.") if attachment else ""
+            body = f"💬 <b>Обращение #{own.number}</b>\n👤 {self.guest_label(frm)}\n\n{content}"
+            markup = ikb([[btn(f"📜 История / ответить #{own.number}", f"admin:chat:{uid}"), btn(f"✅ Закрыть #{own.number}", f"close:{uid}")]])
+            await self.send_ticket_content(int(own.manager_id), body, attachment, markup)
+            await self.send(uid, "📨 Сообщение отправлено менеджеру. Его ответ появится в этом чате; можно продолжать смотреть меню.", await self.guest_persistent(uid))
             return
         prefix = "➕ <b>Дополнение к заявке" if own.status == "waiting" else "🆕 <b>Новое обращение"
-        body = f"{prefix} #{own.number}</b>\n\n👤 <b>Гость:</b> {self.guest_label(frm)}\n🆔 <b>ID:</b> <code>{uid}</code>\n\n💬 <b>Сообщение:</b>\n{esc(text)}"
-        await self.save_ticket_message(own.number, uid, "guest", text)
+        content = esc(text) if text else ("📷 Фото во вложении." if attachment.get("type") == "photo" else "📄 PDF во вложении.") if attachment else ""
+        body = f"{prefix} #{own.number}</b>\n\n👤 <b>Гость:</b> {self.guest_label(frm)}\n🆔 <b>ID:</b> <code>{uid}</code>\n\n💬 <b>Сообщение:</b>\n{content}"
+        await self.save_ticket_message(own.number, uid, "guest", self.stored_message_body(text, attachment))
         for mid in managers:
             try:
-                await self.send(mid, body, ikb([[btn("🤝 Взять обращение", f"claim:{uid}")]]))
+                await self.send_ticket_content(mid, body, attachment, ikb([[btn("🤝 Взять обращение", f"claim:{uid}")]]))
             except Exception:
                 pass
         await self.db_run("UPDATE tickets SET status='waiting' WHERE number=?", own.number)
-        await self.send(uid, f"📨 Сообщение добавлено к заявке #{own.number} и отправлено менеджерам SUNPARK. Ответ придёт в этот чат.", await self.guest_persistent(uid))
+        await self.send(uid, "📨 Сообщение добавлено к заявке и отправлено менеджерам SUNPARK. Ответ придёт в этот чат.", await self.guest_persistent(uid))
 
     async def callback(self, cb, menu, sections, info, cfg):
         data = cb.get("data", "")
