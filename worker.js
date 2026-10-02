@@ -1850,7 +1850,13 @@ async function onCallback(env, cb) {
     else if (what === "manager_add") {
       await setManagerAction(env, uid, "add");
       await edit(env, msg,
-        "➕ <b>Добавление менеджера</b>\n\nОтправьте следующим сообщением Telegram ID нового менеджера.\n\nНапример: <code>123456789</code>",
+        "➕ <b>Добавление менеджера</b>\n\nОтправьте @username нового менеджера.",
+        kb([[btn("❌ Отмена", "admin:managers")]]));
+    }
+    else if (what === "manager_rename") {
+      await setManagerAction(env, uid, "rename");
+      await edit(env, msg,
+        "✏️ <b>Изменение имени менеджера</b>\n\nОтправьте @username менеджера.",
         kb([[btn("❌ Отмена", "admin:managers")]]));
     }
     else if (what === "manager_remove") {
