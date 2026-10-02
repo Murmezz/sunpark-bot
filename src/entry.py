@@ -592,8 +592,15 @@ class Bot(WorkerEntrypoint):
         await self.answer(cb.get("id"))
 
     async def fetch(self, request):
-        print("SUNPARK FETCH:", request.method)
-        if request.method != "POST":
+        # Telegram webhook must always receive HTTP 200.
+        # Keep diagnostics inside the response path so one bad update
+        # cannot make the webhook return 500.
+        try:
+            method = str(request.method)
+        except Exception:
+            method = "UNKNOWN"
+
+        if method != "POST":
             try:
                 has_token = bool(getattr(self.env, "BOT_TOKEN", None))
                 has_db = bool(getattr(self.env, "DB", None))
@@ -642,38 +649,48 @@ class Bot(WorkerEntrypoint):
                     " | WEBHOOK=" + webhook_status
                 )
             except Exception as e:
-                import traceback
                 print("SUNPARK HEALTH ERROR:", repr(e))
-                print(traceback.format_exc())
                 return Response("SUNPARK health error: " + repr(e), status=500)
 
+        update = None
         try:
             update = await request.json()
-            print("SUNPARK UPDATE RECEIVED:", "message" if update.get("message") else "callback_query" if update.get("callback_query") else "other")
-        except Exception as e:
-            print("SUNPARK JSON ERROR:", repr(e))
-            return Response("bad request", status=400)
-        try:
+            kind = "message" if update.get("message") else "callback_query" if update.get("callback_query") else "other"
+            print("SUNPARK UPDATE RECEIVED:", kind)
+
             menu, sections, info, cfg = await self.config()
+
             if update.get("message"):
                 await self.message(update["message"], menu, sections, info, cfg)
             elif update.get("callback_query"):
                 await self.callback(update["callback_query"], menu, sections, info, cfg)
+
+            return Response("ok")
         except Exception as e:
             import traceback
-            print("SUNPARK WORKER ERROR:", repr(e))
+            print("SUNPARK WEBHOOK ERROR:", repr(e))
             print(traceback.format_exc())
+
+            # Try to notify the user, but NEVER allow notification failure
+            # to turn the webhook response into HTTP 500.
             try:
-                source = update.get("message") or update.get("callback_query") or {}
-                chat = (source.get("chat") or
-                        (source.get("message") or {}).get("chat") or {})
-                chat_id = chat.get("id")
-                if chat_id:
-                    await self.send(int(chat_id),
-                                    "⚠️ Временно произошла ошибка бота. Попробуйте ещё раз через несколько секунд.")
-            except Exception as notify_error:
-                print("SUNPARK ERROR NOTIFY FAILED:", repr(notify_error))
-        return Response("ok")
+                if update:
+                    source = update.get("message") or update.get("callback_query") or {}
+                    chat = source.get("chat") or (source.get("message") or {}).get("chat") or {}
+                    chat_id = chat.get("id")
+                    if chat_id:
+                        try:
+                            await self.send(
+                                int(chat_id),
+                                "⚠️ Временно произошла ошибка бота. Попробуйте ещё раз через несколько секунд."
+                            )
+                        except Exception as notify_error:
+                            print("SUNPARK ERROR NOTIFY FAILED:", repr(notify_error))
+            except Exception as secondary_error:
+                print("SUNPARK ERROR HANDLER FAILED:", repr(secondary_error))
+
+            return Response("ok")
+
 
 
 class Default(Bot):
