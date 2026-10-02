@@ -607,6 +607,7 @@ class Bot(WorkerEntrypoint):
                         db_status = "ERROR:" + repr(e)
 
                 tg_status = "SKIP"
+                webhook_status = "SKIP"
                 if has_token:
                     try:
                         r = await fetch(
@@ -615,6 +616,21 @@ class Bot(WorkerEntrypoint):
                         )
                         data = await r.json()
                         tg_status = "OK" if data.ok else "ERROR:" + str(data.description)
+
+                        wr = await fetch(
+                            f"https://api.telegram.org/bot{self.env.BOT_TOKEN}/getWebhookInfo",
+                            {"method": "GET"},
+                        )
+                        wd = await wr.json()
+                        if wd.ok:
+                            w = wd.result
+                            webhook_status = (
+                                "URL=" + str(w.url) +
+                                " | PENDING=" + str(w.pending_update_count) +
+                                " | LAST_ERROR=" + str(w.last_error_message or "none")
+                            )
+                        else:
+                            webhook_status = "ERROR:" + str(wd.description)
                     except Exception as e:
                         tg_status = "ERROR:" + repr(e)
 
@@ -622,7 +638,8 @@ class Bot(WorkerEntrypoint):
                     "SUNPARK | DB=" + ("OK" if has_db else "MISSING") +
                     " | DB_TEST=" + db_status +
                     " | BOT_TOKEN=" + ("OK" if has_token else "MISSING") +
-                    " | TG_TEST=" + tg_status
+                    " | TG_TEST=" + tg_status +
+                    " | WEBHOOK=" + webhook_status
                 )
             except Exception as e:
                 import traceback
