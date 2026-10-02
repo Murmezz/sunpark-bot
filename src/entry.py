@@ -72,11 +72,9 @@ class Bot(WorkerEntrypoint):
         token = self.env.BOT_TOKEN
         r = await fetch(
             f"https://api.telegram.org/bot{token}/{method}",
-            {
-                "method": "POST",
-                "headers": {"content-type": "application/json"},
-                "body": json.dumps(params),
-            },
+            method="POST",
+            headers={"content-type": "application/json"},
+            body=json.dumps(params),
         )
         data = await r.json()
         if not data.ok:
