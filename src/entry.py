@@ -89,8 +89,8 @@ class Bot(WorkerEntrypoint):
 
     async def edit(self, msg, text, markup=None):
         p = {
-            "chat_id": msg.chat.id,
-            "message_id": msg.message_id,
+            "chat_id": msg.get("chat", {}).get("id"),
+            "message_id": msg.get("message_id"),
             "text": text,
             "parse_mode": "HTML",
         }
@@ -115,8 +115,8 @@ class Bot(WorkerEntrypoint):
     async def clear_markup(self, msg):
         try:
             await self.tg("editMessageReplyMarkup", {
-                "chat_id": msg.chat.id,
-                "message_id": msg.message_id,
+                "chat_id": msg.get("chat", {}).get("id"),
+                "message_id": msg.get("message_id"),
                 "reply_markup": {"inline_keyboard": []},
             })
         except Exception:
@@ -539,8 +539,8 @@ class Bot(WorkerEntrypoint):
                 await self.answer(cb.get("id"), "Обращение уже взял другой менеджер." if taken else "Это обращение уже недоступно.", True)
                 await self.clear_markup(msg); return
             t = await self.db_first("SELECT number FROM tickets WHERE guest_id=? AND manager_id=? AND status='active' ORDER BY number DESC", guest_id, uid)
-            await self.tg("editMessageReplyMarkup", {"chat_id": msg.chat.id, "message_id": msg.message_id, "reply_markup": ikb([[btn("❌ Завершить обращение",f"close:{guest_id}")]])})
-            await self.send(msg.chat.id, f"✅ <b>Обращение #{t.number} взято вами.</b>\n\nТеперь сообщения этого гостя будут приходить вам, а ваши ответы — гостю.")
+            await self.tg("editMessageReplyMarkup", {"chat_id": msg.get("chat", {}).get("id"), "message_id": msg.get("message_id"), "reply_markup": ikb([[btn("❌ Завершить обращение",f"close:{guest_id}")]])})
+            await self.send(msg.get("chat", {}).get("id"), f"✅ <b>Обращение #{t.number} взято вами.</b>\n\nТеперь сообщения этого гостя будут приходить вам, а ваши ответы — гостю.")
             await self.send(guest_id, "👨‍💼 <b>Вашим обращением занимается менеджер SUNPARK.</b>\n\nМожете продолжать писать сообщения прямо здесь.")
             await self.answer(cb.get("id"), "Обращение закреплено за вами."); return
         if data.startswith("close:"):
@@ -552,7 +552,7 @@ class Bot(WorkerEntrypoint):
                 await self.answer(cb.get("id"), "Это обращение вам не назначено.", True); return
             await self.db_run("UPDATE tickets SET status='closed',closed_at=datetime('now') WHERE number=?", t.number)
             await self.clear_markup(msg)
-            await self.send(msg.chat.id, f"✅ Обращение #{t.number} завершено.")
+            await self.send(msg.get("chat", {}).get("id"), f"✅ Обращение #{t.number} завершено.")
             await self.send(guest_id, "✅ <b>Обращение завершено.</b>\n\nЕсли у вас появится новый вопрос по банкету, просто нажмите «💬 Связаться с менеджером» снова.")
             await self.answer(cb.get("id")); return
         if data.startswith("admin:"):
