@@ -592,11 +592,25 @@ class Bot(WorkerEntrypoint):
         await self.answer(cb.get("id"))
 
     async def fetch(self, request):
+        print("SUNPARK FETCH:", request.method)
         if request.method != "POST":
-            return Response("SUNPARK bot is running")
+            try:
+                has_token = bool(getattr(self.env, "BOT_TOKEN", None))
+                has_db = bool(getattr(self.env, "DB", None))
+                return Response(
+                    "SUNPARK bot is running | DB=" + ("OK" if has_db else "MISSING") +
+                    " | BOT_TOKEN=" + ("OK" if has_token else "MISSING")
+                )
+            except Exception as e:
+                import traceback
+                print("SUNPARK HEALTH ERROR:", repr(e))
+                print(traceback.format_exc())
+                return Response("SUNPARK health error: " + repr(e), status=500)
         try:
             update = await request.json()
-        except Exception:
+            print("SUNPARK UPDATE RECEIVED:", "message" if update.get("message") else "callback_query" if update.get("callback_query") else "other")
+        except Exception as e:
+            print("SUNPARK JSON ERROR:", repr(e))
             return Response("bad request", status=400)
         try:
             menu, sections, info, cfg = await self.config()
