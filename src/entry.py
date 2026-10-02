@@ -362,7 +362,7 @@ class Bot(WorkerEntrypoint):
         body = f"🆕 <b>{title} #{flow.ticket_number}</b>\n\n" + "\n".join(f"• <b>{esc(k)}</b>: {esc(v)}" for k, v in payload.items()) + f"\n\n👤 <b>Гость:</b> {self.guest_label(frm)}\n🆔 <code>{uid}</code>\n\n⚠️ Требуется подтверждение менеджера."
         for mid in managers:
             try:
-                await self.send(mid, body, ikb([[btn("🤝 Взять и подтвердить", f"claim:{uid}")]]))
+                await self.send(mid, body, ikb([[btn("🤝 Взять заявку", f"claim:{uid}")]]))
             except Exception as e:
                 print("SUNPARK MANAGER DELIVERY ERROR:", repr(e))
         await self.send(uid, "✅ Заявка отправлена менеджерам. Ожидайте ответа: бронирование пока не подтверждено.")
@@ -518,9 +518,6 @@ class Bot(WorkerEntrypoint):
             await self.send(uid, "✅ Менеджер удалён.", self.persistent(mgr))
             return
 
-        if await self.accept_form_answer(uid, text, frm, managers):
-            return
-
         if text.startswith("/start"):
             await self.send(uid, self.home_text(), self.home_keyboard(mgr))
             await self.send(uid, "Нижняя кнопка «🏠 Главное меню» всегда вернёт вас сюда.", self.persistent(mgr))
@@ -539,6 +536,9 @@ class Bot(WorkerEntrypoint):
             await self.send(uid, await self.admin_panel_text(), self.admin_keyboard())
             return
         if text in ("👀 Как гость", "⚙️ Админ-панель"):
+            return
+
+        if await self.accept_form_answer(uid, text, frm, managers):
             return
 
         if mgr:
@@ -673,7 +673,7 @@ class Bot(WorkerEntrypoint):
             t = await self.db_first("SELECT number FROM tickets WHERE guest_id=? AND manager_id=? AND status='active' ORDER BY number DESC", guest_id, uid)
             await self.tg("editMessageReplyMarkup", {"chat_id": msg.get("chat", {}).get("id"), "message_id": msg.get("message_id"), "reply_markup": ikb([[btn("❌ Завершить обращение",f"close:{guest_id}")]])})
             await self.send(msg.get("chat", {}).get("id"), f"✅ <b>Обращение #{t.number} взято вами.</b>\n\nТеперь сообщения этого гостя будут приходить вам, а ваши ответы — гостю.")
-            await self.send(guest_id, "👨‍💼 <b>Вашим обращением занимается менеджер SUNPARK.</b>\n\nМожете продолжать писать сообщения прямо здесь.")
+            await self.send(guest_id, "👨‍💼 <b>Менеджер SUNPARK взял заявку в работу.</b>\n\nОн ответит здесь и отдельно подтвердит бронирование или детали банкета.")
             await self.answer(cb.get("id"), "Обращение закреплено за вами."); return
         if data.startswith("close:"):
             if not mgr:
