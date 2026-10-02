@@ -637,7 +637,7 @@ class Bot(WorkerEntrypoint):
                 guest_id = int(ticket.guest_id)
                 await self.save_ticket_message(ticket_number, uid, "manager", text)
                 await self.send(guest_id, f"👨‍💼 <b>Менеджер · заявка #{ticket_number}:</b>\n{esc(text)}", await self.guest_persistent(guest_id))
-                await self.send(uid, f"✅ Ответ отправлен гостю по заявке #{ticket_number}. Можно продолжать писать — выбран этот чат.", ikb([[btn("🟡 Выбрать другой чат", "admin:active")], [btn(f"✅ Закрыть заявку #{ticket_number}", f"close:{guest_id}")]]))
+                await self.send(uid, f"✅ Ответ отправлен гостю по заявке #{ticket_number}. Можно продолжать писать — выбран этот чат.", ikb([[btn(f"📜 История #{ticket_number}", f"admin:chat:{guest_id}")], [btn("🟡 Выбрать другой чат", "admin:active")], [btn(f"✅ Закрыть заявку #{ticket_number}", f"close:{guest_id}")]]))
                 return
             await self.send(uid, "Чтобы ответить конкретному гостю, откройте «Админ-панель → Мои активные» и нажмите «💬 Ответить» у нужной заявки.")
             return
@@ -648,7 +648,7 @@ class Bot(WorkerEntrypoint):
         if own.status == "active":
             await self.save_ticket_message(own.number, uid, "guest", text)
             await self.send(int(own.manager_id), f"💬 <b>Обращение #{own.number}</b>\n👤 {self.guest_label(frm)}\n\n{esc(text)}",
-                            ikb([[btn(f"✅ Закрыть заявку #{own.number}", f"close:{uid}")]]))
+                            ikb([[btn(f"📜 История / ответить #{own.number}", f"admin:chat:{uid}"), btn(f"✅ Закрыть #{own.number}", f"close:{uid}")]]))
             await self.send(uid, f"📨 Сообщение по заявке #{own.number} отправлено менеджеру. Его ответ появится в этом чате; можно продолжать смотреть меню.", await self.guest_persistent(uid))
             return
         prefix = "➕ <b>Дополнение к заявке" if own.status == "waiting" else "🆕 <b>Новое обращение"
@@ -772,7 +772,7 @@ class Bot(WorkerEntrypoint):
                 await self.answer(cb.get("id"), "Обращение уже взял другой менеджер." if taken else "Это обращение уже недоступно.", True)
                 await self.clear_markup(msg); return
             t = await self.db_first("SELECT number FROM tickets WHERE guest_id=? AND manager_id=? AND status='active' ORDER BY number DESC", guest_id, uid)
-            await self.tg("editMessageReplyMarkup", {"chat_id": msg.get("chat", {}).get("id"), "message_id": msg.get("message_id"), "reply_markup": ikb([[btn(f"✅ Закрыть заявку #{t.number}",f"close:{guest_id}")]])})
+            await self.tg("editMessageReplyMarkup", {"chat_id": msg.get("chat", {}).get("id"), "message_id": msg.get("message_id"), "reply_markup": ikb([[btn(f"📜 История / ответить #{t.number}", f"admin:chat:{guest_id}"), btn(f"✅ Закрыть #{t.number}",f"close:{guest_id}")]])})
             await self.send(msg.get("chat", {}).get("id"), f"✅ <b>Заявка #{t.number} закреплена за вами.</b>\n\nОтветьте гостю обычным сообщением. Закрыть заявку можно кнопкой «✅ Закрыть заявку #{t.number}» здесь или в разделе активных заявок админ-панели.")
             await self.send(guest_id, "👨‍💼 <b>Менеджер SUNPARK взял заявку в работу.</b>\n\nЧтобы ответить, нажмите «💬 Ответить менеджеру» внизу и отправьте следующее сообщение. Меню можно открывать — переписка по заявке сохранится здесь.", await self.guest_persistent(guest_id))
             await self.answer(cb.get("id"), "Обращение закреплено за вами."); return
