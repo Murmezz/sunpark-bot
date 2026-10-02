@@ -2,6 +2,8 @@ from workers import WorkerEntrypoint, Response, fetch
 from urllib.parse import urlparse
 import json
 import html
+import hmac
+from validation import valid_date, valid_time, valid_guests, normalize_phone
 
 BANQUET_MAIN_SECTIONS = [
     ("🥂 Банкетные пакеты", [0, 1, 2, 31]),
@@ -137,6 +139,8 @@ class Bot(WorkerEntrypoint):
         await self.db_run(
             "CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, username TEXT, first_name TEXT, last_name TEXT, updated_at TEXT NOT NULL)"
         )
+        await self.db_run("CREATE TABLE IF NOT EXISTS ticket_details (ticket_number INTEGER PRIMARY KEY, request_type TEXT NOT NULL, payload TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')), last_reminder_at TEXT)")
+        await self.db_run("CREATE TABLE IF NOT EXISTS guest_flows (user_id INTEGER PRIMARY KEY, ticket_number INTEGER NOT NULL, request_type TEXT NOT NULL, step INTEGER NOT NULL, payload TEXT NOT NULL, updated_at TEXT NOT NULL DEFAULT (datetime('now')))")
         rows = await self.db_all("SELECT key,value FROM config")
         cfg = {str(r.key): r.value for r in rows.results}
         if not cfg.get("menu"):
@@ -188,6 +192,8 @@ class Bot(WorkerEntrypoint):
         rows = [
             [btn("🍽 Основное меню", "home:menu")],
             [btn("🎉 Банкетное меню", "home:banquet")],
+            [btn("📅 Забронировать стол", "booking:start")],
+            [btn("ℹ️ Частые вопросы", "faq")],
         ]
         if manager:
             rows.append([btn("⚙️ Админ-панель", "admin:panel")])
@@ -240,7 +246,7 @@ class Bot(WorkerEntrypoint):
         return ikb(rows)
 
     def banquet_keyboard(self):
-        return ikb([[btn(title, f"banquet:section:{i}")] for i, (title, _) in enumerate(BANQUET_MAIN_SECTIONS)] + [[btn("🏠 На главную", "back")]])
+        return ikb([[btn(title, f"banquet:section:{i}")] for i, (title, _) in enumerate(BANQUET_MAIN_SECTIONS)] + [[btn("📝 Оставить заявку на банкет", "banquet:request")], [btn("🏠 На главную", "back")]])
 
     def banquet_section_keyboard(self, menu, idx):
         all_items = items(menu.get("banquet", {}))
@@ -288,12 +294,79 @@ class Bot(WorkerEntrypoint):
 
     def admin_keyboard(self):
         return ikb([
+            [btn("🆕 Очередь заявок", "admin:waiting")],
             [btn("📥 Активные обращения", "admin:active")],
             [btn("✅ Закрытые обращения", "admin:closed")],
             [btn("📊 Статистика", "admin:stats")],
             [btn("👥 Менеджеры", "admin:managers")],
             [btn("👀 Открыть как гость", "admin:guest")],
         ])
+
+    def faq_keyboard(self):
+        return ikb([[btn("📅 Бронирование стола", "faq:booking")], [btn("🎉 Банкет", "faq:banquet")], [btn("📋 Правила для гостей", "faq:rules")], [btn("📍 Адрес и часы работы", "faq:contact")], [btn("🏠 На главную", "back")]])
+
+    def form_steps(self, kind):
+        if kind == "booking":
+            return [("date", "📅 На какую дату хотите забронировать? Формат: ДД.ММ.ГГГГ"), ("time", "🕒 На какое время? Формат: ЧЧ:ММ"), ("guests", "👥 Сколько будет гостей? Введите число от 1 до 200."), ("name", "👤 На чьё имя оформить заявку?"), ("phone", "📱 Оставьте номер телефона для связи. Он обязателен."), ("comment", "💬 Есть пожелания? Напишите их или отправьте «—».")]
+        return [("date", "📅 На какую дату планируется банкет? Формат: ДД.ММ.ГГГГ"), ("guests", "👥 Сколько будет гостей? Введите число от 1 до 200."), ("event", "🥂 Какой повод или формат мероприятия?"), ("wishes", "🍽 Есть пожелания по меню или организации?"), ("name", "👤 На чьё имя оформить заявку?"), ("phone", "📱 Оставьте номер телефона для связи. Он обязателен.")]
+
+    async def start_form(self, uid, kind):
+        existing = await self.db_first("SELECT number FROM tickets WHERE guest_id=? AND status IN ('draft','waiting','active') ORDER BY number DESC LIMIT 1", uid)
+        if existing:
+            await self.send(uid, "У вас уже есть открытое обращение. Менеджер ответит здесь; чтобы начать другую заявку, сначала завершите текущее обращение.")
+            return
+        await self.db_run("INSERT INTO tickets(guest_id,status) VALUES(?,'draft')", uid)
+        ticket = await self.db_first("SELECT number FROM tickets WHERE guest_id=? AND status='draft' ORDER BY number DESC LIMIT 1", uid)
+        await self.db_run("INSERT INTO guest_flows(user_id,ticket_number,request_type,step,payload) VALUES(?,?,?,0,'{}')", uid, ticket.number, kind)
+        title = "бронирования стола" if kind == "booking" else "банкета"
+        await self.send(uid, f"📝 <b>Заявка: {title}</b>\n\nЗаявка отправится менеджеру на подтверждение. Бронирование будет считаться подтверждённым только после ответа менеджера.\n\n{self.form_steps(kind)[0][1]}", kb1(btn("❌ Отменить", "form:cancel")))
+
+    async def accept_form_answer(self, uid, text, frm, managers):
+        flow = await self.db_first("SELECT ticket_number,request_type,step,payload FROM guest_flows WHERE user_id=?", uid)
+        if not flow:
+            return False
+        steps = self.form_steps(str(flow.request_type))
+        field, _ = steps[int(flow.step)]
+        value = str(text).strip()
+        if field == "date" and not valid_date(value):
+            await self.send(uid, "⚠️ Укажите сегодняшнюю или будущую дату в формате ДД.ММ.ГГГГ.")
+            return True
+        if field == "time" and not valid_time(value):
+            await self.send(uid, "⚠️ Укажите время в формате ЧЧ:ММ, например 19:30.")
+            return True
+        if field == "guests" and not valid_guests(value):
+            await self.send(uid, "⚠️ Укажите число гостей от 1 до 200.")
+            return True
+        if field == "phone":
+            value = normalize_phone(value)
+            if not value:
+                await self.send(uid, "⚠️ Не удалось распознать номер. Укажите телефон с кодом страны, например +7 900 123-45-67.")
+                return True
+        if not value:
+            await self.send(uid, "⚠️ Ответ не должен быть пустым.")
+            return True
+        try:
+            payload = json.loads(str(flow.payload))
+        except Exception:
+            payload = {}
+        payload[field] = "Без дополнительных пожеланий" if field in ("comment", "wishes") and value == "—" else value
+        next_step = int(flow.step) + 1
+        if next_step < len(steps):
+            await self.db_run("UPDATE guest_flows SET step=?,payload=?,updated_at=datetime('now') WHERE user_id=?", next_step, json.dumps(payload, ensure_ascii=False), uid)
+            await self.send(uid, steps[next_step][1], kb1(btn("❌ Отменить", "form:cancel")))
+            return True
+        await self.db_run("DELETE FROM guest_flows WHERE user_id=?", uid)
+        await self.db_run("UPDATE tickets SET status='waiting' WHERE number=? AND status='draft'", flow.ticket_number)
+        await self.db_run("INSERT INTO ticket_details(ticket_number,request_type,payload,created_at,last_reminder_at) VALUES(?,?,?,datetime('now'),NULL) ON CONFLICT(ticket_number) DO UPDATE SET request_type=excluded.request_type,payload=excluded.payload,created_at=datetime('now'),last_reminder_at=NULL", flow.ticket_number, flow.request_type, json.dumps(payload, ensure_ascii=False))
+        title = "Бронирование стола" if flow.request_type == "booking" else "Заявка на банкет"
+        body = f"🆕 <b>{title} #{flow.ticket_number}</b>\n\n" + "\n".join(f"• <b>{esc(k)}</b>: {esc(v)}" for k, v in payload.items()) + f"\n\n👤 <b>Гость:</b> {self.guest_label(frm)}\n🆔 <code>{uid}</code>\n\n⚠️ Требуется подтверждение менеджера."
+        for mid in managers:
+            try:
+                await self.send(mid, body, ikb([[btn("🤝 Взять и подтвердить", f"claim:{uid}")]]))
+            except Exception as e:
+                print("SUNPARK MANAGER DELIVERY ERROR:", repr(e))
+        await self.send(uid, "✅ Заявка отправлена менеджерам. Ожидайте ответа: бронирование пока не подтверждено.")
+        return True
 
     def admin_back(self):
         return ikb([[btn("◀️ В админ-панель", "admin:panel")], [btn("🏠 На главную", "back")]])
@@ -331,6 +404,26 @@ class Bot(WorkerEntrypoint):
             manager = names.get(str(t.manager_id), "ID " + str(t.manager_id))
             out.append(f"#{t.number} — гость <b>{esc(guest)}</b> — менеджер <b>{esc(manager)}</b>")
         return "\n".join(out)
+
+    async def waiting_queue(self):
+        r = await self.db_all("SELECT t.number,t.guest_id,t.status,u.username,u.first_name,d.request_type,d.payload,d.created_at FROM tickets t LEFT JOIN users u ON u.user_id=t.guest_id LEFT JOIN ticket_details d ON d.ticket_number=t.number WHERE t.status IN ('draft','waiting') ORDER BY t.number DESC LIMIT 30")
+        if not r.results:
+            return "🆕 <b>Очередь заявок</b>\n\nНовых заявок пока нет.", self.admin_back()
+        out = ["🆕 <b>Очередь заявок</b>", ""]
+        rows = []
+        for t in r.results:
+            guest = ("@" + t.username) if t.username else (t.first_name or "гость")
+            kind = {"booking": "Бронирование", "banquet": "Банкет"}.get(t.request_type, "Обращение")
+            out.append(f"<b>#{t.number} · {kind}</b> — {esc(guest)}")
+            try:
+                payload = json.loads(str(t.payload or "{}"))
+            except Exception:
+                payload = {}
+            for key, value in payload.items():
+                out.append(f"  {esc(key)}: {esc(value)}")
+            rows.append([btn(f"Взять #{t.number}", f"claim:{t.guest_id}")])
+        rows.extend([[btn("◀️ В админ-панель", "admin:panel")], [btn("🏠 На главную", "back")]])
+        return "\n".join(out), ikb(rows)
 
     async def set_action(self, uid, action):
         await self.db_run(
@@ -425,6 +518,9 @@ class Bot(WorkerEntrypoint):
             await self.send(uid, "✅ Менеджер удалён.", self.persistent(mgr))
             return
 
+        if await self.accept_form_answer(uid, text, frm, managers):
+            return
+
         if text.startswith("/start"):
             await self.send(uid, self.home_text(), self.home_keyboard(mgr))
             await self.send(uid, "Нижняя кнопка «🏠 Главное меню» всегда вернёт вас сюда.", self.persistent(mgr))
@@ -485,7 +581,31 @@ class Bot(WorkerEntrypoint):
         if data == "home:menu":
             await self.edit(msg, "🍽 <b>Основное меню SUNPARK</b>\n\nВыберите раздел:", self.main_keyboard(menu, sections)); await self.answer(cb.get("id")); return
         if data == "home:banquet":
-            await self.edit(msg, "🎉 <b>Банкетное меню</b>\n\nЗдесь вы можете посмотреть варианты банкетных блюд или связаться с менеджером.", ikb([[btn("📋 Посмотреть банкетное меню","banquet:list")],[btn("💬 Связаться с менеджером","manager:start")],[btn("🏠 На главную","back")]])); await self.answer(cb.get("id")); return
+            await self.edit(msg, "🎉 <b>Банкетное меню</b>\n\nПосмотрите меню, оставьте заявку на банкет или задайте вопрос менеджеру.", ikb([[btn("📋 Посмотреть банкетное меню","banquet:list")],[btn("📝 Оставить заявку на банкет","banquet:request")],[btn("💬 Связаться с менеджером","manager:start")],[btn("ℹ️ Частые вопросы","faq")],[btn("🏠 На главную","back")]])); await self.answer(cb.get("id")); return
+        if data == "booking:start":
+            await self.start_form(uid, "booking"); await self.answer(cb.get("id")); return
+        if data == "banquet:request":
+            await self.start_form(uid, "banquet"); await self.answer(cb.get("id")); return
+        if data == "faq":
+            await self.edit(msg, "ℹ️ <b>Частые вопросы</b>\n\nВыберите тему:", self.faq_keyboard()); await self.answer(cb.get("id")); return
+        if data.startswith("faq:"):
+            topic = data.split(":", 1)[1]
+            if topic == "booking":
+                text = "📅 <b>Бронирование стола</b>\n\nЗаполните короткую форму. Менеджер свяжется с вами и подтвердит бронь. До подтверждения бронь не считается оформленной."
+            elif topic == "banquet":
+                text = "🎉 <b>Банкет</b>\n\nОставьте заявку с датой, числом гостей и пожеланиями. Менеджер уточнит детали и подтвердит возможность проведения."
+            elif topic == "rules":
+                text = info or "Информация для гостей пока не добавлена. Напишите менеджеру, и он поможет."
+            else:
+                text = "📍 <b>Адрес и часы работы</b>\n\nЭти сведения пока не указаны в меню. Напишите менеджеру, чтобы уточнить адрес, время работы и маршрут."
+            await self.edit(msg, text, ikb([[btn("◀️ К частым вопросам", "faq")], [btn("🏠 На главную", "back")]])); await self.answer(cb.get("id")); return
+        if data == "form:cancel":
+            flow = await self.db_first("SELECT ticket_number FROM guest_flows WHERE user_id=?", uid)
+            if flow:
+                await self.db_run("DELETE FROM guest_flows WHERE user_id=?", uid)
+                await self.db_run("DELETE FROM ticket_details WHERE ticket_number=?", flow.ticket_number)
+                await self.db_run("DELETE FROM tickets WHERE number=? AND status='draft'", flow.ticket_number)
+            await self.send(uid, "Заявка отменена.", self.persistent(mgr)); await self.answer(cb.get("id")); return
         if data == "banquet:list":
             await self.edit(msg, "🎉 <b>Банкетное меню SUNPARK · 2026</b>", self.banquet_keyboard()); await self.answer(cb.get("id")); return
         if data.startswith("banquet:section:"):
@@ -526,7 +646,9 @@ class Bot(WorkerEntrypoint):
         if data == "manager:start":
             await self.edit(msg, "💬 <b>Связаться с менеджером</b>\n\nКак вам удобнее?", ikb([[btn("📞 Позвонить","manager:call")],[btn("✉️ Написать сообщение","manager:write")],[btn("◀️ Назад","home:banquet")]])); await self.answer(cb.get("id")); return
         if data == "manager:call":
-            phone = cfg.get("phone") or getattr(self.env, "MANAGER_PHONE", None) or "+76767676767"
+            phone = cfg.get("phone") or getattr(self.env, "MANAGER_PHONE", None)
+            if not phone:
+                await self.edit(msg, "📞 Номер телефона пока не настроен. Напишите менеджеру через бота.", ikb([[btn("✉️ Написать сообщение","manager:write")],[btn("◀️ Назад","manager:start")]])); await self.answer(cb.get("id")); return
             await self.edit(msg, f"📞 <b>Позвонить менеджеру</b>\n\nНомер для связи:\n{esc(phone)}\n\nНажмите на номер, чтобы позвонить.", ikb([[btn("✉️ Написать сообщение","manager:write")],[btn("◀️ Назад","manager:start")]])); await self.answer(cb.get("id")); return
         if data == "manager:write":
             active = await self.db_first("SELECT 1 FROM tickets WHERE guest_id=? AND status='active'", uid)
@@ -588,6 +710,9 @@ class Bot(WorkerEntrypoint):
                 await self.edit(msg,"➖ <b>Удаление менеджера</b>\n\nОтправьте @username менеджера.",kb1(btn("❌ Отмена","admin:managers")))
             elif what == "active":
                 await self.edit(msg, await self.active_text(await self.manager_names(cfg)), self.admin_back())
+            elif what == "waiting":
+                text, markup = await self.waiting_queue()
+                await self.edit(msg, text, markup)
             elif what == "closed":
                 await self.edit(msg, await self.closed_text(await self.manager_names(cfg)), self.admin_back())
             elif what == "stats":
@@ -659,6 +784,13 @@ class Bot(WorkerEntrypoint):
                 print("SUNPARK HEALTH ERROR:", repr(e))
                 return Response("SUNPARK health error: " + repr(e), status=500)
 
+        expected_secret = getattr(self.env, "WEBHOOK_SECRET", None)
+        if expected_secret:
+            supplied_secret = request.headers.get("x-telegram-bot-api-secret-token", "")
+            if not hmac.compare_digest(str(expected_secret), str(supplied_secret)):
+                print("SUNPARK WEBHOOK REJECTED: invalid secret header")
+                return Response("Forbidden", status=403)
+
         update = None
         try:
             update = await request.json()
@@ -697,6 +829,39 @@ class Bot(WorkerEntrypoint):
                 print("SUNPARK ERROR HANDLER FAILED:", repr(secondary_error))
 
             return Response("ok")
+
+    async def scheduled(self, controller, env, ctx):
+        """Send one manager reminder for form requests still waiting after 30 minutes."""
+        try:
+            rows = await self.db_all(
+                "SELECT t.number,t.guest_id,d.request_type,d.payload FROM tickets t "
+                "JOIN ticket_details d ON d.ticket_number=t.number "
+                "WHERE t.status='waiting' AND d.last_reminder_at IS NULL "
+                "AND datetime(d.created_at)<=datetime('now','-30 minutes') ORDER BY t.number LIMIT 50"
+            )
+            if not rows.results:
+                return
+            _, _, _, cfg = await self.config()
+            managers = await self.manager_ids(cfg)
+            for row in rows.results:
+                kind = {"booking": "Бронирование", "banquet": "Банкет"}.get(row.request_type, "Заявка")
+                try:
+                    payload = json.loads(str(row.payload or "{}"))
+                except Exception:
+                    payload = {}
+                details = "\n".join(f"• <b>{esc(k)}</b>: {esc(v)}" for k, v in payload.items())
+                reminder = f"⏰ <b>Напоминание: ожидает ответа более 30 минут</b>\n\n{kind} #{row.number}\n{details}"
+                sent = False
+                for mid in managers:
+                    try:
+                        await self.send(mid, reminder, ikb([[btn("🤝 Взять обращение", f"claim:{row.guest_id}")]]))
+                        sent = True
+                    except Exception as e:
+                        print("SUNPARK REMINDER DELIVERY ERROR:", repr(e))
+                if sent:
+                    await self.db_run("UPDATE ticket_details SET last_reminder_at=datetime('now') WHERE ticket_number=? AND last_reminder_at IS NULL", row.number)
+        except Exception as e:
+            print("SUNPARK SCHEDULED ERROR:", repr(e))
 
 
 
