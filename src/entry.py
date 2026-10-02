@@ -77,9 +77,9 @@ class Bot(WorkerEntrypoint):
             body=json.dumps(params),
         )
         data = await r.json()
-        if not data.ok:
-            raise Exception(f"{method}: {data.description}")
-        return data.result
+        if not data.get("ok"):
+            raise Exception(f"{method}: {data.get('description', 'Telegram API error')}")
+        return data.get("result")
 
     async def send(self, chat_id, text, markup=None):
         p = {"chat_id": chat_id, "text": text, "parse_mode": "HTML"}
@@ -626,25 +626,25 @@ class Bot(WorkerEntrypoint):
                     try:
                         r = await fetch(
                             f"https://api.telegram.org/bot{self.env.BOT_TOKEN}/getMe",
-                            {"method": "GET"},
+                            method="GET",
                         )
                         data = await r.json()
-                        tg_status = "OK" if data.ok else "ERROR:" + str(data.description)
+                        tg_status = "OK" if data.get("ok") else "ERROR:" + str(data.get("description", "Telegram API error"))
 
                         wr = await fetch(
                             f"https://api.telegram.org/bot{self.env.BOT_TOKEN}/getWebhookInfo",
-                            {"method": "GET"},
+                            method="GET",
                         )
                         wd = await wr.json()
-                        if wd.ok:
-                            w = wd.result
+                        if wd.get("ok"):
+                            w = wd.get("result") or {}
                             webhook_status = (
-                                "URL=" + str(w.url) +
-                                " | PENDING=" + str(w.pending_update_count) +
-                                " | LAST_ERROR=" + str(w.last_error_message or "none")
+                                "URL_CONFIGURED=" + str(bool(w.get("url"))) +
+                                " | PENDING=" + str(w.get("pending_update_count", 0)) +
+                                " | LAST_ERROR=" + ("present" if w.get("last_error_message") else "none")
                             )
                         else:
-                            webhook_status = "ERROR:" + str(wd.description)
+                            webhook_status = "ERROR:" + str(wd.get("description", "Telegram API error"))
                     except Exception as e:
                         tg_status = "ERROR:" + repr(e)
 
