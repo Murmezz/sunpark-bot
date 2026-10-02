@@ -92,7 +92,10 @@ class Bot(WorkerEntrypoint):
     def message_attachment(self, msg):
         photos = msg.get("photo") or []
         if photos:
-            return {"type": "photo", "file_id": photos[-1].get("file_id")}, None
+            attachment = {"type": "photo", "file_id": photos[-1].get("file_id")}
+            if msg.get("media_group_id"):
+                attachment["media_group_id"] = str(msg["media_group_id"])
+            return attachment, None
         doc = msg.get("document")
         if doc:
             name = str(doc.get("file_name") or "document.pdf")
@@ -172,6 +175,7 @@ class Bot(WorkerEntrypoint):
         await self.db_run("CREATE TABLE IF NOT EXISTS ticket_details (ticket_number INTEGER PRIMARY KEY, request_type TEXT NOT NULL, payload TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')), last_reminder_at TEXT)")
         await self.db_run("CREATE TABLE IF NOT EXISTS guest_flows (user_id INTEGER PRIMARY KEY, ticket_number INTEGER NOT NULL, request_type TEXT NOT NULL, step INTEGER NOT NULL, payload TEXT NOT NULL, updated_at TEXT NOT NULL DEFAULT (datetime('now')))")
         await self.db_run("CREATE TABLE IF NOT EXISTS ticket_messages (id INTEGER PRIMARY KEY AUTOINCREMENT, ticket_number INTEGER NOT NULL, sender_id INTEGER NOT NULL, sender_role TEXT NOT NULL, body TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')))")
+        await self.db_run("CREATE TABLE IF NOT EXISTS ticket_album_events (ticket_number INTEGER NOT NULL, media_group_id TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')), PRIMARY KEY(ticket_number,media_group_id))")
         rows = await self.db_all("SELECT key,value FROM config")
         cfg = {str(r.key): r.value for r in rows.results}
         if not cfg.get("menu"):
@@ -442,6 +446,16 @@ class Bot(WorkerEntrypoint):
             ticket_number, sender_id, sender_role, str(body),
         )
 
+    async def is_first_album_item(self, ticket_number, attachment):
+        group_id = attachment.get("media_group_id") if attachment else None
+        if not group_id:
+            return True
+        result = await self.db_run(
+            "INSERT OR IGNORE INTO ticket_album_events(ticket_number,media_group_id) VALUES(?,?)",
+            ticket_number, str(group_id),
+        )
+        return int(result.meta.changes or 0) > 0
+
     async def ticket_history(self, ticket_number):
         ticket = await self.db_first(
             "SELECT t.number,u.username,u.first_name,u.last_name FROM tickets t LEFT JOIN users u ON u.user_id=t.guest_id WHERE t.number=?",
@@ -469,14 +483,35 @@ class Bot(WorkerEntrypoint):
             ticket_number,
         )
         history = []
+        album_rows = {}
         for item in reversed(messages.results):
             author = "👤 Гость" if item.sender_role == "guest" else "👨‍💼 Менеджер"
             body = str(item.body or "")
             if body.startswith("ATTACH:"):
                 try:
                     attachment = json.loads(body[7:])
-                    label = "📷 Фото" if attachment.get("type") == "photo" else "📄 PDF: " + str(attachment.get("file_name") or "document.pdf")
-                    body = label + ("\n" + str(attachment.get("caption")) if attachment.get("caption") else "")
+                    note = str(attachment.get("caption") or "")
+                    group_id = attachment.get("media_group_id") if attachment.get("type") == "photo" else None
+                    if group_id:
+                        group_id = str(group_id)
+                        if group_id in album_rows:
+                            album = album_rows[group_id]
+                            album["count"] += 1
+                            if not album["caption"] and note:
+                                album["caption"] = note
+                            label = f"📷 Альбом · {album['count']} фото"
+                            if album["caption"]:
+                                label += "\n" + album["caption"]
+                            history[album["index"]] = f"\n<b>{album['author']}</b> · {esc(album['created_at'])}\n{esc(label)}"
+                            continue
+                        body = "📷 Альбом · 1 фото" + ("\n" + note if note else "")
+                        album_rows[group_id] = {
+                            "index": len(history), "count": 1, "caption": note,
+                            "author": author, "created_at": item.created_at,
+                        }
+                    else:
+                        label = "📷 Фото" if attachment.get("type") == "photo" else "📄 PDF: " + str(attachment.get("file_name") or "document.pdf")
+                        body = label + ("\n" + note if note else "")
                 except Exception:
                     body = "📎 Вложение"
             if len(body) > 400:
@@ -744,10 +779,12 @@ class Bot(WorkerEntrypoint):
                     await self.send(uid, "Эта заявка уже закрыта или передана другому менеджеру. Откройте список своих активных заявок.")
                     return
                 guest_id = int(ticket.guest_id)
+                first_album_item = await self.is_first_album_item(ticket_number, attachment)
                 await self.save_ticket_message(ticket_number, uid, "manager", self.stored_message_body(text, attachment))
                 caption = f"👨‍💼 <b>Менеджер:</b>\n{esc(text)}" if text else "👨‍💼 <b>Менеджер отправил вложение.</b>"
                 await self.send_ticket_content(guest_id, caption, attachment, await self.guest_persistent(guest_id))
-                await self.send(uid, f"✅ Ответ отправлен гостю по заявке #{ticket_number}. Можно продолжать писать — выбран этот чат.", ikb([[btn(f"📜 История #{ticket_number}", f"admin:chat:{guest_id}")], [btn("🟡 Выбрать другой чат", "admin:active")], [btn(f"✅ Закрыть заявку #{ticket_number}", f"close:{guest_id}")]]))
+                if first_album_item:
+                    await self.send(uid, f"✅ Ответ отправлен гостю по заявке #{ticket_number}. Можно продолжать писать — выбран этот чат.", ikb([[btn(f"📜 История #{ticket_number}", f"admin:chat:{guest_id}")], [btn("🟡 Выбрать другой чат", "admin:active")], [btn(f"✅ Закрыть заявку #{ticket_number}", f"close:{guest_id}")]]))
                 return
             await self.send(uid, "Чтобы ответить конкретному гостю, откройте «Админ-панель → Мои активные» и нажмите «💬 Ответить» у нужной заявки.")
             return
@@ -758,24 +795,33 @@ class Bot(WorkerEntrypoint):
                 await self.send(uid, "Чтобы отправить фото или PDF, сначала оставьте заявку через «Связаться с менеджером» или оформите бронь.", await self.guest_persistent(uid))
             return
         if own.status == "active":
+            first_album_item = await self.is_first_album_item(own.number, attachment)
             await self.save_ticket_message(own.number, uid, "guest", self.stored_message_body(text, attachment))
             content = esc(text) if text else ("📷 Фото во вложении." if attachment.get("type") == "photo" else "📄 PDF во вложении.") if attachment else ""
             body = f"💬 <b>Обращение #{own.number}</b>\n👤 {self.guest_label(frm)}\n\n{content}"
             markup = ikb([[btn(f"📜 История / ответить #{own.number}", f"admin:chat:{uid}"), btn(f"✅ Закрыть #{own.number}", f"close:{uid}")]])
-            await self.send_ticket_content(int(own.manager_id), body, attachment, markup)
-            await self.send(uid, "📨 Сообщение отправлено менеджеру. Его ответ появится в этом чате; можно продолжать смотреть меню.", await self.guest_persistent(uid))
+            if first_album_item:
+                await self.send_ticket_content(int(own.manager_id), body, attachment, markup)
+                await self.send(uid, "📨 Сообщение отправлено менеджеру. Его ответ появится в этом чате; можно продолжать смотреть меню.", await self.guest_persistent(uid))
+            elif attachment:
+                await self.send_ticket_content(int(own.manager_id), "📷 Ещё фото из альбома", attachment)
             return
         prefix = "➕ <b>Дополнение к заявке" if own.status == "waiting" else "🆕 <b>Новое обращение"
+        first_album_item = await self.is_first_album_item(own.number, attachment)
         content = esc(text) if text else ("📷 Фото во вложении." if attachment.get("type") == "photo" else "📄 PDF во вложении.") if attachment else ""
         body = f"{prefix} #{own.number}</b>\n\n👤 <b>Гость:</b> {self.guest_label(frm)}\n🆔 <b>ID:</b> <code>{uid}</code>\n\n💬 <b>Сообщение:</b>\n{content}"
         await self.save_ticket_message(own.number, uid, "guest", self.stored_message_body(text, attachment))
         for mid in managers:
             try:
-                await self.send_ticket_content(mid, body, attachment, ikb([[btn("🤝 Взять обращение", f"claim:{uid}")]]))
+                if first_album_item:
+                    await self.send_ticket_content(mid, body, attachment, ikb([[btn("🤝 Взять обращение", f"claim:{uid}")]]))
+                elif attachment:
+                    await self.send_ticket_content(mid, "📷 Ещё фото из альбома", attachment)
             except Exception:
                 pass
         await self.db_run("UPDATE tickets SET status='waiting' WHERE number=?", own.number)
-        await self.send(uid, "📨 Сообщение добавлено к заявке и отправлено менеджерам SUNPARK. Ответ придёт в этот чат.", await self.guest_persistent(uid))
+        if first_album_item:
+            await self.send(uid, "📨 Сообщение добавлено к заявке и отправлено менеджерам SUNPARK. Ответ придёт в этот чат.", await self.guest_persistent(uid))
 
     async def callback(self, cb, menu, sections, info, cfg):
         data = cb.get("data", "")
