@@ -141,6 +141,7 @@ class Bot(WorkerEntrypoint):
         )
         await self.db_run("CREATE TABLE IF NOT EXISTS ticket_details (ticket_number INTEGER PRIMARY KEY, request_type TEXT NOT NULL, payload TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')), last_reminder_at TEXT)")
         await self.db_run("CREATE TABLE IF NOT EXISTS guest_flows (user_id INTEGER PRIMARY KEY, ticket_number INTEGER NOT NULL, request_type TEXT NOT NULL, step INTEGER NOT NULL, payload TEXT NOT NULL, updated_at TEXT NOT NULL DEFAULT (datetime('now')))")
+        await self.db_run("CREATE TABLE IF NOT EXISTS ticket_messages (id INTEGER PRIMARY KEY AUTOINCREMENT, ticket_number INTEGER NOT NULL, sender_id INTEGER NOT NULL, sender_role TEXT NOT NULL, body TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')))")
         rows = await self.db_all("SELECT key,value FROM config")
         cfg = {str(r.key): r.value for r in rows.results}
         if not cfg.get("menu"):
@@ -395,15 +396,63 @@ class Bot(WorkerEntrypoint):
         )
         if not r.results:
             return "🟡 <b>Мои активные заявки</b>\n\nУ вас нет заявок в работе.", self.admin_back()
-        out = ["🟡 <b>Мои активные заявки</b>", "Нажмите «✅ Закрыть» под заявкой, когда вопрос решён.", ""]
+        out = ["🟡 <b>Мои активные заявки</b>", "Откройте нужный чат кнопкой «💬 Ответить». Закрытие — отдельной кнопкой рядом.", ""]
         rows = []
         for t in r.results:
             guest = ("@" + t.username) if t.username else (" ".join(x for x in [t.first_name,t.last_name] if x) or "без username")
             manager = names.get(str(t.manager_id), "ID " + str(t.manager_id))
             out.append(f"🟡 Заявка #{t.number} — гость <b>{esc(guest)}</b> — менеджер <b>{esc(manager)}</b>")
-            rows.append([btn(f"✅ Закрыть заявку #{t.number}", f"close:{t.guest_id}")])
+            rows.append([btn(f"💬 Ответить #{t.number}", f"admin:chat:{t.guest_id}"), btn(f"✅ Закрыть #{t.number}", f"close:{t.guest_id}")])
         rows.extend([[btn("◀️ В админ-панель", "admin:panel")], [btn("🏠 На главную", "back")]])
         return "\n".join(out), ikb(rows)
+
+    async def save_ticket_message(self, ticket_number, sender_id, sender_role, body):
+        await self.db_run(
+            "INSERT INTO ticket_messages(ticket_number,sender_id,sender_role,body) VALUES(?,?,?,?)",
+            ticket_number, sender_id, sender_role, str(body),
+        )
+
+    async def ticket_history(self, ticket_number):
+        ticket = await self.db_first(
+            "SELECT t.number,u.username,u.first_name,u.last_name FROM tickets t LEFT JOIN users u ON u.user_id=t.guest_id WHERE t.number=?",
+            ticket_number,
+        )
+        if not ticket:
+            return "Заявка не найдена."
+        guest = ("@" + ticket.username) if ticket.username else (" ".join(x for x in [ticket.first_name, ticket.last_name] if x) or "без username")
+        out = [f"💬 <b>Заявка #{ticket.number} · переписка</b>", f"Гость: <b>{esc(guest)}</b>"]
+        detail = await self.db_first("SELECT request_type,payload FROM ticket_details WHERE ticket_number=?", ticket_number)
+        if detail:
+            title = {"booking": "Бронирование стола", "banquet": "Банкет"}.get(str(detail.request_type), "Заявка")
+            out.extend([f"\n📋 <b>{title}</b>"])
+            try:
+                payload = json.loads(str(detail.payload or "{}"))
+            except Exception:
+                payload = {}
+            for key, value in payload.items():
+                value = str(value or "")
+                if len(value) > 350:
+                    value = value[:347] + "…"
+                out.append(f"• {esc(key)}: {esc(value)}")
+        messages = await self.db_all(
+            "SELECT sender_role,body,created_at FROM ticket_messages WHERE ticket_number=? ORDER BY id DESC LIMIT 30",
+            ticket_number,
+        )
+        history = []
+        for item in reversed(messages.results):
+            author = "👤 Гость" if item.sender_role == "guest" else "👨‍💼 Менеджер"
+            body = str(item.body or "")
+            if len(body) > 400:
+                body = body[:397] + "…"
+            history.append(f"\n<b>{author}</b> · {esc(item.created_at)}\n{esc(body)}")
+        if history:
+            while history and len("\n".join(out + history)) > 3400:
+                history.pop(0)
+            out.extend(history)
+        else:
+            out.extend(["", "История сообщений начнётся с этого обновления."])
+        out.extend(["", "✍️ Режим ответа включён: отправляйте сообщения в этот чат, они пойдут этому гостю. Чтобы переключиться, снова откройте список активных заявок."])
+        return "\n".join(out)
 
     async def closed_text(self, names):
         r = await self.db_all(
@@ -471,6 +520,10 @@ class Bot(WorkerEntrypoint):
         managers = await self.manager_ids(cfg)
         mgr = uid in managers
         action = await self.get_action(uid) if mgr else ""
+
+        if mgr and action.startswith("reply:") and (text.startswith("/start") or text == "/admin" or text in ("🏠 Главное меню", "⚙️ Админ-панель", "👀 Как гость")):
+            await self.clear_action(uid)
+            action = ""
 
         if action.startswith("add_name:") or action.startswith("rename_name:"):
             target = action.split(":")[1]
@@ -568,22 +621,39 @@ class Bot(WorkerEntrypoint):
             return
 
         if mgr:
-            t = await self.db_first("SELECT guest_id FROM tickets WHERE manager_id=? AND status='active' ORDER BY claimed_at DESC,number DESC LIMIT 1", uid)
-            if t:
-                await self.send(int(t.guest_id), f"👨‍💼 <b>Менеджер по заявке отвечает:</b>\n{esc(text)}", await self.guest_persistent(int(t.guest_id)))
-                await self.send(uid, "✅ Сообщение отправлено гостю.")
+            if action.startswith("reply:"):
+                try:
+                    ticket_number = int(action.split(":", 1)[1])
+                except Exception:
+                    ticket_number = 0
+                ticket = await self.db_first(
+                    "SELECT guest_id FROM tickets WHERE number=? AND manager_id=? AND status='active'",
+                    ticket_number, uid,
+                )
+                if not ticket:
+                    await self.clear_action(uid)
+                    await self.send(uid, "Эта заявка уже закрыта или передана другому менеджеру. Откройте список своих активных заявок.")
+                    return
+                guest_id = int(ticket.guest_id)
+                await self.save_ticket_message(ticket_number, uid, "manager", text)
+                await self.send(guest_id, f"👨‍💼 <b>Менеджер · заявка #{ticket_number}:</b>\n{esc(text)}", await self.guest_persistent(guest_id))
+                await self.send(uid, f"✅ Ответ отправлен гостю по заявке #{ticket_number}. Можно продолжать писать — выбран этот чат.", ikb([[btn("🟡 Выбрать другой чат", "admin:active")], [btn(f"✅ Закрыть заявку #{ticket_number}", f"close:{guest_id}")]]))
                 return
+            await self.send(uid, "Чтобы ответить конкретному гостю, откройте «Админ-панель → Мои активные» и нажмите «💬 Ответить» у нужной заявки.")
+            return
 
         own = await self.db_first("SELECT * FROM tickets WHERE guest_id=? AND status IN ('draft','waiting','active') ORDER BY number DESC LIMIT 1", uid)
         if not own:
             return
         if own.status == "active":
+            await self.save_ticket_message(own.number, uid, "guest", text)
             await self.send(int(own.manager_id), f"💬 <b>Обращение #{own.number}</b>\n👤 {self.guest_label(frm)}\n\n{esc(text)}",
                             ikb([[btn(f"✅ Закрыть заявку #{own.number}", f"close:{uid}")]]))
             await self.send(uid, f"📨 Сообщение по заявке #{own.number} отправлено менеджеру. Его ответ появится в этом чате; можно продолжать смотреть меню.", await self.guest_persistent(uid))
             return
         prefix = "➕ <b>Дополнение к заявке" if own.status == "waiting" else "🆕 <b>Новое обращение"
         body = f"{prefix} #{own.number}</b>\n\n👤 <b>Гость:</b> {self.guest_label(frm)}\n🆔 <b>ID:</b> <code>{uid}</code>\n\n💬 <b>Сообщение:</b>\n{esc(text)}"
+        await self.save_ticket_message(own.number, uid, "guest", text)
         for mid in managers:
             try:
                 await self.send(mid, body, ikb([[btn("🤝 Взять обращение", f"claim:{uid}")]]))
@@ -714,6 +784,8 @@ class Bot(WorkerEntrypoint):
             if not t:
                 await self.answer(cb.get("id"), "Это обращение вам не назначено.", True); return
             await self.db_run("UPDATE tickets SET status='closed',closed_at=datetime('now') WHERE number=?", t.number)
+            if await self.get_action(uid) == "reply:" + str(t.number):
+                await self.clear_action(uid)
             if "Мои активные заявки" in str(msg.get("text") or ""):
                 text, markup = await self.active_view(await self.manager_names(cfg), uid)
                 await self.edit(msg, text, markup)
@@ -726,6 +798,21 @@ class Bot(WorkerEntrypoint):
             if not mgr:
                 await self.answer(cb.get("id"), "Доступ запрещён.", True); return
             what = data[6:]
+            if what.startswith("chat:"):
+                try:
+                    guest_id = int(what.split(":", 1)[1])
+                except Exception:
+                    await self.answer(cb.get("id"), "Заявка не найдена.", True); return
+                ticket = await self.db_first("SELECT number FROM tickets WHERE guest_id=? AND manager_id=? AND status='active' ORDER BY number DESC LIMIT 1", guest_id, uid)
+                if not ticket:
+                    await self.answer(cb.get("id"), "Эта заявка уже закрыта или не назначена вам.", True); return
+                ticket_number = int(ticket.number)
+                await self.set_action(uid, "reply:" + str(ticket_number))
+                history = await self.ticket_history(ticket_number)
+                markup = ikb([[btn("🟡 Выбрать другой чат", "admin:active")], [btn(f"✅ Закрыть заявку #{ticket_number}", f"close:{guest_id}")]])
+                await self.edit(msg, history, markup)
+            else:
+                await self.clear_action(uid)
             if what == "panel":
                 await self.edit(msg, await self.admin_panel_text(), self.admin_keyboard())
             elif what == "managers":
