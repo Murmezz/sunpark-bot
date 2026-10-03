@@ -35,6 +35,17 @@ def esc(value):
     return html.escape(str(value or ""), quote=False)
 
 
+def db_optional(value):
+    if value is None:
+        return None
+    try:
+        if str(value) == "undefined":
+            return None
+    except Exception:
+        return None
+    return value
+
+
 def btn(text, callback):
     return {"text": str(text), "callback_data": callback}
 
@@ -648,7 +659,7 @@ class Bot(WorkerEntrypoint):
         await self.db_run(
             "INSERT INTO users(user_id,username,first_name,last_name,updated_at) VALUES(?,?,?,?,?) "
             "ON CONFLICT(user_id) DO UPDATE SET username=excluded.username,first_name=excluded.first_name,last_name=excluded.last_name,updated_at=excluded.updated_at",
-            uid, frm.get("username"), frm.get("first_name"), frm.get("last_name"), "now",
+            uid, db_optional(frm.get("username")), db_optional(frm.get("first_name")), db_optional(frm.get("last_name")), "now",
         )
         managers = await self.manager_ids(cfg)
         mgr = uid in managers
