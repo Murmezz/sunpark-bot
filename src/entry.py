@@ -772,6 +772,7 @@ class Bot(WorkerEntrypoint):
             return
 
         if mgr and action.startswith("reply:") and (text.startswith("/start") or text == "/admin" or text in ("🏠 Главное меню", "⚙️ Админ-панель", "👀 Как гость")):
+            await self.clear_history_messages(uid)
             await self.clear_action(uid)
             action = ""
 
@@ -908,28 +909,33 @@ class Bot(WorkerEntrypoint):
             content = esc(text) if text else ("📷 Фото во вложении." if attachment.get("type") == "photo" else "📄 PDF во вложении.") if attachment else ""
             body = f"💬 <b>Обращение #{own.number}</b>\n👤 {self.guest_label(frm)}\n\n{content}"
             markup = ikb([[btn(f"📜 История / ответить #{own.number}", f"admin:chat:{uid}"), btn(f"✅ Закрыть #{own.number}", f"close:{uid}")]])
-            if first_album_item:
+            media_group_id = attachment.get("media_group_id") if attachment and attachment.get("type") == "photo" else None
+            if media_group_id:
+                await self.send_album_once(int(own.manager_id), own.number, media_group_id, body)
+                if first_album_item:
+                    await self.send(uid, "📨 Фото отправлены менеджеру одним альбомом. Его ответ появится в этом чате.", await self.guest_persistent(uid))
+            elif first_album_item:
                 await self.send_ticket_content(int(own.manager_id), body, attachment, markup)
                 await self.send(uid, "📨 Сообщение отправлено менеджеру. Его ответ появится в этом чате; можно продолжать смотреть меню.", await self.guest_persistent(uid))
-            elif attachment:
-                await self.send_ticket_content(int(own.manager_id), "📷 Ещё фото из альбома", attachment)
             return
         prefix = "➕ <b>Дополнение к заявке" if own.status == "waiting" else "🆕 <b>Новое обращение"
         first_album_item = await self.is_first_album_item(own.number, attachment)
         content = esc(text) if text else ("📷 Фото во вложении." if attachment.get("type") == "photo" else "📄 PDF во вложении.") if attachment else ""
         body = f"{prefix} #{own.number}</b>\n\n👤 <b>Гость:</b> {self.guest_label(frm)}\n🆔 <b>ID:</b> <code>{uid}</code>\n\n💬 <b>Сообщение:</b>\n{content}"
         await self.save_ticket_message(own.number, uid, "guest", self.stored_message_body(text, attachment))
+        media_group_id = attachment.get("media_group_id") if attachment and attachment.get("type") == "photo" else None
         for mid in managers:
             try:
-                if first_album_item:
+                if media_group_id:
+                    await self.send_album_once(mid, own.number, media_group_id, body)
+                elif first_album_item:
                     await self.send_ticket_content(mid, body, attachment, ikb([[btn("🤝 Взять обращение", f"claim:{uid}")]]))
-                elif attachment:
-                    await self.send_ticket_content(mid, "📷 Ещё фото из альбома", attachment)
-            except Exception:
-                pass
+            except Exception as e:
+                print("SUNPARK GUEST DELIVERY ERROR:", repr(e))
         await self.db_run("UPDATE tickets SET status='waiting' WHERE number=?", own.number)
         if first_album_item:
-            await self.send(uid, "📨 Сообщение добавлено к заявке и отправлено менеджерам SUNPARK. Ответ придёт в этот чат.", await self.guest_persistent(uid))
+            confirmation = "📨 Фото добавлены к заявке и отправлены менеджерам одним альбомом. Ответ придёт в этот чат." if media_group_id else "📨 Сообщение добавлено к заявке и отправлено менеджерам SUNPARK. Ответ придёт в этот чат."
+            await self.send(uid, confirmation, await self.guest_persistent(uid))
 
     async def callback(self, cb, menu, sections, info, cfg):
         data = cb.get("data", "")
@@ -940,6 +946,9 @@ class Bot(WorkerEntrypoint):
             return
         managers = await self.manager_ids(cfg)
         mgr = uid in managers
+        current_action = await self.get_action(uid) if mgr else ""
+        if mgr and current_action.startswith("reply:") and data != "noop":
+            await self.clear_history_messages(uid)
         if data == "noop":
             await self.answer(cb.get("id")); return
         if data == "back":
