@@ -72,14 +72,36 @@ def items(cat):
 
 
 class Bot(WorkerEntrypoint):
+    def db_args(self, args):
+        """Normalize Pyodide/JavaScript values before binding them to D1.
+
+        Telegram objects are JavaScript-backed in Python Workers. Missing optional
+        properties can therefore arrive as JS `undefined` rather than Python
+        `None`, which D1 refuses to bind.
+        """
+        out = []
+        for value in args:
+            if value is None:
+                out.append(None)
+                continue
+            try:
+                if str(value) == "undefined":
+                    out.append(None)
+                    continue
+            except Exception:
+                out.append(None)
+                continue
+            out.append(value)
+        return tuple(out)
+
     async def db_first(self, sql, *args):
-        return await self.env.DB.prepare(sql).bind(*args).first()
+        return await self.env.DB.prepare(sql).bind(*self.db_args(args)).first()
 
     async def db_all(self, sql, *args):
-        return await self.env.DB.prepare(sql).bind(*args).all()
+        return await self.env.DB.prepare(sql).bind(*self.db_args(args)).all()
 
     async def db_run(self, sql, *args):
-        return await self.env.DB.prepare(sql).bind(*args).run()
+        return await self.env.DB.prepare(sql).bind(*self.db_args(args)).run()
 
     async def tg(self, method, params):
         token = self.env.BOT_TOKEN
