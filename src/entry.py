@@ -36,13 +36,15 @@ def esc(value):
 
 
 def db_optional(value):
+    # In Python Workers, D1 can receive None as JS undefined, which it rejects.
+    # Optional Telegram profile fields are stored as empty text instead.
     if value is None:
-        return None
+        return ""
     try:
         if str(value) == "undefined":
-            return None
+            return ""
     except Exception:
-        return None
+        return ""
     return value
 
 
