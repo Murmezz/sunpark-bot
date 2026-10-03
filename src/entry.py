@@ -543,19 +543,41 @@ class Bot(WorkerEntrypoint):
         return photos
 
     async def send_album_once(self, target_id, ticket_number, media_group_id, caption):
-        # Telegram delivers every photo in an album as a separate webhook.
-        # Give the remaining parts a moment to arrive, then atomically let one
-        # webhook send the whole media group to this target.
-        await asyncio.sleep(1.5)
+        # Telegram delivers an album as several independent webhook updates.
+        # Do not "win" the dispatch lock until the group has actually settled;
+        # otherwise the first webhook can send only the first photo.
+        previous_count = -1
+        stable_checks = 0
+        photos = []
+        for _ in range(10):
+            await asyncio.sleep(0.75)
+            photos = await self.album_photos(ticket_number, media_group_id)
+            count = len(photos)
+            if count >= 2 and count == previous_count:
+                stable_checks += 1
+            else:
+                stable_checks = 0
+            previous_count = count
+            # Require roughly 2.25 seconds with no new album parts.
+            if count >= 2 and stable_checks >= 3:
+                break
+
+        # A Telegram media_group_id represents an album. If only one part has
+        # arrived, do not send a partial album; another webhook invocation will
+        # continue waiting and dispatch once the remaining parts are stored.
+        if len(photos) < 2:
+            return False
+
         claim = await self.db_run(
             "INSERT OR IGNORE INTO ticket_album_dispatch(ticket_number,media_group_id,target_id) VALUES(?,?,?)",
             ticket_number, str(media_group_id), target_id,
         )
         if int(claim.meta.changes or 0) <= 0:
             return False
+
+        # Re-read after acquiring the lock so photos that arrived during the
+        # final check are included in the outgoing media group.
         photos = await self.album_photos(ticket_number, media_group_id)
-        if not photos:
-            return False
         media = []
         for i, photo in enumerate(photos[:10]):
             item = {"type": "photo", "media": photo["file_id"]}
@@ -563,10 +585,8 @@ class Bot(WorkerEntrypoint):
                 item["caption"] = caption[:950]
                 item["parse_mode"] = "HTML"
             media.append(item)
-        if len(media) == 1:
-            await self.send_ticket_content(target_id, caption, {"type": "photo", "file_id": media[0]["media"]})
-        else:
-            await self.tg("sendMediaGroup", {"chat_id": target_id, "media": media})
+
+        await self.tg("sendMediaGroup", {"chat_id": target_id, "media": media})
         return True
 
     async def ticket_history(self, ticket_number):
