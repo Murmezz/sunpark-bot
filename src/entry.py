@@ -3,6 +3,7 @@ from urllib.parse import urlparse
 import json
 import html
 import hmac
+import asyncio
 from validation import valid_date, valid_time, valid_guests, normalize_phone
 
 BANQUET_MAIN_SECTIONS = [
@@ -211,6 +212,8 @@ class Bot(WorkerEntrypoint):
         await self.db_run("CREATE TABLE IF NOT EXISTS guest_flows (user_id INTEGER PRIMARY KEY, ticket_number INTEGER NOT NULL, request_type TEXT NOT NULL, step INTEGER NOT NULL, payload TEXT NOT NULL, updated_at TEXT NOT NULL DEFAULT (datetime('now')))")
         await self.db_run("CREATE TABLE IF NOT EXISTS ticket_messages (id INTEGER PRIMARY KEY AUTOINCREMENT, ticket_number INTEGER NOT NULL, sender_id INTEGER NOT NULL, sender_role TEXT NOT NULL, body TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')))")
         await self.db_run("CREATE TABLE IF NOT EXISTS ticket_album_events (ticket_number INTEGER NOT NULL, media_group_id TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')), PRIMARY KEY(ticket_number,media_group_id))")
+        await self.db_run("CREATE TABLE IF NOT EXISTS ticket_album_dispatch (ticket_number INTEGER NOT NULL, media_group_id TEXT NOT NULL, target_id INTEGER NOT NULL, sent_at TEXT NOT NULL DEFAULT (datetime('now')), PRIMARY KEY(ticket_number,media_group_id,target_id))")
+        await self.db_run("CREATE TABLE IF NOT EXISTS manager_history_messages (manager_id INTEGER NOT NULL, ticket_number INTEGER NOT NULL, message_id INTEGER NOT NULL, PRIMARY KEY(manager_id,message_id))")
         rows = await self.db_all("SELECT key,value FROM config")
         cfg = {str(r.key): r.value for r in rows.results}
         if not cfg.get("menu"):
@@ -491,6 +494,81 @@ class Bot(WorkerEntrypoint):
         )
         return int(result.meta.changes or 0) > 0
 
+    async def remember_history_message(self, manager_id, ticket_number, result):
+        if not result:
+            return
+        rows = result if isinstance(result, list) else [result]
+        for sent in rows:
+            try:
+                message_id = int(sent.get("message_id"))
+            except Exception:
+                continue
+            await self.db_run(
+                "INSERT OR IGNORE INTO manager_history_messages(manager_id,ticket_number,message_id) VALUES(?,?,?)",
+                manager_id, ticket_number, message_id,
+            )
+
+    async def clear_history_messages(self, manager_id):
+        rows = await self.db_all(
+            "SELECT message_id FROM manager_history_messages WHERE manager_id=? ORDER BY message_id",
+            manager_id,
+        )
+        for row in rows.results:
+            try:
+                await self.tg("deleteMessage", {"chat_id": manager_id, "message_id": int(row.message_id)})
+            except Exception:
+                pass
+        await self.db_run("DELETE FROM manager_history_messages WHERE manager_id=?", manager_id)
+
+    async def album_photos(self, ticket_number, media_group_id):
+        rows = await self.db_all(
+            "SELECT body FROM ticket_messages WHERE ticket_number=? ORDER BY id DESC LIMIT 60",
+            ticket_number,
+        )
+        photos = []
+        for row in reversed(rows.results):
+            body = str(row.body or "")
+            if not body.startswith("ATTACH:"):
+                continue
+            try:
+                attachment = json.loads(body[7:])
+            except Exception:
+                continue
+            if attachment.get("type") != "photo":
+                continue
+            if str(attachment.get("media_group_id") or "") != str(media_group_id):
+                continue
+            if attachment.get("file_id"):
+                photos.append(attachment)
+        return photos
+
+    async def send_album_once(self, target_id, ticket_number, media_group_id, caption):
+        # Telegram delivers every photo in an album as a separate webhook.
+        # Give the remaining parts a moment to arrive, then atomically let one
+        # webhook send the whole media group to this target.
+        await asyncio.sleep(1.5)
+        claim = await self.db_run(
+            "INSERT OR IGNORE INTO ticket_album_dispatch(ticket_number,media_group_id,target_id) VALUES(?,?,?)",
+            ticket_number, str(media_group_id), target_id,
+        )
+        if int(claim.meta.changes or 0) <= 0:
+            return False
+        photos = await self.album_photos(ticket_number, media_group_id)
+        if not photos:
+            return False
+        media = []
+        for i, photo in enumerate(photos[:10]):
+            item = {"type": "photo", "media": photo["file_id"]}
+            if i == 0 and caption:
+                item["caption"] = caption[:950]
+                item["parse_mode"] = "HTML"
+            media.append(item)
+        if len(media) == 1:
+            await self.send_ticket_content(target_id, caption, {"type": "photo", "file_id": media[0]["media"]})
+        else:
+            await self.tg("sendMediaGroup", {"chat_id": target_id, "media": media})
+        return True
+
     async def ticket_history(self, ticket_number):
         ticket = await self.db_first(
             "SELECT t.number,u.username,u.first_name,u.last_name FROM tickets t LEFT JOIN users u ON u.user_id=t.guest_id WHERE t.number=?",
@@ -562,6 +640,7 @@ class Bot(WorkerEntrypoint):
         return "\n".join(out)
 
     async def send_ticket_attachments(self, chat_id, ticket_number):
+        await self.clear_history_messages(chat_id)
         messages = await self.db_all(
             "SELECT sender_role,body,created_at FROM ticket_messages WHERE ticket_number=? ORDER BY id DESC LIMIT 30",
             ticket_number,
@@ -600,26 +679,22 @@ class Bot(WorkerEntrypoint):
 
         for start in range(0, len(photos), 10):
             album = photos[start:start + 10]
-            if len(album) == 1:
-                await self.send_ticket_content(
-                    chat_id,
-                    album[0].get("caption", "📷 Фото"),
-                    {"type": "photo", "file_id": album[0]["media"]},
-                )
-                continue
             try:
-                await self.tg("sendMediaGroup", {"chat_id": chat_id, "media": album})
+                if len(album) == 1:
+                    result = await self.send_ticket_content(
+                        chat_id,
+                        album[0].get("caption", "📷 Фото"),
+                        {"type": "photo", "file_id": album[0]["media"]},
+                    )
+                else:
+                    result = await self.tg("sendMediaGroup", {"chat_id": chat_id, "media": album})
+                await self.remember_history_message(chat_id, ticket_number, result)
             except Exception as e:
                 print("SUNPARK PHOTO ALBUM ERROR:", repr(e))
-                for photo in album:
-                    await self.send_ticket_content(
-                        chat_id,
-                        photo.get("caption", "📷 Фото"),
-                        {"type": "photo", "file_id": photo["media"]},
-                    )
 
         for attachment, caption in documents:
-            await self.send_ticket_content(chat_id, caption, attachment)
+            result = await self.send_ticket_content(chat_id, caption, attachment)
+            await self.remember_history_message(chat_id, ticket_number, result)
 
     async def closed_text(self, names):
         r = await self.db_all(
