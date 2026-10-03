@@ -547,7 +547,7 @@ class Bot(WorkerEntrypoint):
         # include the total item count. Debounce by Telegram message_id:
         # only the webhook belonging to the newest album item may dispatch.
         # Any newer item that arrives during the quiet period supersedes this one.
-        await asyncio.sleep(3.0)
+        await asyncio.sleep(2.0)
         photos = await self.album_photos(ticket_number, media_group_id)
         if len(photos) < 2:
             return False
@@ -560,7 +560,7 @@ class Bot(WorkerEntrypoint):
 
         # One more quiet-period check protects against a later webhook that was
         # delayed while this invocation was sleeping.
-        await asyncio.sleep(1.5)
+        await asyncio.sleep(1.0)
         photos = await self.album_photos(ticket_number, media_group_id)
         final_latest_message_id = max(
             [int(p.get("telegram_message_id") or 0) for p in photos] or [0]
@@ -930,9 +930,14 @@ class Bot(WorkerEntrypoint):
             markup = ikb([[btn(f"📜 История / ответить #{own.number}", f"admin:chat:{uid}"), btn(f"✅ Закрыть #{own.number}", f"close:{uid}")]])
             media_group_id = attachment.get("media_group_id") if attachment and attachment.get("type") == "photo" else None
             if media_group_id:
-                await self.send_album_once(int(own.manager_id), own.number, media_group_id, body, attachment.get("telegram_message_id"))
+                self.ctx.waitUntil(
+                    self.send_album_once(
+                        int(own.manager_id), own.number, media_group_id, body,
+                        attachment.get("telegram_message_id"),
+                    )
+                )
                 if first_album_item:
-                    await self.send(uid, "📨 Фото отправлены менеджеру одним альбомом. Его ответ появится в этом чате.", await self.guest_persistent(uid))
+                    await self.send(uid, "📨 Фото добавляются к заявке и будут отправлены менеджеру одним альбомом. Его ответ появится в этом чате.", await self.guest_persistent(uid))
             elif first_album_item:
                 await self.send_ticket_content(int(own.manager_id), body, attachment, markup)
                 await self.send(uid, "📨 Сообщение отправлено менеджеру. Его ответ появится в этом чате; можно продолжать смотреть меню.", await self.guest_persistent(uid))
@@ -946,7 +951,12 @@ class Bot(WorkerEntrypoint):
         for mid in managers:
             try:
                 if media_group_id:
-                    await self.send_album_once(mid, own.number, media_group_id, body, attachment.get("telegram_message_id"))
+                    self.ctx.waitUntil(
+                        self.send_album_once(
+                            mid, own.number, media_group_id, body,
+                            attachment.get("telegram_message_id"),
+                        )
+                    )
                 elif first_album_item:
                     await self.send_ticket_content(mid, body, attachment, ikb([[btn("🤝 Взять обращение", f"claim:{uid}")]]))
             except Exception as e:
