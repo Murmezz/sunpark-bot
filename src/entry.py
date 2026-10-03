@@ -744,8 +744,6 @@ class Bot(WorkerEntrypoint):
             return
         if text == "🏠 Главное меню":
             await self.send(uid, self.home_text(), self.home_keyboard(mgr))
-            note = "Нажмите «💬 Ответить менеджеру», чтобы написать по открытой заявке. Ответ отправьте следующим сообщением."
-            await self.send(uid, note, await self.guest_persistent(uid, mgr))
             return
         if text == "👀 Как гость" and mgr:
             await self.send(uid, "👀 <b>Режим просмотра как гость</b>", self.home_keyboard(mgr))
