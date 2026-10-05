@@ -259,7 +259,7 @@ class Bot(WorkerEntrypoint):
     def home_keyboard(self, manager):
         rows = [
             [btn("🍽 Основное меню", "home:menu")],
-            [btn("🎉 Банкетное меню", "home:banquet")],
+            [btn("🥂 Хочу провести банкет", "banquet:contact")],
             [btn("📅 Забронировать стол", "booking:start")],
             [btn("ℹ️ Частые вопросы", "faq")],
         ]
@@ -990,20 +990,18 @@ class Bot(WorkerEntrypoint):
             await self.edit(msg, self.home_text(), self.home_keyboard(mgr)); await self.answer(cb.get("id")); return
         if data == "home:menu":
             await self.edit(msg, "🍽 <b>Основное меню SUNPARK</b>\n\nВыберите раздел:", self.main_keyboard(menu, sections)); await self.answer(cb.get("id")); return
-        if data == "home:banquet":
-            await self.edit(msg, "🎉 <b>Банкетное меню</b>\n\nПосмотрите банкетное меню или выберите «Хочу провести банкет», чтобы узнать, как связаться с менеджерами.", ikb([[btn("📋 Посмотреть банкетное меню","banquet:list")],[btn("🥂 Хочу провести банкет","banquet:contact")],[btn("ℹ️ Частые вопросы","faq")],[btn("🏠 На главную","back")]])); await self.answer(cb.get("id")); return
         if data == "booking:start":
             await self.start_form(uid, "booking"); await self.answer(cb.get("id")); return
         if data == "banquet:request":
             await self.start_form(uid, "banquet"); await self.answer(cb.get("id")); return
-        if data == "banquet:contact":
+        if data in ("banquet:contact", "home:banquet", "banquet:list"):
             phone = cfg.get("phone") or getattr(self.env, "MANAGER_PHONE", None) or "+7 (911) 714-40-12"
             text = (
                 "🥂 <b>Хотите провести банкет в SUNPARK?</b>\n\n"
                 f"Позвоните по телефону: <b>{esc(phone)}</b>\n"
                 "Или оставьте заявку — менеджеры свяжутся с вами и обсудят детали."
             )
-            markup = ikb([[btn("📝 Оставить заявку менеджерам", "banquet:request")], [btn("◀️ К банкетному меню", "home:banquet")]])
+            markup = ikb([[btn("📝 Оставить заявку менеджерам", "banquet:request")], [btn("🏠 На главную", "back")]])
             await self.edit(msg, text, markup); await self.answer(cb.get("id")); return
         if data == "faq":
             await self.edit(msg, "ℹ️ <b>Частые вопросы</b>\n\nВыберите тему:", self.faq_keyboard()); await self.answer(cb.get("id")); return
@@ -1040,30 +1038,19 @@ class Bot(WorkerEntrypoint):
         if data == "banquet:list":
             await self.edit(msg, "🎉 <b>Банкетное меню SUNPARK</b>\n\nВыберите раздел. В карточке блюда указаны состав и цена.", self.banquet_keyboard(menu)); await self.answer(cb.get("id")); return
         if data.startswith("banquet:section:"):
-            idx = int(data.split(":")[-1])
-            if idx == 7:
-                rows = [[btn(x[0], f"bchild:{i}")] for i,x in enumerate(BANQUET_CHILD)]
-                rows += [[btn("◀️ К банкетному меню","banquet:list")],[btn("🏠 На главную","back")]]
-                await self.edit(msg, "🧒 <b>Детское меню</b>\n\nВыберите блюдо:", ikb(rows))
-            elif 0 <= idx < len(BANQUET_MAIN_SECTIONS):
-                await self.edit(msg, "🎉 <b>"+esc(BANQUET_MAIN_SECTIONS[idx][0])+"</b>\n\nВыберите блюдо, чтобы посмотреть состав и цену:", self.banquet_section_keyboard(menu, idx))
-            else:
-                await self.answer(cb.get("id"), "Раздел не найден.", True); return
-            await self.answer(cb.get("id")); return
+            await self.answer(cb.get("id"), "Банкетное меню временно скрыто. Чтобы обсудить банкет, нажмите кнопку на главной.", True); return
         if data.startswith("item:"):
             p = data.split(":")
             if len(p) != 3:
                 await self.answer(cb.get("id"), "Позиция не найдена", True); return
             key, idx = p[1], int(p[2])
+            if key == "banquet":
+                await self.answer(cb.get("id"), "Банкетное меню временно скрыто.", True); return
             if key not in menu:
                 await self.answer(cb.get("id"), "Раздел не найден", True); return
             await self.edit(msg, self.item_text(menu, key, idx), self.item_back(key)); await self.answer(cb.get("id")); return
         if data.startswith("bchild:"):
-            i = int(data.split(":")[1])
-            x = BANQUET_CHILD[i]
-            await self.edit(msg, f"<b>{esc(x[0])}</b>\n\n{esc(x[1])}\n\n💰 <b>{esc(x[2])}</b>",
-                            ikb([[btn("◀️ К детскому меню","banquet:section:7")],[btn("🏠 На главную","back")]]))
-            await self.answer(cb.get("id")); return
+            await self.answer(cb.get("id"), "Банкетное меню временно скрыто.", True); return
         if data == "info":
             await self.edit(msg, info, kb1(btn("🏠 На главную","back"))); await self.answer(cb.get("id")); return
         if data.startswith("cat:"):
