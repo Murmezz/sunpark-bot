@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 26343)
-Total output lines: 1640
-
 from workers import WorkerEntrypoint, Response, fetch
 from urllib.parse import urlparse
 import json
@@ -919,7 +916,101 @@ class Bot(WorkerEntrypoint):
         action = await self.get_action(uid) if mgr else ""
 
         if attachment_error:
-            await self.send(uid, "Пока можно отправить…1343 tokens truncated…id)
+            await self.send(uid, "Пока можно отправить только фото или PDF.")
+            return
+        if mgr and attachment and not action.startswith("reply:"):
+            await self.send(uid, "Сначала откройте конкретную заявку через «Мои активные → Ответить», затем отправьте фото или PDF.")
+            return
+
+        if mgr and action.startswith("reply:") and (text.startswith("/start") or text == "/admin" or text in ("🏠 Главное меню", "⚙️ Админ-панель", "👀 Как гость")):
+            await self.clear_history_messages(uid)
+            await self.clear_action(uid)
+            action = ""
+
+        if action.startswith("add_name:") or action.startswith("rename_name:"):
+            target = action.split(":")[1]
+            name = str(text).strip()
+            if not name or len(name) > 50:
+                await self.send(uid, "⚠️ Введите имя от 1 до 50 символов.")
+                return
+            names = await self.manager_names(cfg)
+            names[target] = name
+            await self.save_manager_names(names)
+            await self.clear_action(uid)
+            await self.send(uid, f"✅ Имя менеджера изменено на <b>{esc(name)}</b>.", self.persistent(mgr))
+            return
+
+        if mgr and action in ("add", "remove", "rename"):
+            tag = str(text).strip().lstrip("@").lower()
+            if not (5 <= len(tag) <= 32):
+                await self.send(uid, "⚠️ Введите @username Telegram.")
+                return
+            target_row = await self.db_first("SELECT user_id,username FROM users WHERE lower(username)=? LIMIT 1", tag)
+            if not target_row:
+                await self.send(uid, f"❌ Пользователь <b>@{esc(tag)}</b> ещё не найден. Пусть он сначала напишет боту.")
+                return
+            target_id = int(target_row.user_id)
+            ids = set(managers)
+            if action == "rename":
+                if target_id not in ids:
+                    await self.clear_action(uid)
+                    await self.send(uid, "ℹ️ Этот пользователь не является менеджером.", self.persistent(mgr))
+                    return
+                await self.set_action(uid, "rename_name:" + str(target_id))
+                await self.send(uid, "✏️ Введите новое имя менеджера.")
+                return
+            if action == "add":
+                if target_id in ids:
+                    await self.clear_action(uid)
+                    await self.send(uid, "ℹ️ Этот менеджер уже есть в списке.", self.persistent(mgr))
+                    return
+                ids.add(target_id)
+                await self.save_manager_ids(ids)
+                await self.set_action(uid, "add_name:" + str(target_id))
+                await self.send(uid, "✏️ Введите имя менеджера, которое будет отображаться везде.\nНапример: <b>Алексей</b>")
+                return
+            if len(ids) <= 1:
+                await self.clear_action(uid)
+                await self.send(uid, "⚠️ Нельзя удалить последнего менеджера.", self.persistent(mgr))
+                return
+            if target_id not in ids:
+                await self.clear_action(uid)
+                await self.send(uid, "ℹ️ Этого менеджера нет в списке.", self.persistent(mgr))
+                return
+            ids.remove(target_id)
+            await self.save_manager_ids(ids)
+            names = await self.manager_names(cfg)
+            names.pop(str(target_id), None)
+            await self.save_manager_names(names)
+            await self.clear_action(uid)
+            await self.send(uid, "✅ Менеджер удалён.", self.persistent(mgr))
+            return
+
+        if text.startswith("/start"):
+            await self.send(uid, self.home_text(), self.home_keyboard(mgr))
+            await self.send(uid, "Нижняя кнопка «🏠 Главное меню» всегда вернёт вас сюда.", await self.guest_persistent(uid, mgr))
+            return
+        if text == "/admin" and mgr:
+            await self.send(uid, await self.admin_panel_text(), self.admin_keyboard())
+            return
+        if text == "🏠 Главное меню":
+            await self.send(uid, self.home_text(), self.home_keyboard(mgr))
+            return
+        if text == "👀 Как гость" and mgr:
+            await self.send(uid, "👀 <b>Режим просмотра как гость</b>", self.home_keyboard(mgr))
+            return
+        if text == "⚙️ Админ-панель" and mgr:
+            await self.send(uid, await self.admin_panel_text(), self.admin_keyboard())
+            return
+        if text in ("👀 Как гость", "⚙️ Админ-панель"):
+            return
+
+        if mgr and action == "search":
+            if text.strip().lower() in ("/cancel", "отмена"):
+                await self.clear_action(uid)
+                await self.send(uid, "Поиск отменён.", self.admin_keyboard())
+                return
+            await self.clear_action(uid)
             found = await self.search_tickets(text)
             if not found:
                 await self.send(uid, "Ничего не найдено. Попробуйте другой номер, имя, @username или часть телефона.", ikb([[btn("🔎 Искать ещё", "admin:search")], [btn("◀️ В админ-панель", "admin:panel")]]))
