@@ -7,15 +7,10 @@ import asyncio
 from validation import valid_date, valid_time, valid_guests, normalize_phone
 
 BANQUET_MAIN_SECTIONS = [
-    ("🥂 Банкетные пакеты", [0, 1, 2, 31]),
-    ("🥗 Холодные закуски", [3, 4, 5, 6, 7, 8, 9]),
-    ("🍤 Горячие закуски", [10, 11]),
-    ("🥗 Салаты", [12, 13, 14, 15, 16]),
-    ("🍖 Горячие блюда", [17, 18, 19]),
-    ("🥂 Фуршет", [20, 21, 22, 23, 24, 25, 26, 27, 28, 29]),
-    ("🍰 Десерты", [30]),
-    ("🧒 Детское меню", [32]),
-    ("ℹ️ Информация", []),
+    ("🥗 Закуски", [0, 1, 2]),
+    ("🍖 Горячие блюда", [3, 4]),
+    ("🍽 Гарниры", [5]),
+    ("🍰 Фрукты и десерты", [6, 7]),
 ]
 
 BANQUET_CHILD = [
@@ -328,8 +323,19 @@ class Bot(WorkerEntrypoint):
         rows.append([btn("🏠 На главную", "back")])
         return ikb(rows)
 
-    def banquet_keyboard(self):
-        return ikb([[btn(title, f"banquet:section:{i}")] for i, (title, _) in enumerate(BANQUET_MAIN_SECTIONS)] + [[btn("🥂 Хочу провести банкет", "banquet:contact")], [btn("🏠 На главную", "back")]])
+    def banquet_keyboard(self, menu):
+        available = items(menu.get("banquet", {}))
+        categories = [
+            btn(title, f"banquet:section:{i}")
+            for i, (title, indexes) in enumerate(BANQUET_MAIN_SECTIONS)
+            if any(index < len(available) for index in indexes)
+        ]
+        rows = [categories[i:i + 2] for i in range(0, len(categories), 2)]
+        rows.extend([
+            [btn("🥂 Хочу провести банкет", "banquet:contact")],
+            [btn("🏠 На главную", "back")],
+        ])
+        return ikb(rows)
 
     def banquet_section_keyboard(self, menu, idx):
         all_items = items(menu.get("banquet", {}))
@@ -337,7 +343,7 @@ class Bot(WorkerEntrypoint):
         for source in BANQUET_MAIN_SECTIONS[idx][1]:
             if source < len(all_items):
                 it = all_items[source]
-                rows.append([btn(it[1] if len(it) > 1 and it[1] else it[0], f"item:banquet:{source}")])
+                rows.append([btn((str(it[0]) + " — " + str(it[2]))[:64], f"item:banquet:{source}")])
         rows.append([btn("◀️ К банкетному меню", "banquet:list")])
         rows.append([btn("🏠 На главную", "back")])
         return ikb(rows)
@@ -1032,19 +1038,17 @@ class Bot(WorkerEntrypoint):
                 await self.db_run("DELETE FROM tickets WHERE number=? AND status='draft'", flow.ticket_number)
             await self.send(uid, "Заявка отменена.", await self.guest_persistent(uid, mgr)); await self.answer(cb.get("id")); return
         if data == "banquet:list":
-            await self.edit(msg, "🎉 <b>Банкетное меню SUNPARK · 2026</b>", self.banquet_keyboard()); await self.answer(cb.get("id")); return
+            await self.edit(msg, "🎉 <b>Банкетное меню SUNPARK</b>\n\nВыберите раздел. В карточке блюда указаны состав и цена.", self.banquet_keyboard(menu)); await self.answer(cb.get("id")); return
         if data.startswith("banquet:section:"):
             idx = int(data.split(":")[-1])
-            if idx == 8:
-                arr = items(menu.get("banquet", {}))
-                text = arr[33][3] if len(arr) > 33 and len(arr[33]) > 3 else "Информация отсутствует."
-                await self.edit(msg, "<b>ℹ️ Информация</b>\n\n" + esc(text), ikb([[btn("◀️ К банкетному меню","banquet:list")],[btn("🏠 На главную","back")]]))
-            elif idx == 7:
+            if idx == 7:
                 rows = [[btn(x[0], f"bchild:{i}")] for i,x in enumerate(BANQUET_CHILD)]
                 rows += [[btn("◀️ К банкетному меню","banquet:list")],[btn("🏠 На главную","back")]]
                 await self.edit(msg, "🧒 <b>Детское меню</b>\n\nВыберите блюдо:", ikb(rows))
+            elif 0 <= idx < len(BANQUET_MAIN_SECTIONS):
+                await self.edit(msg, "🎉 <b>"+esc(BANQUET_MAIN_SECTIONS[idx][0])+"</b>\n\nВыберите блюдо, чтобы посмотреть состав и цену:", self.banquet_section_keyboard(menu, idx))
             else:
-                await self.edit(msg, "🎉 <b>"+esc(BANQUET_MAIN_SECTIONS[idx][0])+"</b>\n\nВыберите позицию:", self.banquet_section_keyboard(menu, idx))
+                await self.answer(cb.get("id"), "Раздел не найден.", True); return
             await self.answer(cb.get("id")); return
         if data.startswith("item:"):
             p = data.split(":")
