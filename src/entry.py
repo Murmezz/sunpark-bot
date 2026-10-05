@@ -329,7 +329,7 @@ class Bot(WorkerEntrypoint):
         return ikb(rows)
 
     def banquet_keyboard(self):
-        return ikb([[btn(title, f"banquet:section:{i}")] for i, (title, _) in enumerate(BANQUET_MAIN_SECTIONS)] + [[btn("📝 Оставить заявку на банкет", "banquet:request")], [btn("🏠 На главную", "back")]])
+        return ikb([[btn(title, f"banquet:section:{i}")] for i, (title, _) in enumerate(BANQUET_MAIN_SECTIONS)] + [[btn("🥂 Хочу провести банкет", "banquet:contact")], [btn("🏠 На главную", "back")]])
 
     def banquet_section_keyboard(self, menu, idx):
         all_items = items(menu.get("banquet", {}))
@@ -386,7 +386,7 @@ class Bot(WorkerEntrypoint):
         ])
 
     def faq_keyboard(self):
-        return ikb([[btn("📅 Бронирование стола", "faq:booking")], [btn("🎉 Банкет", "faq:banquet")], [btn("📋 Правила для гостей", "faq:rules")], [btn("📍 Адрес и часы работы", "faq:contact")], [btn("🏠 На главную", "back")]])
+        return ikb([[btn("📋 Правила для гостей", "faq:rules")], [btn("📍 Адрес и часы работы", "faq:contact")], [btn("🏠 На главную", "back")]])
 
     def form_steps(self, kind):
         if kind == "booking":
@@ -985,11 +985,20 @@ class Bot(WorkerEntrypoint):
         if data == "home:menu":
             await self.edit(msg, "🍽 <b>Основное меню SUNPARK</b>\n\nВыберите раздел:", self.main_keyboard(menu, sections)); await self.answer(cb.get("id")); return
         if data == "home:banquet":
-            await self.edit(msg, "🎉 <b>Банкетное меню</b>\n\nПосмотрите меню, оставьте заявку на банкет или задайте вопрос менеджеру.", ikb([[btn("📋 Посмотреть банкетное меню","banquet:list")],[btn("📝 Оставить заявку на банкет","banquet:request")],[btn("💬 Связаться с менеджером","manager:start")],[btn("ℹ️ Частые вопросы","faq")],[btn("🏠 На главную","back")]])); await self.answer(cb.get("id")); return
+            await self.edit(msg, "🎉 <b>Банкетное меню</b>\n\nПосмотрите банкетное меню или выберите «Хочу провести банкет», чтобы узнать, как связаться с менеджерами.", ikb([[btn("📋 Посмотреть банкетное меню","banquet:list")],[btn("🥂 Хочу провести банкет","banquet:contact")],[btn("ℹ️ Частые вопросы","faq")],[btn("🏠 На главную","back")]])); await self.answer(cb.get("id")); return
         if data == "booking:start":
             await self.start_form(uid, "booking"); await self.answer(cb.get("id")); return
         if data == "banquet:request":
             await self.start_form(uid, "banquet"); await self.answer(cb.get("id")); return
+        if data == "banquet:contact":
+            phone = cfg.get("phone") or getattr(self.env, "MANAGER_PHONE", None) or "+7 (911) 714-40-12"
+            text = (
+                "🥂 <b>Хотите провести банкет в SUNPARK?</b>\n\n"
+                f"Позвоните по телефону: <b>{esc(phone)}</b>\n"
+                "Или оставьте заявку — менеджеры свяжутся с вами и обсудят детали."
+            )
+            markup = ikb([[btn("📝 Оставить заявку менеджерам", "banquet:request")], [btn("◀️ К банкетному меню", "home:banquet")]])
+            await self.edit(msg, text, markup); await self.answer(cb.get("id")); return
         if data == "faq":
             await self.edit(msg, "ℹ️ <b>Частые вопросы</b>\n\nВыберите тему:", self.faq_keyboard()); await self.answer(cb.get("id")); return
         if data.startswith("faq:"):
@@ -1002,7 +1011,7 @@ class Bot(WorkerEntrypoint):
                 text = info or "Информация для гостей пока не добавлена. Напишите менеджеру, и он поможет."
             else:
                 address = cfg.get("address") or "Санкт-Петербург, ул. Никольская, 9"
-                hours = cfg.get("hours") or "Пн–пт: 12:00–23:00\nСб–вс и праздники: 11:00–23:00\nКухня работает до 22:30"
+                hours = cfg.get("hours") or "Пн–пт: 12:00–23:00\nСб–вс и праздничные дни: 11:00–23:00"
                 phone = cfg.get("phone") or getattr(self.env, "MANAGER_PHONE", None) or "+7 (911) 714-40-12"
                 map_url = cfg.get("map_url") or "https://yandex.ru/maps/org/sunpark/1696243668"
                 website = cfg.get("website") or "https://sunparkspb.ru/"
