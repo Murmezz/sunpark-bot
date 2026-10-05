@@ -1001,7 +1001,19 @@ class Bot(WorkerEntrypoint):
             elif topic == "rules":
                 text = info or "Информация для гостей пока не добавлена. Напишите менеджеру, и он поможет."
             else:
-                text = "📍 <b>Адрес и часы работы</b>\n\nЭти сведения пока не указаны в меню. Напишите менеджеру, чтобы уточнить адрес, время работы и маршрут."
+                address = cfg.get("address") or "Санкт-Петербург, ул. Никольская, 9"
+                hours = cfg.get("hours") or "Пн–пт: 12:00–23:00\nСб–вс и праздники: 11:00–23:00\nКухня работает до 22:30"
+                phone = cfg.get("phone") or getattr(self.env, "MANAGER_PHONE", None) or "+7 (911) 714-40-12"
+                map_url = cfg.get("map_url") or "https://yandex.ru/maps/org/sunpark/1696243668"
+                website = cfg.get("website") or "https://sunparkspb.ru/"
+                text = (
+                    "📍 <b>Адрес и часы работы</b>\n\n"
+                    f"📍 {esc(address)}\n\n"
+                    f"⏰ {esc(hours)}\n\n"
+                    f"📞 <a href=\"tel:{esc(phone)}\">{esc(phone)}</a>\n\n"
+                    f"🗺 <a href=\"{esc(map_url)}\">Открыть на Яндекс Картах</a>\n"
+                    f"🌐 <a href=\"{esc(website)}\">Официальный сайт</a>"
+                )
             await self.edit(msg, text, ikb([[btn("◀️ К частым вопросам", "faq")], [btn("🏠 На главную", "back")]])); await self.answer(cb.get("id")); return
         if data == "form:cancel":
             flow = await self.db_first("SELECT ticket_number FROM guest_flows WHERE user_id=?", uid)
