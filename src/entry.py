@@ -7,7 +7,7 @@ import asyncio
 from validation import valid_date, valid_time, valid_guests, normalize_phone
 
 BANQUET_MAIN_SECTIONS = [
-    ("🥗 Закуски", [0, 1, 2]),
+    ("🥂 Банкетные предложения", [0, 1, 2]),
     ("🍖 Горячие блюда", [3, 4]),
     ("🍽 Гарниры", [5]),
     ("🍰 Фрукты и десерты", [6, 7]),
