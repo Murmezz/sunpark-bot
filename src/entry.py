@@ -446,13 +446,21 @@ class Bot(WorkerEntrypoint):
         # A retry handles a concurrent answer that advanced the form between
         # the read and the write. Conditional updates prevent answers from
         # overwriting one another or submitting the same form twice.
-        for _ in range(5):
+        for _ in range(20):
             flow = await self.db_first("SELECT ticket_number,request_type,step,payload FROM guest_flows WHERE user_id=?", uid)
             if not flow:
                 return False
             steps = self.form_steps(str(flow.request_type))
             step = int(flow.step)
-            if step < 0 or step >= len(steps):
+            if step < 0:
+                ticket = await self.db_first("SELECT status FROM tickets WHERE number=?", flow.ticket_number)
+                if ticket and str(ticket.status) == "waiting":
+                    # The final answer was already claimed. Treat this message
+                    # as a post-submission addendum once the ticket is visible.
+                    return False
+                await asyncio.sleep(0.05)
+                continue
+            if step >= len(steps):
                 await self.send(uid, "⏳ Заявка отправляется. Если сообщение не появится, отправьте его ещё раз через пару секунд.")
                 return True
             field, _ = steps[step]
@@ -510,6 +518,10 @@ class Bot(WorkerEntrypoint):
                 flow.ticket_number, flow.request_type, serialized,
             )
             await self.db_run("DELETE FROM guest_flows WHERE user_id=? AND step=-1", uid)
+            current = await self.db_first("SELECT status FROM tickets WHERE number=?", flow.ticket_number)
+            if not current or str(current.status) != "waiting":
+                await self.send(uid, "Анкета отменена. Вы можете начать новую заявку из главного меню.", await self.guest_persistent(uid))
+                return True
             title = "Бронирование стола" if flow.request_type == "booking" else "Заявка на банкет"
             body = f"🆕 <b>{title} #{flow.ticket_number}</b>\n\n" + "\n".join(f"• <b>{esc(k)}</b>: {esc(v)}" for k, v in payload.items()) + f"\n\n👤 <b>Гость:</b> {self.guest_label(frm)}\n🆔 <code>{uid}</code>\n\n⚠️ Требуется подтверждение менеджера."
             for mid in managers:
@@ -1315,11 +1327,43 @@ class Bot(WorkerEntrypoint):
                 await self.db_run("DELETE FROM tickets WHERE number=? AND guest_id=? AND status='draft'", flow.ticket_number, uid)
                 await self.send(uid, "Заявка отменена. Теперь можно начать её заново из главного меню.", await self.guest_persistent(uid, mgr))
             else:
-                await self.db_run(
-                    "DELETE FROM guest_flows WHERE user_id=? AND NOT EXISTS "
-                    "(SELECT 1 FROM tickets t WHERE t.number=guest_flows.ticket_number AND t.status='draft')", uid,
+                waiting = await self.db_first(
+                    "SELECT number FROM tickets WHERE guest_id=? AND status='waiting' AND manager_id IS NULL ORDER BY number DESC LIMIT 1", uid,
                 )
-                await self.send(uid, "Эта анкета уже отправлена или была отменена. Если заявка отправлена, дождитесь ответа менеджера.", await self.guest_persistent(uid, mgr))
+                if waiting:
+                    canceled = await self.db_run(
+                        "UPDATE tickets SET status='closed',closed_at=datetime('now') WHERE number=? AND guest_id=? AND status='waiting' AND manager_id IS NULL",
+                        waiting.number, uid,
+                    )
+                    await self.db_run("DELETE FROM guest_flows WHERE user_id=?", uid)
+                    if int(canceled.meta.changes or 0):
+                        notices = await self.db_all("SELECT manager_id,message_id,body FROM ticket_manager_notices WHERE ticket_number=?", waiting.number)
+                        for notice in notices.results:
+                            try:
+                                await self.tg("editMessageText", {
+                                    "chat_id": int(notice.manager_id),
+                                    "message_id": int(notice.message_id),
+                                    "text": str(notice.body or "") + "\n\n❌ <b>Гость отменил заявку.</b>",
+                                    "parse_mode": "HTML",
+                                    "reply_markup": {"inline_keyboard": []},
+                                })
+                            except Exception as e:
+                                print("SUNPARK CANCEL NOTICE ERROR:", repr(e))
+                        await self.send(uid, "Заявка отменена до того, как её взял менеджер. Теперь можно оформить её заново из главного меню.", await self.guest_persistent(uid, mgr))
+                    else:
+                        await self.send(uid, "Менеджер уже взял заявку в работу, поэтому отменить её этой кнопкой нельзя. Напишите менеджеру в чате.", await self.guest_persistent(uid, mgr))
+                else:
+                    await self.db_run(
+                        "DELETE FROM guest_flows WHERE user_id=? AND NOT EXISTS "
+                        "(SELECT 1 FROM tickets t WHERE t.number=guest_flows.ticket_number AND t.status='draft')", uid,
+                    )
+                    active = await self.db_first(
+                        "SELECT number FROM tickets WHERE guest_id=? AND status IN ('active','waiting_guest') ORDER BY number DESC LIMIT 1", uid,
+                    )
+                    if active:
+                        await self.send(uid, f"Менеджер уже взял заявку #{active.number} в работу. Напишите ему в текущем чате, чтобы отменить обращение.", await self.guest_persistent(uid, mgr))
+                    else:
+                        await self.send(uid, "Анкета уже отменена или отправлена. Откройте главное меню, чтобы начать новую заявку.", await self.guest_persistent(uid, mgr))
             await self.answer(cb.get("id")); return
         if data == "banquet:list":
             await self.edit(msg, "🎉 <b>Банкетное меню SUNPARK</b>\n\nВыберите раздел. В карточке блюда указаны состав и цена.", self.banquet_keyboard(menu)); await self.answer(cb.get("id")); return
@@ -1361,10 +1405,18 @@ class Bot(WorkerEntrypoint):
                 await self.db_run("INSERT INTO tickets(guest_id,status) VALUES(?,'draft')", uid)
             await self.edit(msg, "💬 <b>Связь с менеджером по банкетам</b>\n\nНапишите здесь ваш вопрос — сообщение получат наши менеджеры.\n\nПервый менеджер, который возьмёт обращение, продолжит общение с вами через этого бота.\n\nНапример: количество гостей, дата банкета, пожелания по меню и другие вопросы.\n\n<b>✍️ Напишите сообщение следующим сообщением.</b>", kb1(btn("❌ Отменить обращение","manager:cancel"))); await self.answer(cb.get("id")); return
         if data == "manager:cancel":
-            tickets = await self.db_all("SELECT number FROM tickets WHERE guest_id=? AND status IN ('draft','waiting')", uid)
+            tickets = await self.db_all(
+                "SELECT number FROM tickets t WHERE guest_id=? AND status IN ('draft','waiting') "
+                "AND NOT EXISTS (SELECT 1 FROM ticket_details d WHERE d.ticket_number=t.number) "
+                "AND NOT EXISTS (SELECT 1 FROM guest_flows f WHERE f.ticket_number=t.number)", uid,
+            )
             for ticket in tickets.results:
                 await self.db_run("DELETE FROM ticket_details WHERE ticket_number=?", ticket.number)
-            await self.db_run("DELETE FROM tickets WHERE guest_id=? AND status IN ('draft','waiting')", uid)
+            await self.db_run(
+                "DELETE FROM tickets WHERE guest_id=? AND status IN ('draft','waiting') "
+                "AND NOT EXISTS (SELECT 1 FROM ticket_details d WHERE d.ticket_number=tickets.number) "
+                "AND NOT EXISTS (SELECT 1 FROM guest_flows f WHERE f.ticket_number=tickets.number)", uid,
+            )
             await self.edit(msg, "🎉 <b>Банкетное меню</b>\n\nЗдесь вы можете посмотреть варианты банкетных блюд или связаться с менеджером.", ikb([[btn("📋 Посмотреть банкетное меню","banquet:list")],[btn("💬 Связаться с менеджером","manager:start")],[btn("🏠 На главную","back")]]))
             await self.send(uid, "Заявка отменена.", await self.guest_persistent(uid, mgr)); await self.answer(cb.get("id")); return
         if data.startswith("template:"):
