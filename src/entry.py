@@ -34,6 +34,11 @@ QUICK_REPLIES = [
     "Спасибо за обращение! Если появятся вопросы, напишите сюда.",
 ]
 
+# Telegram may deliver updates for one chat concurrently. Serialize them within
+# an isolate; the database step compare-and-set below also protects form state
+# when Cloudflare runs more than one isolate.
+_USER_UPDATE_LOCKS = {}
+
 
 def esc(value):
     return html.escape(str(value or ""), quote=False)
@@ -220,6 +225,7 @@ class Bot(WorkerEntrypoint):
         await self.db_run("CREATE TABLE IF NOT EXISTS ticket_reads (ticket_number INTEGER NOT NULL, manager_id INTEGER NOT NULL, last_read_message_id INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(ticket_number,manager_id))")
         await self.db_run("CREATE TABLE IF NOT EXISTS ticket_notes (ticket_number INTEGER PRIMARY KEY, manager_id INTEGER NOT NULL, note TEXT NOT NULL, updated_at TEXT NOT NULL DEFAULT (datetime('now')))")
         await self.db_run("CREATE TABLE IF NOT EXISTS ticket_reminders (ticket_number INTEGER PRIMARY KEY, message_id INTEGER NOT NULL, reminded_at TEXT NOT NULL DEFAULT (datetime('now')))")
+        await self.db_run("CREATE TABLE IF NOT EXISTS ticket_manager_notices (ticket_number INTEGER NOT NULL, manager_id INTEGER NOT NULL, message_id INTEGER NOT NULL, body TEXT NOT NULL, PRIMARY KEY(ticket_number,manager_id))")
         rows = await self.db_all("SELECT key,value FROM config")
         cfg = {str(r.key): r.value for r in rows.results}
         if not cfg.get("menu"):
@@ -413,9 +419,22 @@ class Bot(WorkerEntrypoint):
         return [("date", "📅 На какую дату планируется банкет? Формат: ДД.ММ.ГГГГ"), ("guests", "👥 Сколько будет гостей? Введите число от 1 до 200."), ("event", "🥂 Какой повод или формат мероприятия?"), ("wishes", "🍽 Есть пожелания по меню или организации?"), ("name", "👤 На чьё имя оформить заявку?"), ("phone", "📱 Оставьте номер телефона для связи. Он обязателен.")]
 
     async def start_form(self, uid, kind):
-        existing = await self.db_first("SELECT number FROM tickets WHERE guest_id=? AND status IN ('draft','waiting','active','waiting_guest') ORDER BY number DESC LIMIT 1", uid)
+        flow = await self.db_first("SELECT ticket_number,request_type,step FROM guest_flows WHERE user_id=?", uid)
+        if flow:
+            steps = self.form_steps(str(flow.request_type))
+            step = int(flow.step)
+            prompt = steps[step][1] if 0 <= step < len(steps) else "Заявка отправляется менеджерам."
+            await self.send(uid, f"Вы уже заполняете заявку. Продолжите с текущего шага:\n\n{prompt}", kb1(btn("❌ Отменить", "form:cancel")))
+            return
+        # Remove abandoned drafts left by an interrupted form before blocking
+        # the guest from starting again.
+        await self.db_run(
+            "DELETE FROM tickets WHERE guest_id=? AND status='draft' "
+            "AND NOT EXISTS (SELECT 1 FROM guest_flows f WHERE f.ticket_number=tickets.number)", uid,
+        )
+        existing = await self.db_first("SELECT number FROM tickets WHERE guest_id=? AND status IN ('waiting','active','waiting_guest') ORDER BY number DESC LIMIT 1", uid)
         if existing:
-            await self.send(uid, "У вас уже есть открытое обращение. Менеджер ответит здесь; чтобы начать другую заявку, сначала завершите текущее обращение.")
+            await self.send(uid, "У вас уже есть открытое обращение. Менеджер ответит здесь. Чтобы начать новую заявку, сначала завершите текущее обращение.", await self.guest_persistent(uid))
             return
         await self.db_run("INSERT INTO tickets(guest_id,status) VALUES(?,'draft')", uid)
         ticket = await self.db_first("SELECT number FROM tickets WHERE guest_id=? AND status='draft' ORDER BY number DESC LIMIT 1", uid)
@@ -424,50 +443,87 @@ class Bot(WorkerEntrypoint):
         await self.send(uid, f"📝 <b>Заявка: {title}</b>\n\nЗаявка отправится менеджеру на подтверждение. Бронирование будет считаться подтверждённым только после ответа менеджера.\n\n{self.form_steps(kind)[0][1]}", kb1(btn("❌ Отменить", "form:cancel")))
 
     async def accept_form_answer(self, uid, text, frm, managers):
-        flow = await self.db_first("SELECT ticket_number,request_type,step,payload FROM guest_flows WHERE user_id=?", uid)
-        if not flow:
-            return False
-        steps = self.form_steps(str(flow.request_type))
-        field, _ = steps[int(flow.step)]
-        value = str(text).strip()
-        if field == "date" and not valid_date(value):
-            await self.send(uid, "⚠️ Укажите сегодняшнюю или будущую дату в формате ДД.ММ.ГГГГ.")
-            return True
-        if field == "time" and not valid_time(value):
-            await self.send(uid, "⚠️ Укажите время в формате ЧЧ:ММ, например 19:30.")
-            return True
-        if field == "guests" and not valid_guests(value):
-            await self.send(uid, "⚠️ Укажите число гостей от 1 до 200.")
-            return True
-        if field == "phone":
-            value = normalize_phone(value)
-            if not value:
-                await self.send(uid, "⚠️ Не удалось распознать номер. Укажите телефон с кодом страны, например +7 900 123-45-67.")
+        # A retry handles a concurrent answer that advanced the form between
+        # the read and the write. Conditional updates prevent answers from
+        # overwriting one another or submitting the same form twice.
+        for _ in range(5):
+            flow = await self.db_first("SELECT ticket_number,request_type,step,payload FROM guest_flows WHERE user_id=?", uid)
+            if not flow:
+                return False
+            steps = self.form_steps(str(flow.request_type))
+            step = int(flow.step)
+            if step < 0 or step >= len(steps):
+                await self.send(uid, "⏳ Заявка отправляется. Если сообщение не появится, отправьте его ещё раз через пару секунд.")
                 return True
-        if not value:
-            await self.send(uid, "⚠️ Ответ не должен быть пустым.")
-            return True
-        try:
-            payload = json.loads(str(flow.payload))
-        except Exception:
-            payload = {}
-        payload[field] = "Без дополнительных пожеланий" if field in ("comment", "wishes") and value == "—" else value
-        next_step = int(flow.step) + 1
-        if next_step < len(steps):
-            await self.db_run("UPDATE guest_flows SET step=?,payload=?,updated_at=datetime('now') WHERE user_id=?", next_step, json.dumps(payload, ensure_ascii=False), uid)
-            await self.send(uid, steps[next_step][1], kb1(btn("❌ Отменить", "form:cancel")))
-            return True
-        await self.db_run("DELETE FROM guest_flows WHERE user_id=?", uid)
-        await self.db_run("UPDATE tickets SET status='waiting' WHERE number=? AND status='draft'", flow.ticket_number)
-        await self.db_run("INSERT INTO ticket_details(ticket_number,request_type,payload,created_at,last_reminder_at) VALUES(?,?,?,datetime('now'),NULL) ON CONFLICT(ticket_number) DO UPDATE SET request_type=excluded.request_type,payload=excluded.payload,created_at=datetime('now'),last_reminder_at=NULL", flow.ticket_number, flow.request_type, json.dumps(payload, ensure_ascii=False))
-        title = "Бронирование стола" if flow.request_type == "booking" else "Заявка на банкет"
-        body = f"🆕 <b>{title} #{flow.ticket_number}</b>\n\n" + "\n".join(f"• <b>{esc(k)}</b>: {esc(v)}" for k, v in payload.items()) + f"\n\n👤 <b>Гость:</b> {self.guest_label(frm)}\n🆔 <code>{uid}</code>\n\n⚠️ Требуется подтверждение менеджера."
-        for mid in managers:
+            field, _ = steps[step]
+            value = str(text).strip()
+            if field == "date" and not valid_date(value):
+                await self.send(uid, "⚠️ Укажите сегодняшнюю или будущую дату в формате ДД.ММ.ГГГГ.")
+                return True
+            if field == "time" and not valid_time(value):
+                await self.send(uid, "⚠️ Укажите время в формате ЧЧ:ММ, например 19:30.")
+                return True
+            if field == "guests" and not valid_guests(value):
+                await self.send(uid, "⚠️ Укажите число гостей от 1 до 200.")
+                return True
+            if field == "phone":
+                value = normalize_phone(value)
+                if not value:
+                    await self.send(uid, "⚠️ Не удалось распознать номер. Укажите телефон с кодом страны, например +7 900 123-45-67.")
+                    return True
+            if not value:
+                await self.send(uid, "⚠️ Ответ не должен быть пустым.")
+                return True
             try:
-                await self.send(mid, body, ikb([[btn("🤝 Взять заявку", f"claim:{uid}")]]))
-            except Exception as e:
-                print("SUNPARK MANAGER DELIVERY ERROR:", repr(e))
-        await self.send(uid, "✅ Заявка отправлена менеджерам. Ожидайте ответа: бронирование пока не подтверждено.", await self.guest_persistent(uid))
+                payload = json.loads(str(flow.payload))
+            except Exception:
+                payload = {}
+            payload[field] = "Без дополнительных пожеланий" if field in ("comment", "wishes") and value == "—" else value
+            serialized = json.dumps(payload, ensure_ascii=False)
+            next_step = step + 1
+            if next_step < len(steps):
+                result = await self.db_run(
+                    "UPDATE guest_flows SET step=?,payload=?,updated_at=datetime('now') WHERE user_id=? AND step=?",
+                    next_step, serialized, uid, step,
+                )
+                if not int(result.meta.changes or 0):
+                    continue
+                await self.send(uid, steps[next_step][1], kb1(btn("❌ Отменить", "form:cancel")))
+                return True
+
+            # Reserve the last step before creating the ticket so a concurrent
+            # webhook cannot send a second application card.
+            reserved = await self.db_run(
+                "UPDATE guest_flows SET step=-1,payload=?,updated_at=datetime('now') WHERE user_id=? AND step=?",
+                serialized, uid, step,
+            )
+            if not int(reserved.meta.changes or 0):
+                continue
+            finalized = await self.db_run("UPDATE tickets SET status='waiting' WHERE number=? AND status='draft'", flow.ticket_number)
+            if not int(finalized.meta.changes or 0):
+                await self.db_run("DELETE FROM guest_flows WHERE user_id=? AND step=-1", uid)
+                await self.send(uid, "Анкета уже отменена. Вы можете начать новую заявку из главного меню.", await self.guest_persistent(uid))
+                return True
+            await self.db_run(
+                "INSERT INTO ticket_details(ticket_number,request_type,payload,created_at,last_reminder_at) VALUES(?,?,?,datetime('now'),NULL) "
+                "ON CONFLICT(ticket_number) DO UPDATE SET request_type=excluded.request_type,payload=excluded.payload,created_at=datetime('now'),last_reminder_at=NULL",
+                flow.ticket_number, flow.request_type, serialized,
+            )
+            await self.db_run("DELETE FROM guest_flows WHERE user_id=? AND step=-1", uid)
+            title = "Бронирование стола" if flow.request_type == "booking" else "Заявка на банкет"
+            body = f"🆕 <b>{title} #{flow.ticket_number}</b>\n\n" + "\n".join(f"• <b>{esc(k)}</b>: {esc(v)}" for k, v in payload.items()) + f"\n\n👤 <b>Гость:</b> {self.guest_label(frm)}\n🆔 <code>{uid}</code>\n\n⚠️ Требуется подтверждение менеджера."
+            for mid in managers:
+                try:
+                    sent = await self.send(mid, body, ikb([[btn("🤝 Взять заявку", f"claim:{uid}")]]))
+                    await self.db_run(
+                        "INSERT OR REPLACE INTO ticket_manager_notices(ticket_number,manager_id,message_id,body) VALUES(?,?,?,?)",
+                        flow.ticket_number, mid, sent.get("message_id"), body,
+                    )
+                except Exception as e:
+                    print("SUNPARK MANAGER DELIVERY ERROR:", repr(e))
+            await self.send(uid, "✅ Заявка отправлена менеджерам. Ожидайте ответа: бронирование пока не подтверждено.", await self.guest_persistent(uid))
+            return True
+        await self.send(uid, "⏳ Анкета обрабатывает ваши ответы. Отправьте последнее сообщение ещё раз через пару секунд.")
         return True
 
     def admin_back(self):
@@ -540,6 +596,36 @@ class Bot(WorkerEntrypoint):
             "INSERT INTO ticket_messages(ticket_number,sender_id,sender_role,body) VALUES(?,?,?,?)",
             ticket_number, sender_id, sender_role, str(body),
         )
+
+    async def append_manager_notice(self, ticket_number, manager_id, guest_id, addition):
+        """Merge a plain-text addendum into the original unclaimed ticket card."""
+        notice = await self.db_first(
+            "SELECT message_id,body FROM ticket_manager_notices WHERE ticket_number=? AND manager_id=?",
+            ticket_number, manager_id,
+        )
+        if not notice:
+            return False
+        combined = str(notice.body or "") + "\n\n" + addition
+        # Telegram limits message text to 4096 characters. If there's no room,
+        # let the caller send a separate addendum without another claim button.
+        if len(combined) > 3900:
+            return False
+        try:
+            await self.tg("editMessageText", {
+                "chat_id": manager_id,
+                "message_id": int(notice.message_id),
+                "text": combined,
+                "parse_mode": "HTML",
+                "reply_markup": ikb([[btn("🤝 Взять заявку", f"claim:{guest_id}")]]),
+            })
+            await self.db_run(
+                "UPDATE ticket_manager_notices SET body=? WHERE ticket_number=? AND manager_id=?",
+                combined, ticket_number, manager_id,
+            )
+            return True
+        except Exception as e:
+            print("SUNPARK NOTICE UPDATE ERROR:", repr(e))
+            return False
 
     async def mark_ticket_read(self, ticket_number, manager_id):
         row = await self.db_first("SELECT COALESCE(MAX(id),0) message_id FROM ticket_messages WHERE ticket_number=?", ticket_number)
@@ -1141,7 +1227,18 @@ class Bot(WorkerEntrypoint):
                         )
                     )
                 elif first_album_item:
-                    await self.send_ticket_content(mid, body, attachment, ikb([[btn("🤝 Взять обращение", f"claim:{uid}")]]))
+                    if own.status == "waiting" and not attachment:
+                        merged = await self.append_manager_notice(
+                            int(own.number), mid, uid, f"➕ <b>Дополнение от гостя:</b>\n{content}",
+                        )
+                        if not merged:
+                            # The original card may predate notice tracking or
+                            # may no longer be editable. Keep the update visible
+                            # without creating a second competing claim button.
+                            await self.send(mid, body)
+                    else:
+                        markup = ikb([[btn("🤝 Взять обращение", f"claim:{uid}")]]) if own.status == "draft" else None
+                        await self.send_ticket_content(mid, body, attachment, markup)
             except Exception as e:
                 print("SUNPARK GUEST DELIVERY ERROR:", repr(e))
         await self.db_run("UPDATE tickets SET status='waiting' WHERE number=?", own.number)
@@ -1206,12 +1303,24 @@ class Bot(WorkerEntrypoint):
                 )
             await self.edit(msg, text, ikb([[btn("◀️ К частым вопросам", "faq")], [btn("🏠 На главную", "back")]])); await self.answer(cb.get("id")); return
         if data == "form:cancel":
-            flow = await self.db_first("SELECT ticket_number FROM guest_flows WHERE user_id=?", uid)
-            if flow:
-                await self.db_run("DELETE FROM guest_flows WHERE user_id=?", uid)
-                await self.db_run("DELETE FROM ticket_details WHERE ticket_number=?", flow.ticket_number)
-                await self.db_run("DELETE FROM tickets WHERE number=? AND status='draft'", flow.ticket_number)
-            await self.send(uid, "Заявка отменена.", await self.guest_persistent(uid, mgr)); await self.answer(cb.get("id")); return
+            flow = await self.db_first(
+                "SELECT f.ticket_number,t.status FROM guest_flows f "
+                "LEFT JOIN tickets t ON t.number=f.ticket_number WHERE f.user_id=?", uid,
+            )
+            if flow and str(flow.status or "") == "draft":
+                # Delete only an unsubmitted draft. A stale flow row must never
+                # erase the details of an already-submitted ticket.
+                await self.db_run("DELETE FROM guest_flows WHERE user_id=? AND ticket_number=?", uid, flow.ticket_number)
+                await self.db_run("DELETE FROM ticket_details WHERE ticket_number=? AND EXISTS (SELECT 1 FROM tickets WHERE number=? AND status='draft')", flow.ticket_number, flow.ticket_number)
+                await self.db_run("DELETE FROM tickets WHERE number=? AND guest_id=? AND status='draft'", flow.ticket_number, uid)
+                await self.send(uid, "Заявка отменена. Теперь можно начать её заново из главного меню.", await self.guest_persistent(uid, mgr))
+            else:
+                await self.db_run(
+                    "DELETE FROM guest_flows WHERE user_id=? AND NOT EXISTS "
+                    "(SELECT 1 FROM tickets t WHERE t.number=guest_flows.ticket_number AND t.status='draft')", uid,
+                )
+                await self.send(uid, "Эта анкета уже отправлена или была отменена. Если заявка отправлена, дождитесь ответа менеджера.", await self.guest_persistent(uid, mgr))
+            await self.answer(cb.get("id")); return
         if data == "banquet:list":
             await self.edit(msg, "🎉 <b>Банкетное меню SUNPARK</b>\n\nВыберите раздел. В карточке блюда указаны состав и цена.", self.banquet_keyboard(menu)); await self.answer(cb.get("id")); return
         if data.startswith("banquet:section:"):
@@ -1550,7 +1659,20 @@ class Bot(WorkerEntrypoint):
 
             menu, sections, info, cfg = await self.config()
 
-            if update.get("message"):
+            source = update.get("message") or update.get("callback_query") or {}
+            user_id = (source.get("from") or {}).get("id")
+            if user_id is not None:
+                user_id = int(user_id)
+                lock = _USER_UPDATE_LOCKS.get(user_id)
+                if lock is None:
+                    lock = asyncio.Lock()
+                    _USER_UPDATE_LOCKS[user_id] = lock
+                async with lock:
+                    if update.get("message"):
+                        await self.message(update["message"], menu, sections, info, cfg)
+                    elif update.get("callback_query"):
+                        await self.callback(update["callback_query"], menu, sections, info, cfg)
+            elif update.get("message"):
                 await self.message(update["message"], menu, sections, info, cfg)
             elif update.get("callback_query"):
                 await self.callback(update["callback_query"], menu, sections, info, cfg)
