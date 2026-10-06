@@ -1584,6 +1584,7 @@ class Bot(WorkerEntrypoint):
     async def scheduled(self, controller, env, ctx):
         """Remind the responsible manager once after 15 minutes without a reply."""
         try:
+            _, _, _, cfg = await self.config()
             rows = await self.db_all(
                 "SELECT t.number,t.guest_id,t.manager_id,t.status,d.request_type,d.payload,"
                 "COALESCE((SELECT MAX(tm.id) FROM ticket_messages tm WHERE tm.ticket_number=t.number),0) latest_id,"
@@ -1600,7 +1601,6 @@ class Bot(WorkerEntrypoint):
             )
             if not rows.results:
                 return
-            _, _, _, cfg = await self.config()
             managers = await self.manager_ids(cfg)
             names = await self.manager_names(cfg)
             for row in rows.results:
