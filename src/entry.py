@@ -518,10 +518,10 @@ class Bot(WorkerEntrypoint):
         )
         if not result.results:
             return (
-                "🛒 <b>Корзина пуста</b>\n\nОткройте основное меню и добавьте понравившиеся блюда.\n\nЗаказать через бота пока нельзя — корзина только сохраняет выбранные позиции.",
+                "🛒 <b>Корзина пуста</b>\\n\\nОткройте основное меню и добавьте понравившиеся блюда.\\n\\nЗаказать через бота пока нельзя — корзина только сохраняет выбранные позиции.",
                 ikb([[btn("🍽 К основному меню", "home:menu")], [btn("🏠 На главную", "back")]]),
             )
-        lines = ["🛒 <b>Ваша корзина</b>"]
+        lines = ["🛒 <b>Ваша корзина</b>", "Нажмите на позицию, чтобы изменить количество или удалить её."]
         controls = []
         total_quantity = 0
         total_amount = 0.0
@@ -538,18 +538,7 @@ class Bot(WorkerEntrypoint):
                 total_amount += subtotal_value
                 subtotal = f"{subtotal_value:g} ₽"
             lines.append(f"{position}. <b>{esc(row.item_name)}</b> × {quantity} — {esc(subtotal)}")
-            row_buttons = []
-            if amount is None:
-                variant_index = self.cart_find_variant_index(menu, row.menu_key, row.item_name)
-                if variant_index is not None:
-                    row_buttons.append(btn("Выбрать вариант", f"cart:choose:{item_id}"))
-            row_buttons.extend([
-                btn("−", f"cart:dec:{item_id}"),
-                btn(f"{position} · {quantity} шт.", "noop"),
-                btn("＋", f"cart:inc:{item_id}"),
-                btn("🗑", f"cart:remove:{item_id}"),
-            ])
-            controls.append(row_buttons)
+            controls.append([btn(f"{position}. {str(row.item_name)[:35]} · {quantity} шт.", f"cart:item:{item_id}")])
         lines.extend(["", f"Всего: <b>{total_quantity} шт.</b>"])
         if unknown_prices:
             lines.append(f"Сумма: <b>{total_amount:g} ₽ + стоимость {unknown_prices} поз. уточняется</b>")
@@ -561,7 +550,44 @@ class Bot(WorkerEntrypoint):
             [btn("🍽 К основному меню", "home:menu")],
             [btn("🏠 На главную", "back")],
         ])
-        return "\n".join(lines), ikb(controls)
+        return "\\n".join(lines), ikb(controls)
+
+    async def cart_item_screen(self, uid, item_id, menu):
+        row = await self.db_first(
+            "SELECT id,menu_key,item_name,price_text,quantity FROM guest_cart WHERE id=? AND user_id=?",
+            item_id, uid,
+        )
+        if not row:
+            return await self.cart_screen(uid, menu)
+        ids = await self.db_all("SELECT id FROM guest_cart WHERE user_id=? ORDER BY id", uid)
+        position = next((i for i, entry in enumerate(ids.results, start=1) if int(entry.id) == int(item_id)), 0)
+        quantity = int(row.quantity)
+        amount = self.cart_price_amount(row.price_text)
+        subtotal = f"{amount * quantity:g} ₽" if amount is not None else "стоимость уточняется"
+        lines = [
+            f"🛒 <b>Позиция {position}</b>",
+            "",
+            f"<b>{esc(row.item_name)}</b>",
+            f"Количество: <b>{quantity} шт.</b>",
+            f"Цена за штуку: <b>{esc(row.price_text)}</b>",
+            f"Стоимость позиции: <b>{esc(subtotal)}</b>",
+        ]
+        controls = [
+            [
+                btn("−", f"cart:dec:{item_id}"),
+                btn(f"{quantity} шт.", "noop"),
+                btn("＋", f"cart:inc:{item_id}"),
+            ],
+        ]
+        if amount is None:
+            variant_index = self.cart_find_variant_index(menu, row.menu_key, row.item_name)
+            if variant_index is not None:
+                controls.append([btn("Выбрать вариант цены", f"cart:choose:{item_id}")])
+        controls.extend([
+            [btn("🗑 Удалить позицию", f"cart:remove:{item_id}")],
+            [btn("↩️ К корзине", "cart:view")],
+        ])
+        return "\\n".join(lines), ikb(controls)
 
     async def admin_panel_text(self):
         r = await self.db_first(
@@ -1455,6 +1481,14 @@ class Bot(WorkerEntrypoint):
                 text, markup = await self.cart_screen(uid, menu)
                 await self.edit(msg, text, markup)
                 await self.answer(cb.get("id")); return
+            if action == "item" and len(parts) == 3:
+                try:
+                    item_id = int(parts[2])
+                except Exception:
+                    await self.answer(cb.get("id"), "Позиция не найдена.", True); return
+                text, markup = await self.cart_item_screen(uid, item_id, menu)
+                await self.edit(msg, text, markup)
+                await self.answer(cb.get("id")); return
             if action in ("add", "addvariant", "addsize"):
                 try:
                     if action == "add":
@@ -1555,7 +1589,10 @@ class Bot(WorkerEntrypoint):
                         product["sku"], product["menu_key"], product["section"], product["item_name"],
                         product["description"], product["price_text"], item_id, uid,
                     )
-                text, markup = await self.cart_screen(uid, menu)
+                if duplicate:
+                    text, markup = await self.cart_screen(uid, menu)
+                else:
+                    text, markup = await self.cart_item_screen(uid, item_id, menu)
                 await self.edit(msg, text, markup)
                 await self.answer(cb.get("id"), "Вариант выбран.")
                 return
@@ -1575,23 +1612,49 @@ class Bot(WorkerEntrypoint):
                     item_id = int(parts[2])
                 except Exception:
                     await self.answer(cb.get("id"), "Позиция не найдена.", True); return
-                current = await self.db_first("SELECT quantity FROM guest_cart WHERE id=? AND user_id=?", item_id, uid)
+                current = await self.db_first(
+                    "SELECT quantity,item_name FROM guest_cart WHERE id=? AND user_id=?", item_id, uid
+                )
                 if not current:
                     await self.answer(cb.get("id"), "Этой позиции уже нет в корзине.", True); return
                 quantity = int(current.quantity)
+                if action == "remove":
+                    await self.edit(
+                        msg,
+                        f"🗑 <b>Удалить позицию?</b>\\n\\n{esc(current.item_name)}",
+                        ikb([
+                            [btn("✅ Да, удалить", f"cart:delete:yes:{item_id}")],
+                            [btn("↩️ Вернуться к позиции", f"cart:item:{item_id}")],
+                        ]),
+                    )
+                    await self.answer(cb.get("id")); return
                 if action == "inc":
                     if quantity >= 99:
                         await self.answer(cb.get("id"), "Для одной позиции максимум 99 шт.", True); return
                     await self.db_run("UPDATE guest_cart SET quantity=quantity+1,updated_at=datetime('now') WHERE id=? AND user_id=?", item_id, uid)
-                elif action == "dec":
-                    if quantity <= 1:
-                        await self.answer(cb.get("id"), "Чтобы убрать блюдо, нажмите 🗑.", True); return
-                    await self.db_run("UPDATE guest_cart SET quantity=quantity-1,updated_at=datetime('now') WHERE id=? AND user_id=?", item_id, uid)
+                elif quantity <= 1:
+                    await self.answer(cb.get("id"), "Чтобы убрать блюдо, используйте кнопку «Удалить позицию».", True); return
                 else:
-                    await self.db_run("DELETE FROM guest_cart WHERE id=? AND user_id=?", item_id, uid)
-                text, markup = await self.cart_screen(uid, menu)
+                    await self.db_run("UPDATE guest_cart SET quantity=quantity-1,updated_at=datetime('now') WHERE id=? AND user_id=?", item_id, uid)
+                text, markup = await self.cart_item_screen(uid, item_id, menu)
                 await self.edit(msg, text, markup)
                 await self.answer(cb.get("id")); return
+            if action == "delete" and len(parts) == 4:
+                try:
+                    item_id = int(parts[3])
+                except Exception:
+                    await self.answer(cb.get("id"), "Позиция не найдена.", True); return
+                if parts[2] == "yes":
+                    deleted = await self.db_run("DELETE FROM guest_cart WHERE id=? AND user_id=?", item_id, uid)
+                    if not int(deleted.meta.changes or 0):
+                        await self.answer(cb.get("id"), "Этой позиции уже нет в корзине.", True); return
+                    text, markup = await self.cart_screen(uid, menu)
+                    await self.edit(msg, text, markup)
+                    await self.answer(cb.get("id"), "Позиция удалена."); return
+                if parts[2] == "no":
+                    text, markup = await self.cart_item_screen(uid, item_id, menu)
+                    await self.edit(msg, text, markup)
+                    await self.answer(cb.get("id")); return
             await self.answer(cb.get("id"), "Действие с корзиной не распознано.", True); return
         if data == "booking:start":
             await self.start_form(uid, "booking"); await self.answer(cb.get("id")); return
