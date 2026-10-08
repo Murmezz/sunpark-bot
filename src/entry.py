@@ -463,6 +463,8 @@ class Bot(WorkerEntrypoint):
         footer = str(cat.get("footer") or "").casefold()
         if "эль капулько" in name:
             labels = ["Алкогольное", "Безалкогольное"]
+        elif "бенедикт" in name:
+            labels = ["С форелью", "С ростбифом"]
         elif "бокал" in footer and "бутыл" in footer:
             labels = ["Бокал", "Бутылка"]
         else:
