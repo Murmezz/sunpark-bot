@@ -455,7 +455,7 @@ class Bot(WorkerEntrypoint):
         if not cat or not product:
             return []
         price_parts = [part.strip() for part in product["price_text"].split("/")]
-        currency_price = re.compile(r"\\s*\\d[\\d\\s\\u00a0]*(?:[,.]\\d{1,2})?\\s*₽\\s*")
+        currency_price = re.compile(r"\s*\d[\d\s\u00a0]*(?:[,.]\d{1,2})?\s*₽\s*")
         if len(price_parts) != 2 or any(not currency_price.fullmatch(part) for part in price_parts):
             return []
 
@@ -467,7 +467,7 @@ class Bot(WorkerEntrypoint):
             labels = ["Бокал", "Бутылка"]
         else:
             measurements = re.findall(
-                r"(\\d+(?:[,.]\\d+)?)\\s*(мл|л|г|гр|кг)\\b",
+                r"(\d+(?:[,.]\d+)?)\s*(мл|л|г|гр|кг)\b",
                 product["description"],
                 re.IGNORECASE,
             )
@@ -1480,7 +1480,7 @@ class Bot(WorkerEntrypoint):
                         rows.append([btn("↩️ К блюду", f"item:{key}:{index}")])
                         await self.edit(
                             msg,
-                            f"<b>{esc(base_product['item_name'])}</b>\\n\\nВыберите вариант:",
+                            f"<b>{esc(base_product['item_name'])}</b>\n\nВыберите вариант:",
                             ikb(rows),
                         )
                         await self.answer(cb.get("id")); return
@@ -1521,7 +1521,7 @@ class Bot(WorkerEntrypoint):
                     for i, variant in enumerate(variants)
                 ]
                 rows.append([btn("↩️ К корзине", "cart:view")])
-                await self.edit(msg, f"<b>{esc(key_name)}</b>\\n\\nВыберите вариант, чтобы показать стоимость:", ikb(rows))
+                await self.edit(msg, f"<b>{esc(key_name)}</b>\n\nВыберите вариант, чтобы показать стоимость:", ikb(rows))
                 await self.answer(cb.get("id")); return
             if action == "resolve" and len(parts) == 4:
                 try:
