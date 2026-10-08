@@ -518,7 +518,7 @@ class Bot(WorkerEntrypoint):
         )
         if not result.results:
             return (
-                "🛒 <b>Корзина пуста</b>\n\nОткройте основное меню и добавьте понравившиеся блюда.\n\nЗаказать через бота пока нельзя — корзина только сохраняет выбранные позиции.",
+                "🛒 <b>Корзина пуста</b>" + chr(10) * 2 + "Откройте основное меню и добавьте понравившиеся блюда." + chr(10) * 2 + "Заказать через бота пока нельзя — корзина только сохраняет выбранные позиции.",
                 ikb([[btn("🍽 К основному меню", "home:menu")], [btn("🏠 На главную", "back")]]),
             )
         lines = ["🛒 <b>Ваша корзина</b>", "Нажмите на позицию, чтобы изменить количество или удалить её."]
@@ -550,7 +550,7 @@ class Bot(WorkerEntrypoint):
             [btn("🍽 К основному меню", "home:menu")],
             [btn("🏠 На главную", "back")],
         ])
-        return "\n".join(lines), ikb(controls)
+        return chr(10).join(lines), ikb(controls)
 
     async def cart_item_screen(self, uid, item_id, menu):
         row = await self.db_first(
@@ -1516,7 +1516,7 @@ class Bot(WorkerEntrypoint):
                         rows.append([btn("↩️ К блюду", f"item:{key}:{index}")])
                         await self.edit(
                             msg,
-                            f"<b>{esc(base_product['item_name'])}</b>\n\nВыберите вариант:",
+                            f"<b>{esc(base_product['item_name'])}</b>" + chr(10) * 2 + "Выберите вариант:",
                             ikb(rows),
                         )
                         await self.answer(cb.get("id")); return
@@ -1557,7 +1557,7 @@ class Bot(WorkerEntrypoint):
                     for i, variant in enumerate(variants)
                 ]
                 rows.append([btn("↩️ К позиции", f"cart:item:{item_id}")])
-                await self.edit(msg, f"<b>{esc(key_name)}</b>\n\nВыберите вариант, чтобы показать стоимость:", ikb(rows))
+                await self.edit(msg, f"<b>{esc(key_name)}</b>" + chr(10) * 2 + "Выберите вариант, чтобы показать стоимость:", ikb(rows))
                 await self.answer(cb.get("id")); return
             if action == "resolve" and len(parts) == 4:
                 try:
@@ -1597,7 +1597,7 @@ class Bot(WorkerEntrypoint):
                 await self.answer(cb.get("id"), "Вариант выбран.")
                 return
             if action == "clear" and len(parts) == 3 and parts[2] == "confirm":
-                await self.edit(msg, "🧹 <b>Очистить корзину?</b>\n\nВсе выбранные позиции будут удалены.", ikb([
+                await self.edit(msg, "🧹 <b>Очистить корзину?</b>" + chr(10) * 2 + "Все выбранные позиции будут удалены.", ikb([
                     [btn("✅ Да, очистить", "cart:clear:yes")],
                     [btn("↩️ Вернуться в корзину", "cart:view")],
                 ]))
@@ -1621,7 +1621,7 @@ class Bot(WorkerEntrypoint):
                 if action == "remove":
                     await self.edit(
                         msg,
-                        f"🗑 <b>Удалить позицию?</b>\n\n{esc(current.item_name)}",
+                        f"🗑 <b>Удалить позицию?</b>" + chr(10) * 2 + esc(current.item_name),
                         ikb([
                             [btn("✅ Да, удалить", f"cart:delete:yes:{item_id}")],
                             [btn("↩️ Вернуться к позиции", f"cart:item:{item_id}")],
