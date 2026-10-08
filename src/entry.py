@@ -414,10 +414,9 @@ class Bot(WorkerEntrypoint):
         else:
             name, description, price = item[:3]
             section = cat.get("title", key)
-        name = str(name).strip()
-        if not name:
+        base_name = str(name).strip()
+        if not base_name:
             return None
-        base_name = name
 
         variant_label = ""
         price_text = str(price or "Цена не указана")
@@ -426,82 +425,141 @@ class Bot(WorkerEntrypoint):
             if variant_index < 0 or variant_index >= len(variants):
                 return None
             variant = variants[variant_index]
-            variant_label = variant["size"]
-            name = f"{name} · {variant_label}"
+            variant_label = variant["label"]
             price_text = variant["price"]
+        display_name = base_name
+        sku_base_name = base_name
+        if variant_label:
+            if "эль капулько" in base_name.casefold():
+                sku_base_name = "Эль Капулько"
+                display_name = f"Эль Капулько · {variant_label}"
+            else:
+                display_name = f"{base_name} · {variant_label}"
 
-        sku_parts = [str(key), str(section).casefold(), base_name.casefold()]
+        sku_parts = [str(key), str(section).casefold(), sku_base_name.casefold()]
         if variant_label:
             sku_parts.append(variant_label.casefold())
-        sku = json.dumps(sku_parts, ensure_ascii=False, separators=(",", ":"))
         return {
-            "sku": sku,
+            "sku": json.dumps(sku_parts, ensure_ascii=False, separators=(",", ":")),
             "menu_key": str(key),
             "section": str(section or ""),
-            "item_name": name,
+            "item_name": display_name,
             "description": str(description or ""),
             "price_text": price_text,
             "variant_label": variant_label,
         }
 
     def cart_variants(self, menu, key, index):
-        if key != "beer":
-            return []
+        cat = menu.get(key)
         product = self.cart_product(menu, key, index)
-        if not product:
+        if not cat or not product:
             return []
-        volumes = re.findall(r"(\d+(?:[,.]\d+)?)\s*(мл|л)\b", product["description"], re.IGNORECASE)
-        prices = [part.strip() for part in product["price_text"].split("/")]
-        if len(volumes) != 2 or len(prices) != 2:
+        price_parts = [part.strip() for part in product["price_text"].split("/")]
+        currency_price = re.compile(r"\\s*\\d[\\d\\s\\u00a0]*(?:[,.]\\d{1,2})?\\s*₽\\s*")
+        if len(price_parts) != 2 or any(not currency_price.fullmatch(part) for part in price_parts):
             return []
 
-        variants = []
-        for (amount, unit), price in zip(volumes, prices):
-            liters = float(amount.replace(",", ".")) / (1000 if unit.casefold() == "мл" else 1)
-            size = f"{liters:g}".replace(".", ",") + " л"
-            variants.append({"size": size, "price": price})
-        return variants
+        name = product["item_name"].casefold()
+        footer = str(cat.get("footer") or "").casefold()
+        if "эль капулько" in name:
+            labels = ["Алкогольное", "Безалкогольное"]
+        elif "бокал" in footer and "бутыл" in footer:
+            labels = ["Бокал", "Бутылка"]
+        else:
+            measurements = re.findall(
+                r"(\\d+(?:[,.]\\d+)?)\\s*(мл|л|г|гр|кг)\\b",
+                product["description"],
+                re.IGNORECASE,
+            )
+            labels = []
+            for amount, unit in measurements[:2]:
+                value = float(amount.replace(",", "."))
+                unit = unit.casefold()
+                if unit == "мл":
+                    labels.append((f"{value / 1000:g}".replace(".", ",") + " л") if value >= 1000 else f"{amount} мл")
+                elif unit in ("г", "гр"):
+                    labels.append((f"{value / 1000:g}".replace(".", ",") + " кг") if value >= 1000 else f"{amount} г")
+                else:
+                    labels.append(f"{amount} {unit}")
+        if len(labels) != 2:
+            labels = ["Вариант 1", "Вариант 2"]
+        return [{"label": label, "price": price} for label, price in zip(labels, price_parts)]
 
+    def cart_find_variant_index(self, menu, key, item_name):
+        cat = menu.get(key)
+        if not cat:
+            return None
+        target = str(item_name or "").strip().casefold()
+        for index, _ in enumerate(items(cat)):
+            product = self.cart_product(menu, key, index)
+            if not product:
+                continue
+            base = product["item_name"].strip().casefold()
+            if target == base or target.startswith(base + " ·"):
+                if self.cart_variants(menu, key, index):
+                    return index
+        return None
 
-    async def cart_screen(self, uid):
+    def cart_price_amount(self, price_text):
+        value = str(price_text or "").strip()
+        if "/" in value or "от" in value.casefold() or value.count("₽") != 1:
+            return None
+        digits = re.sub(r"[^0-9,.-]", "", value).replace(",", ".")
+        try:
+            return float(digits)
+        except Exception:
+            return None
+
+    async def cart_screen(self, uid, menu):
         result = await self.db_all(
-            "SELECT id,item_name,price_text,quantity FROM guest_cart WHERE user_id=? ORDER BY id LIMIT 20", uid,
+            "SELECT id,menu_key,item_name,price_text,quantity FROM guest_cart WHERE user_id=? ORDER BY id LIMIT 20", uid,
         )
         if not result.results:
             return (
-                "🛒 <b>Корзина пуста</b>\n\nОткройте основное меню и добавьте понравившиеся блюда.\n\nЗаказать через бота пока нельзя — корзина только сохраняет выбранные позиции.",
+                "🛒 <b>Корзина пуста</b>\\n\\nОткройте основное меню и добавьте понравившиеся блюда.\\n\\nЗаказать через бота пока нельзя — корзина только сохраняет выбранные позиции.",
                 ikb([[btn("🍽 К основному меню", "home:menu")], [btn("🏠 На главную", "back")]]),
             )
-        lines = ["🛒 <b>Ваша корзина</b>", "Для каждого блюда кнопки управления расположены прямо под его названием."]
+        lines = ["🛒 <b>Ваша корзина</b>"]
         controls = []
         total_quantity = 0
+        total_amount = 0.0
+        unknown_prices = 0
         for position, row in enumerate(result.results, start=1):
             item_id, quantity = int(row.id), int(row.quantity)
             total_quantity += quantity
-            prefix = f"{position}. "
-            suffix = f" · {quantity} шт. · {row.price_text}"
-            name_limit = max(1, 64 - len(prefix) - len(suffix))
-            name = str(row.item_name)
-            if len(name) > name_limit:
-                name = name[:name_limit - 1].rstrip() + "…"
-            controls.append([btn(f"{prefix}{name}{suffix}", "noop")])
-            controls.append([
+            amount = self.cart_price_amount(row.price_text)
+            if amount is None:
+                unknown_prices += 1
+                subtotal = "стоимость уточняется"
+            else:
+                subtotal_value = amount * quantity
+                total_amount += subtotal_value
+                subtotal = f"{subtotal_value:g} ₽"
+            lines.append(f"{position}. <b>{esc(row.item_name)}</b> × {quantity} — {esc(subtotal)}")
+            row_buttons = []
+            if amount is None:
+                variant_index = self.cart_find_variant_index(menu, row.menu_key, row.item_name)
+                if variant_index is not None:
+                    row_buttons.append(btn("Выбрать вариант", f"cart:choose:{item_id}"))
+            row_buttons.extend([
                 btn("−", f"cart:dec:{item_id}"),
-                btn(f"{quantity} шт.", "noop"),
+                btn(f"{position} · {quantity} шт.", "noop"),
                 btn("＋", f"cart:inc:{item_id}"),
                 btn("🗑", f"cart:remove:{item_id}"),
             ])
-        lines.extend([
-            "",
-            f"Всего: <b>{total_quantity} шт.</b>",
-            "Заказать через бота пока нельзя — корзина только сохраняет выбранные позиции.",
-        ])
+            controls.append(row_buttons)
+        lines.extend(["", f"Всего: <b>{total_quantity} шт.</b>"])
+        if unknown_prices:
+            lines.append(f"Сумма: <b>{total_amount:g} ₽ + стоимость {unknown_prices} поз. уточняется</b>")
+        else:
+            lines.append(f"Итого: <b>{total_amount:g} ₽</b>")
+        lines.append("Заказать через бота пока нельзя — корзина только сохраняет выбранные позиции.")
         controls.extend([
             [btn("🧹 Очистить корзину", "cart:clear:confirm")],
             [btn("🍽 К основному меню", "home:menu")],
             [btn("🏠 На главную", "back")],
         ])
-        return "\n".join(lines), ikb(controls)
+        return "\\n".join(lines), ikb(controls)
 
     async def admin_panel_text(self):
         r = await self.db_first(
@@ -1392,16 +1450,17 @@ class Bot(WorkerEntrypoint):
             parts = data.split(":")
             action = parts[1] if len(parts) > 1 else ""
             if action == "view":
-                text, markup = await self.cart_screen(uid)
+                text, markup = await self.cart_screen(uid, menu)
                 await self.edit(msg, text, markup)
                 await self.answer(cb.get("id")); return
-            if action in ("add", "addsize"):
+            if action in ("add", "addvariant", "addsize"):
                 try:
                     if action == "add":
                         key, raw_index = data[len("cart:add:"):].rsplit(":", 1)
                         variant_index = None
                     else:
-                        key, raw_index, raw_variant = data[len("cart:addsize:"):].rsplit(":", 2)
+                        prefix = "cart:addvariant:" if action == "addvariant" else "cart:addsize:"
+                        key, raw_index, raw_variant = data[len(prefix):].rsplit(":", 2)
                         variant_index = int(raw_variant)
                     index = int(raw_index)
                 except Exception:
@@ -1415,19 +1474,19 @@ class Bot(WorkerEntrypoint):
                     variants = self.cart_variants(menu, key, index)
                     if variants:
                         rows = [
-                            [btn(f"{variant['size']} — {variant['price']}", f"cart:addsize:{key}:{index}:{variant_index}")]
-                            for variant_index, variant in enumerate(variants)
+                            [btn(f"{variant['label']} — {variant['price']}", f"cart:addvariant:{key}:{index}:{i}")]
+                            for i, variant in enumerate(variants)
                         ]
                         rows.append([btn("↩️ К блюду", f"item:{key}:{index}")])
                         await self.edit(
                             msg,
-                            f"🍺 <b>{esc(base_product['item_name'])}</b>\n\nВыберите объём:",
+                            f"<b>{esc(base_product['item_name'])}</b>\\n\\nВыберите вариант:",
                             ikb(rows),
                         )
                         await self.answer(cb.get("id")); return
                 product = self.cart_product(menu, key, index, variant_index)
                 if not product:
-                    await self.answer(cb.get("id"), "Этот объём больше недоступен. Откройте блюдо ещё раз.", True); return
+                    await self.answer(cb.get("id"), "Этот вариант больше недоступен. Откройте блюдо ещё раз.", True); return
                 existing = await self.db_first("SELECT id,quantity FROM guest_cart WHERE user_id=? AND sku=?", uid, product["sku"])
                 count = await self.db_first("SELECT COUNT(*) amount FROM guest_cart WHERE user_id=?", uid)
                 if not existing and int(count.amount or 0) >= 20:
@@ -1444,6 +1503,60 @@ class Bot(WorkerEntrypoint):
                     confirmation = f"Добавлено · {product['variant_label']} · {int(current.quantity)} шт."
                 await self.answer(cb.get("id"), confirmation)
                 return
+            if action == "choose" and len(parts) == 3:
+                try:
+                    item_id = int(parts[2])
+                except Exception:
+                    await self.answer(cb.get("id"), "Позиция не найдена.", True); return
+                row = await self.db_first("SELECT menu_key,item_name FROM guest_cart WHERE id=? AND user_id=?", item_id, uid)
+                if not row:
+                    await self.answer(cb.get("id"), "Этой позиции уже нет в корзине.", True); return
+                variant_index = self.cart_find_variant_index(menu, row.menu_key, row.item_name)
+                if variant_index is None:
+                    await self.answer(cb.get("id"), "Варианты цены для этой позиции не найдены.", True); return
+                variants = self.cart_variants(menu, row.menu_key, variant_index)
+                key_name = self.cart_product(menu, row.menu_key, variant_index)["item_name"]
+                rows = [
+                    [btn(f"{variant['label']} — {variant['price']}", f"cart:resolve:{item_id}:{i}")]
+                    for i, variant in enumerate(variants)
+                ]
+                rows.append([btn("↩️ К корзине", "cart:view")])
+                await self.edit(msg, f"<b>{esc(key_name)}</b>\\n\\nВыберите вариант, чтобы показать стоимость:", ikb(rows))
+                await self.answer(cb.get("id")); return
+            if action == "resolve" and len(parts) == 4:
+                try:
+                    item_id, variant_choice = int(parts[2]), int(parts[3])
+                except Exception:
+                    await self.answer(cb.get("id"), "Вариант не найден.", True); return
+                row = await self.db_first(
+                    "SELECT menu_key,item_name,quantity FROM guest_cart WHERE id=? AND user_id=?", item_id, uid
+                )
+                if not row:
+                    await self.answer(cb.get("id"), "Этой позиции уже нет в корзине.", True); return
+                index = self.cart_find_variant_index(menu, row.menu_key, row.item_name)
+                product = self.cart_product(menu, row.menu_key, index, variant_choice) if index is not None else None
+                if not product:
+                    await self.answer(cb.get("id"), "Этот вариант больше недоступен.", True); return
+                duplicate = await self.db_first(
+                    "SELECT id,quantity FROM guest_cart WHERE user_id=? AND sku=? AND id<>?",
+                    uid, product["sku"], item_id,
+                )
+                if duplicate:
+                    await self.db_run(
+                        "UPDATE guest_cart SET quantity=MIN(99,quantity+?),updated_at=datetime('now') WHERE id=? AND user_id=?",
+                        int(row.quantity), int(duplicate.id), uid,
+                    )
+                    await self.db_run("DELETE FROM guest_cart WHERE id=? AND user_id=?", item_id, uid)
+                else:
+                    await self.db_run(
+                        "UPDATE guest_cart SET sku=?,menu_key=?,section=?,item_name=?,description=?,price_text=?,updated_at=datetime('now') WHERE id=? AND user_id=?",
+                        product["sku"], product["menu_key"], product["section"], product["item_name"],
+                        product["description"], product["price_text"], item_id, uid,
+                    )
+                text, markup = await self.cart_screen(uid, menu)
+                await self.edit(msg, text, markup)
+                await self.answer(cb.get("id"), "Вариант выбран.")
+                return
             if action == "clear" and len(parts) == 3 and parts[2] == "confirm":
                 await self.edit(msg, "🧹 <b>Очистить корзину?</b>\n\nВсе выбранные позиции будут удалены.", ikb([
                     [btn("✅ Да, очистить", "cart:clear:yes")],
@@ -1452,7 +1565,7 @@ class Bot(WorkerEntrypoint):
                 await self.answer(cb.get("id")); return
             if action == "clear" and len(parts) == 3 and parts[2] == "yes":
                 await self.db_run("DELETE FROM guest_cart WHERE user_id=?", uid)
-                text, markup = await self.cart_screen(uid)
+                text, markup = await self.cart_screen(uid, menu)
                 await self.edit(msg, text, markup)
                 await self.answer(cb.get("id"), "Корзина очищена."); return
             if action in ("inc", "dec", "remove") and len(parts) == 3:
@@ -1474,7 +1587,7 @@ class Bot(WorkerEntrypoint):
                     await self.db_run("UPDATE guest_cart SET quantity=quantity-1,updated_at=datetime('now') WHERE id=? AND user_id=?", item_id, uid)
                 else:
                     await self.db_run("DELETE FROM guest_cart WHERE id=? AND user_id=?", item_id, uid)
-                text, markup = await self.cart_screen(uid)
+                text, markup = await self.cart_screen(uid, menu)
                 await self.edit(msg, text, markup)
                 await self.answer(cb.get("id")); return
             await self.answer(cb.get("id"), "Действие с корзиной не распознано.", True); return
