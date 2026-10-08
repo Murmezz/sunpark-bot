@@ -518,7 +518,7 @@ class Bot(WorkerEntrypoint):
         )
         if not result.results:
             return (
-                "🛒 <b>Корзина пуста</b>\\n\\nОткройте основное меню и добавьте понравившиеся блюда.\\n\\nЗаказать через бота пока нельзя — корзина только сохраняет выбранные позиции.",
+                "🛒 <b>Корзина пуста</b>\n\nОткройте основное меню и добавьте понравившиеся блюда.\n\nЗаказать через бота пока нельзя — корзина только сохраняет выбранные позиции.",
                 ikb([[btn("🍽 К основному меню", "home:menu")], [btn("🏠 На главную", "back")]]),
             )
         lines = ["🛒 <b>Ваша корзина</b>", "Нажмите на позицию, чтобы изменить количество или удалить её."]
@@ -550,7 +550,7 @@ class Bot(WorkerEntrypoint):
             [btn("🍽 К основному меню", "home:menu")],
             [btn("🏠 На главную", "back")],
         ])
-        return "\\n".join(lines), ikb(controls)
+        return "\n".join(lines), ikb(controls)
 
     async def cart_item_screen(self, uid, item_id, menu):
         row = await self.db_first(
@@ -1556,7 +1556,7 @@ class Bot(WorkerEntrypoint):
                     [btn(f"{variant['label']} — {variant['price']}", f"cart:resolve:{item_id}:{i}")]
                     for i, variant in enumerate(variants)
                 ]
-                rows.append([btn("↩️ К корзине", "cart:view")])
+                rows.append([btn("↩️ К позиции", f"cart:item:{item_id}")])
                 await self.edit(msg, f"<b>{esc(key_name)}</b>\n\nВыберите вариант, чтобы показать стоимость:", ikb(rows))
                 await self.answer(cb.get("id")); return
             if action == "resolve" and len(parts) == 4:
@@ -1621,7 +1621,7 @@ class Bot(WorkerEntrypoint):
                 if action == "remove":
                     await self.edit(
                         msg,
-                        f"🗑 <b>Удалить позицию?</b>\\n\\n{esc(current.item_name)}",
+                        f"🗑 <b>Удалить позицию?</b>\n\n{esc(current.item_name)}",
                         ikb([
                             [btn("✅ Да, удалить", f"cart:delete:yes:{item_id}")],
                             [btn("↩️ Вернуться к позиции", f"cart:item:{item_id}")],
