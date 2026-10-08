@@ -4,6 +4,7 @@ import json
 import html
 import hmac
 import asyncio
+import re
 from validation import valid_date, valid_time, valid_guests, normalize_phone
 
 BANQUET_MAIN_SECTIONS = [
@@ -402,7 +403,7 @@ class Bot(WorkerEntrypoint):
         ])
         return ikb(rows)
 
-    def cart_product(self, menu, key, index):
+    def cart_product(self, menu, key, index, variant_index=None):
         cat = menu.get(key)
         arr = items(cat)
         if not cat or index < 0 or index >= len(arr):
@@ -416,16 +417,51 @@ class Bot(WorkerEntrypoint):
         name = str(name).strip()
         if not name:
             return None
-        sku = json.dumps([str(key), str(section).casefold(), name.casefold()], ensure_ascii=False, separators=(",", ":"))
+        base_name = name
+
+        variant_label = ""
+        price_text = str(price or "Цена не указана")
+        if variant_index is not None:
+            variants = self.cart_variants(menu, key, index)
+            if variant_index < 0 or variant_index >= len(variants):
+                return None
+            variant = variants[variant_index]
+            variant_label = variant["size"]
+            name = f"{name} · {variant_label}"
+            price_text = variant["price"]
+
+        sku_parts = [str(key), str(section).casefold(), base_name.casefold()]
+        if variant_label:
+            sku_parts.append(variant_label.casefold())
+        sku = json.dumps(sku_parts, ensure_ascii=False, separators=(",", ":"))
         return {
             "sku": sku,
             "menu_key": str(key),
             "section": str(section or ""),
             "item_name": name,
             "description": str(description or ""),
-            "price_text": str(price or "Цена не указана"),
-            "section": str(section or ""),
+            "price_text": price_text,
+            "variant_label": variant_label,
         }
+
+    def cart_variants(self, menu, key, index):
+        if key != "beer":
+            return []
+        product = self.cart_product(menu, key, index)
+        if not product:
+            return []
+        volumes = re.findall(r"(\d+(?:[,.]\d+)?)\s*(мл|л)\b", product["description"], re.IGNORECASE)
+        prices = [part.strip() for part in product["price_text"].split("/")]
+        if len(volumes) != 2 or len(prices) != 2:
+            return []
+
+        variants = []
+        for (amount, unit), price in zip(volumes, prices):
+            liters = float(amount.replace(",", ".")) / (1000 if unit.casefold() == "мл" else 1)
+            size = f"{liters:g}".replace(".", ",") + " л"
+            variants.append({"size": size, "price": price})
+        return variants
+
 
     async def cart_screen(self, uid):
         result = await self.db_all(
@@ -1359,17 +1395,39 @@ class Bot(WorkerEntrypoint):
                 text, markup = await self.cart_screen(uid)
                 await self.edit(msg, text, markup)
                 await self.answer(cb.get("id")); return
-            if action == "add":
+            if action in ("add", "addsize"):
                 try:
-                    key, raw_index = data[len("cart:add:"):].rsplit(":", 1)
+                    if action == "add":
+                        key, raw_index = data[len("cart:add:"):].rsplit(":", 1)
+                        variant_index = None
+                    else:
+                        key, raw_index, raw_variant = data[len("cart:addsize:"):].rsplit(":", 2)
+                        variant_index = int(raw_variant)
                     index = int(raw_index)
                 except Exception:
                     await self.answer(cb.get("id"), "Позиция не найдена.", True); return
                 if key == "banquet":
                     await self.answer(cb.get("id"), "Банкетное меню временно скрыто.", True); return
-                product = self.cart_product(menu, key, index)
-                if not product:
+                base_product = self.cart_product(menu, key, index)
+                if not base_product:
                     await self.answer(cb.get("id"), "Эта позиция больше недоступна в меню.", True); return
+                if action == "add":
+                    variants = self.cart_variants(menu, key, index)
+                    if variants:
+                        rows = [
+                            [btn(f"{variant['size']} — {variant['price']}", f"cart:addsize:{key}:{index}:{variant_index}")]
+                            for variant_index, variant in enumerate(variants)
+                        ]
+                        rows.append([btn("↩️ К блюду", f"item:{key}:{index}")])
+                        await self.edit(
+                            msg,
+                            f"🍺 <b>{esc(base_product['item_name'])}</b>\n\nВыберите объём:",
+                            ikb(rows),
+                        )
+                        await self.answer(cb.get("id")); return
+                product = self.cart_product(menu, key, index, variant_index)
+                if not product:
+                    await self.answer(cb.get("id"), "Этот объём больше недоступен. Откройте блюдо ещё раз.", True); return
                 existing = await self.db_first("SELECT id,quantity FROM guest_cart WHERE user_id=? AND sku=?", uid, product["sku"])
                 count = await self.db_first("SELECT COUNT(*) amount FROM guest_cart WHERE user_id=?", uid)
                 if not existing and int(count.amount or 0) >= 20:
@@ -1381,7 +1439,10 @@ class Bot(WorkerEntrypoint):
                 )
                 current = await self.db_first("SELECT quantity FROM guest_cart WHERE user_id=? AND sku=?", uid, product["sku"])
                 await self.edit(msg, self.item_text(menu, key, index), self.item_back(key, index))
-                await self.answer(cb.get("id"), f"Добавлено в корзину · {int(current.quantity)} шт.")
+                confirmation = f"Добавлено в корзину · {int(current.quantity)} шт."
+                if product["variant_label"]:
+                    confirmation = f"Добавлено · {product['variant_label']} · {int(current.quantity)} шт."
+                await self.answer(cb.get("id"), confirmation)
                 return
             if action == "clear" and len(parts) == 3 and parts[2] == "confirm":
                 await self.edit(msg, "🧹 <b>Очистить корзину?</b>\n\nВсе выбранные позиции будут удалены.", ikb([
