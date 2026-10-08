@@ -436,13 +436,19 @@ class Bot(WorkerEntrypoint):
                 "🛒 <b>Корзина пуста</b>\n\nОткройте основное меню и добавьте понравившиеся блюда.\n\nЗаказать через бота пока нельзя — корзина только сохраняет выбранные позиции.",
                 ikb([[btn("🍽 К основному меню", "home:menu")], [btn("🏠 На главную", "back")]]),
             )
-        lines = ["🛒 <b>Ваша корзина</b>", "Нажимайте «−» и «＋», чтобы изменить количество.", ""]
+        lines = ["🛒 <b>Ваша корзина</b>", "Для каждого блюда кнопки управления расположены прямо под его названием."]
         controls = []
         total_quantity = 0
-        for row in result.results:
+        for position, row in enumerate(result.results, start=1):
             item_id, quantity = int(row.id), int(row.quantity)
             total_quantity += quantity
-            lines.append(f"• <b>{esc(row.item_name)}</b> — {quantity} × {esc(row.price_text)}")
+            prefix = f"{position}. "
+            suffix = f" · {quantity} шт. · {row.price_text}"
+            name_limit = max(1, 64 - len(prefix) - len(suffix))
+            name = str(row.item_name)
+            if len(name) > name_limit:
+                name = name[:name_limit - 1].rstrip() + "…"
+            controls.append([btn(f"{prefix}{name}{suffix}", "noop")])
             controls.append([
                 btn("−", f"cart:dec:{item_id}"),
                 btn(f"{quantity} шт.", "noop"),
