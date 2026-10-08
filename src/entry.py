@@ -516,7 +516,7 @@ class Bot(WorkerEntrypoint):
         )
         if not result.results:
             return (
-                "🛒 <b>Корзина пуста</b>\\n\\nОткройте основное меню и добавьте понравившиеся блюда.\\n\\nЗаказать через бота пока нельзя — корзина только сохраняет выбранные позиции.",
+                "🛒 <b>Корзина пуста</b>\n\nОткройте основное меню и добавьте понравившиеся блюда.\n\nЗаказать через бота пока нельзя — корзина только сохраняет выбранные позиции.",
                 ikb([[btn("🍽 К основному меню", "home:menu")], [btn("🏠 На главную", "back")]]),
             )
         lines = ["🛒 <b>Ваша корзина</b>"]
@@ -559,7 +559,7 @@ class Bot(WorkerEntrypoint):
             [btn("🍽 К основному меню", "home:menu")],
             [btn("🏠 На главную", "back")],
         ])
-        return "\\n".join(lines), ikb(controls)
+        return "\n".join(lines), ikb(controls)
 
     async def admin_panel_text(self):
         r = await self.db_first(
