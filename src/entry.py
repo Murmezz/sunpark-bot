@@ -587,7 +587,7 @@ class Bot(WorkerEntrypoint):
             [btn("🗑 Удалить позицию", f"cart:remove:{item_id}")],
             [btn("↩️ К корзине", "cart:view")],
         ])
-        return "\\n".join(lines), ikb(controls)
+        return "\n".join(lines), ikb(controls)
 
     async def admin_panel_text(self):
         r = await self.db_first(
