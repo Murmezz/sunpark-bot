@@ -228,6 +228,10 @@ class Bot(WorkerEntrypoint):
         await self.db_run("CREATE TABLE IF NOT EXISTS ticket_reminders (ticket_number INTEGER PRIMARY KEY, message_id INTEGER NOT NULL, reminded_at TEXT NOT NULL DEFAULT (datetime('now')))")
         await self.db_run("CREATE TABLE IF NOT EXISTS ticket_manager_notices (ticket_number INTEGER NOT NULL, manager_id INTEGER NOT NULL, message_id INTEGER NOT NULL, body TEXT NOT NULL, PRIMARY KEY(ticket_number,manager_id))")
         await self.db_run("CREATE TABLE IF NOT EXISTS guest_cart (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, sku TEXT NOT NULL, menu_key TEXT NOT NULL, section TEXT NOT NULL DEFAULT '', item_name TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', price_text TEXT NOT NULL DEFAULT '', quantity INTEGER NOT NULL DEFAULT 1, updated_at TEXT NOT NULL DEFAULT (datetime('now')), UNIQUE(user_id,sku))")
+        await self.db_run("CREATE TABLE IF NOT EXISTS admin_broadcasts (id INTEGER PRIMARY KEY AUTOINCREMENT, body TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', created_by TEXT NOT NULL DEFAULT 'assistant', created_at TEXT NOT NULL DEFAULT (datetime('now')), completed_at TEXT NOT NULL DEFAULT '')")
+        await self.db_run("CREATE TABLE IF NOT EXISTS admin_broadcast_deliveries (broadcast_id INTEGER NOT NULL, manager_id INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'pending', attempts INTEGER NOT NULL DEFAULT 0, last_error TEXT NOT NULL DEFAULT '', sent_at TEXT NOT NULL DEFAULT '', PRIMARY KEY(broadcast_id,manager_id))")
+        await self.db_run("CREATE INDEX IF NOT EXISTS admin_broadcast_status_idx ON admin_broadcasts(status,id)")
+        await self.db_run("CREATE INDEX IF NOT EXISTS admin_broadcast_delivery_status_idx ON admin_broadcast_deliveries(broadcast_id,status)")
         await self.db_run("CREATE INDEX IF NOT EXISTS guest_cart_user_idx ON guest_cart(user_id,id)")
         rows = await self.db_all("SELECT key,value FROM config")
         cfg = {str(r.key): r.value for r in rows.results}
@@ -2135,10 +2139,96 @@ class Bot(WorkerEntrypoint):
 
             return Response("ok")
 
+    async def process_admin_broadcasts(self, cfg):
+        managers = sorted(await self.manager_ids(cfg))
+        if not managers:
+            return
+        broadcasts = await self.db_all(
+            "SELECT id,body FROM admin_broadcasts WHERE status='pending' ORDER BY id LIMIT 10"
+        )
+        for broadcast in broadcasts.results:
+            broadcast_id = int(broadcast.id)
+            body = str(broadcast.body or "")
+            if len(body) > 4096:
+                await self.db_run(
+                    "UPDATE admin_broadcasts SET status='failed',completed_at=datetime('now') WHERE id=? AND status='pending'",
+                    broadcast_id,
+                )
+                await self.db_run(
+                    "UPDATE admin_broadcast_deliveries SET status='failed',last_error='Message exceeds Telegram 4096 character limit' WHERE broadcast_id=? AND status='pending'",
+                    broadcast_id,
+                )
+                continue
+
+            await self.db_run(
+                "UPDATE admin_broadcast_deliveries SET status='pending' "
+                "WHERE broadcast_id=? AND status='sending' AND sent_at='' "
+                "AND attempts>0 AND datetime('now')>=datetime((SELECT created_at FROM admin_broadcasts WHERE id=?),'+2 minutes')",
+                broadcast_id, broadcast_id,
+            )
+            for manager_id in managers:
+                await self.db_run(
+                    "INSERT OR IGNORE INTO admin_broadcast_deliveries(broadcast_id,manager_id) VALUES(?,?)",
+                    broadcast_id, manager_id,
+                )
+
+            deliveries = await self.db_all(
+                "SELECT manager_id FROM admin_broadcast_deliveries "
+                "WHERE broadcast_id=? AND status='pending' ORDER BY manager_id LIMIT 50",
+                broadcast_id,
+            )
+            for delivery in deliveries.results:
+                manager_id = int(delivery.manager_id)
+                claimed = await self.db_run(
+                    "UPDATE admin_broadcast_deliveries SET status='sending',attempts=attempts+1 "
+                    "WHERE broadcast_id=? AND manager_id=? AND status='pending'",
+                    broadcast_id, manager_id,
+                )
+                if not int(claimed.meta.changes or 0):
+                    continue
+                try:
+                    await self.send(manager_id, body)
+                    await self.db_run(
+                        "UPDATE admin_broadcast_deliveries SET status='sent',last_error='',sent_at=datetime('now') "
+                        "WHERE broadcast_id=? AND manager_id=? AND status='sending'",
+                        broadcast_id, manager_id,
+                    )
+                except Exception as e:
+                    await self.db_run(
+                        "UPDATE admin_broadcast_deliveries SET status='failed',last_error=? "
+                        "WHERE broadcast_id=? AND manager_id=? AND status='sending'",
+                        str(e)[:500], broadcast_id, manager_id,
+                    )
+                    print("SUNPARK ADMIN BROADCAST DELIVERY ERROR:", broadcast_id, manager_id, repr(e))
+
+            summary = await self.db_first(
+                "SELECT SUM(status='pending') pending,SUM(status='sending') sending,"
+                "SUM(status='sent') sent,SUM(status='failed') failed "
+                "FROM admin_broadcast_deliveries WHERE broadcast_id=?",
+                broadcast_id,
+            )
+            pending = int(summary.pending or 0) + int(summary.sending or 0)
+            failed = int(summary.failed or 0)
+            sent = int(summary.sent or 0)
+            if pending:
+                status = "pending"
+            elif failed and sent:
+                status = "partial"
+            elif failed:
+                status = "failed"
+            else:
+                status = "sent"
+            if status != "pending":
+                await self.db_run(
+                    "UPDATE admin_broadcasts SET status=?,completed_at=datetime('now') WHERE id=? AND status='pending'",
+                    status, broadcast_id,
+                )
+
     async def scheduled(self, controller, env, ctx):
         """Remind the responsible manager once after 15 minutes without a reply."""
         try:
             _, _, _, cfg = await self.config()
+            await self.process_admin_broadcasts(cfg)
             rows = await self.db_all(
                 "SELECT t.number,t.guest_id,t.manager_id,t.status,d.request_type,d.payload,"
                 "COALESCE((SELECT MAX(tm.id) FROM ticket_messages tm WHERE tm.ticket_number=t.number),0) latest_id,"
