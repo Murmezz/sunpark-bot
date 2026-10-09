@@ -2173,7 +2173,7 @@ class Bot(WorkerEntrypoint):
                 "UPDATE admin_broadcast_deliveries SET status='pending' "
                 "WHERE broadcast_id=? AND status='sending' "
                 "AND attempts>0 AND datetime('now')>=datetime(sent_at,'+2 minutes')",
-                broadcast_id, broadcast_id,
+                broadcast_id,
             )
             for manager_id in managers:
                 await self.db_run(
