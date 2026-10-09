@@ -229,7 +229,7 @@ class Bot(WorkerEntrypoint):
         await self.db_run("CREATE TABLE IF NOT EXISTS ticket_manager_notices (ticket_number INTEGER NOT NULL, manager_id INTEGER NOT NULL, message_id INTEGER NOT NULL, body TEXT NOT NULL, PRIMARY KEY(ticket_number,manager_id))")
         await self.db_run("CREATE TABLE IF NOT EXISTS guest_cart (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, sku TEXT NOT NULL, menu_key TEXT NOT NULL, section TEXT NOT NULL DEFAULT '', item_name TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', price_text TEXT NOT NULL DEFAULT '', quantity INTEGER NOT NULL DEFAULT 1, updated_at TEXT NOT NULL DEFAULT (datetime('now')), UNIQUE(user_id,sku))")
         await self.db_run("CREATE TABLE IF NOT EXISTS admin_broadcasts (id INTEGER PRIMARY KEY AUTOINCREMENT, body TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', created_by TEXT NOT NULL DEFAULT 'assistant', created_at TEXT NOT NULL DEFAULT (datetime('now')), completed_at TEXT NOT NULL DEFAULT '')")
-        await self.db_run("CREATE TABLE IF NOT EXISTS admin_broadcast_deliveries (broadcast_id INTEGER NOT NULL, manager_id INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'pending', attempts INTEGER NOT NULL DEFAULT 0, last_error TEXT NOT NULL DEFAULT '', sent_at TEXT NOT NULL DEFAULT '', PRIMARY KEY(broadcast_id,manager_id))")
+        await self.db_run("CREATE TABLE IF NOT EXISTS admin_broadcast_deliveries (broadcast_id INTEGER NOT NULL, manager_id INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'pending', attempts INTEGER NOT NULL DEFAULT 0, last_error TEXT NOT NULL DEFAULT '', sent_at TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL DEFAULT (datetime('now')), PRIMARY KEY(broadcast_id,manager_id))")
         await self.db_run("CREATE INDEX IF NOT EXISTS admin_broadcast_status_idx ON admin_broadcasts(status,id)")
         await self.db_run("CREATE INDEX IF NOT EXISTS admin_broadcast_delivery_status_idx ON admin_broadcast_deliveries(broadcast_id,status)")
         await self.db_run("CREATE INDEX IF NOT EXISTS guest_cart_user_idx ON guest_cart(user_id,id)")
@@ -2161,9 +2161,9 @@ class Bot(WorkerEntrypoint):
                 continue
 
             await self.db_run(
-                "UPDATE admin_broadcast_deliveries SET status='pending' "
+                "UPDATE admin_broadcast_deliveries SET status='pending',updated_at=datetime('now') "
                 "WHERE broadcast_id=? AND status='sending' AND sent_at='' "
-                "AND attempts>0 AND datetime('now')>=datetime((SELECT created_at FROM admin_broadcasts WHERE id=?),'+2 minutes')",
+                "AND attempts>0 AND datetime('now')>=datetime(updated_at,'+2 minutes')",
                 broadcast_id, broadcast_id,
             )
             for manager_id in managers:
@@ -2180,7 +2180,7 @@ class Bot(WorkerEntrypoint):
             for delivery in deliveries.results:
                 manager_id = int(delivery.manager_id)
                 claimed = await self.db_run(
-                    "UPDATE admin_broadcast_deliveries SET status='sending',attempts=attempts+1 "
+                    "UPDATE admin_broadcast_deliveries SET status='sending',attempts=attempts+1,updated_at=datetime('now') "
                     "WHERE broadcast_id=? AND manager_id=? AND status='pending'",
                     broadcast_id, manager_id,
                 )
