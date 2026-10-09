@@ -228,8 +228,17 @@ class Bot(WorkerEntrypoint):
         await self.db_run("CREATE TABLE IF NOT EXISTS ticket_reminders (ticket_number INTEGER PRIMARY KEY, message_id INTEGER NOT NULL, reminded_at TEXT NOT NULL DEFAULT (datetime('now')))")
         await self.db_run("CREATE TABLE IF NOT EXISTS ticket_manager_notices (ticket_number INTEGER NOT NULL, manager_id INTEGER NOT NULL, message_id INTEGER NOT NULL, body TEXT NOT NULL, PRIMARY KEY(ticket_number,manager_id))")
         await self.db_run("CREATE TABLE IF NOT EXISTS guest_cart (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, sku TEXT NOT NULL, menu_key TEXT NOT NULL, section TEXT NOT NULL DEFAULT '', item_name TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', price_text TEXT NOT NULL DEFAULT '', quantity INTEGER NOT NULL DEFAULT 1, updated_at TEXT NOT NULL DEFAULT (datetime('now')), UNIQUE(user_id,sku))")
-        await self.db_run("CREATE TABLE IF NOT EXISTS admin_broadcasts (id INTEGER PRIMARY KEY AUTOINCREMENT, request_key TEXT NOT NULL UNIQUE, body TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', created_by TEXT NOT NULL DEFAULT 'assistant', created_at TEXT NOT NULL DEFAULT (datetime('now')), completed_at TEXT NOT NULL DEFAULT '')")
+        await self.db_run("CREATE TABLE IF NOT EXISTS admin_broadcasts (id INTEGER PRIMARY KEY AUTOINCREMENT, request_key TEXT NOT NULL DEFAULT '', body TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', created_by TEXT NOT NULL DEFAULT 'assistant', created_at TEXT NOT NULL DEFAULT (datetime('now')), completed_at TEXT NOT NULL DEFAULT '')")
         await self.db_run("CREATE TABLE IF NOT EXISTS admin_broadcast_deliveries (broadcast_id INTEGER NOT NULL, manager_id INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'pending', attempts INTEGER NOT NULL DEFAULT 0, last_error TEXT NOT NULL DEFAULT '', sent_at TEXT NOT NULL DEFAULT '', PRIMARY KEY(broadcast_id,manager_id))")
+        broadcast_columns = await self.db_all("PRAGMA table_info(admin_broadcasts)")
+        if not any(str(column.name) == "request_key" for column in broadcast_columns.results):
+            try:
+                await self.db_run("ALTER TABLE admin_broadcasts ADD COLUMN request_key TEXT NOT NULL DEFAULT ''")
+            except Exception:
+                broadcast_columns = await self.db_all("PRAGMA table_info(admin_broadcasts)")
+                if not any(str(column.name) == "request_key" for column in broadcast_columns.results):
+                    raise
+        await self.db_run("CREATE UNIQUE INDEX IF NOT EXISTS admin_broadcast_request_key_idx ON admin_broadcasts(request_key) WHERE request_key <> ''")
         await self.db_run("CREATE INDEX IF NOT EXISTS admin_broadcast_status_idx ON admin_broadcasts(status,id)")
         await self.db_run("CREATE INDEX IF NOT EXISTS admin_broadcast_delivery_status_idx ON admin_broadcast_deliveries(broadcast_id,status)")
         await self.db_run("CREATE INDEX IF NOT EXISTS guest_cart_user_idx ON guest_cart(user_id,id)")
