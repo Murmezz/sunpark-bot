@@ -5,7 +5,7 @@ compatibility_flags = ["python_workers", "disable_python_external_sdk"]
 keep_vars = true
 
 [triggers]
-crons = ["*/5 * * * *"]
+crons = ["* * * * *"]
 
 [observability.logs]
 enabled = true
