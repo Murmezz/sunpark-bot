@@ -10,7 +10,7 @@ Send HTML in `body` (Telegram HTML parse mode, maximum 4096 characters). Generat
 
 ```json
 {
-  "sql": "INSERT INTO admin_broadcasts(request_key,body,created_by) VALUES(?,?, 'assistant') ON CONFLICT(request_key) DO NOTHING",
+  "sql": "INSERT INTO admin_broadcasts(request_key,body,created_by) VALUES(?,?, 'assistant') ON CONFLICT DO NOTHING",
   "params": ["<b>Update title</b>\n\nMessage text", "UUID-FOR-THIS-BROADCAST"]
 }
 ```
