@@ -7,6 +7,9 @@ import asyncio
 import re
 from validation import valid_date, valid_time, valid_guests, normalize_phone
 
+# Temporary catalogue mode. Set False and redeploy to restore all features.
+MENU_ONLY = True
+
 BANQUET_MAIN_SECTIONS = [
     ("🥂 Банкетные предложения", [0, 1, 2]),
     ("🍖 Горячие блюда", [3, 4]),
@@ -286,6 +289,59 @@ class Bot(WorkerEntrypoint):
     async def is_manager(self, uid, cfg):
         return uid in await self.manager_ids(cfg)
 
+
+    def menu_only_main(self, menu, sections):
+        visible = [
+            (title, [key for key in keys if key in menu and key != "banquet"])
+            for title, keys in sections
+        ]
+        visible = [(title, keys) for title, keys in visible if keys]
+        return self.menu_only_markup(self.main_keyboard(menu, visible))
+
+    def menu_only_markup(self, markup):
+        rows = []
+        for row in markup.get("inline_keyboard", []):
+            kept = []
+            for button in row:
+                data = button.get("callback_data", "")
+                if data in ("noop", "back", "home:menu"):
+                    kept.append(button)
+                elif data.startswith(("cat:", "item:")) and data.split(":")[1] != "banquet":
+                    kept.append(button)
+            if kept:
+                rows.append(kept)
+        return ikb(rows)
+
+    async def menu_only_callback(self, cb, menu, sections):
+        msg = cb.get("message")
+        if not msg:
+            await self.answer(cb.get("id"))
+            return
+        data = str(cb.get("data") or "")
+        if data == "noop":
+            await self.answer(cb.get("id"))
+            return
+        text = "🍽 <b>Основное меню SUNPARK</b>\n\nВыберите раздел:"
+        markup = self.menu_only_main(menu, sections)
+        if data.startswith("cat:"):
+            key = data[4:]
+            if key in menu and key != "banquet":
+                cat = menu[key]
+                text = f'<b>{esc(cat.get("emoji", ""))} {esc(cat.get("title", key))}</b>\n\nНажмите на блюдо, чтобы посмотреть состав и цену.'
+                markup = self.menu_only_markup(self.category_keyboard(menu, key))
+        elif data.startswith("item:"):
+            parts = data.split(":")
+            try:
+                key, index = parts[1], int(parts[2])
+                valid = len(parts) == 3 and key in menu and key != "banquet" and 0 <= index < len(items(menu[key]))
+            except (ValueError, IndexError):
+                valid = False
+            if valid:
+                text = self.item_text(menu, key, index)
+                markup = self.menu_only_markup(self.item_back(key, index))
+        await self.edit(msg, text, markup)
+        await self.answer(cb.get("id"))
+
     def home_text(self):
         return "👋 <b>Здравствуйте!</b>\n\n🌿 Это меню <b>SUNPARK</b>.\nВыберите, что хотите посмотреть:"
 
@@ -302,6 +358,8 @@ class Bot(WorkerEntrypoint):
         return ikb(rows)
 
     def persistent(self, manager, has_open_ticket=False):
+        if MENU_ONLY:
+            return {"keyboard": [[{"text": "🏠 Главное меню"}]], "resize_keyboard": True, "is_persistent": True}
         rows = [[{"text": "🏠 Главное меню"}]]
         if not manager and has_open_ticket:
             rows.insert(0, [{"text": "💬 Ответить менеджеру"}])
@@ -1205,6 +1263,13 @@ class Bot(WorkerEntrypoint):
         return esc(name) + (f" @{esc(user.get('username'))}" if user.get("username") else "")
 
     async def message(self, msg, menu, sections, info, cfg):
+        if MENU_ONLY:
+            chat = msg.get("chat") or {}
+            if chat.get("type") == "private" and chat.get("id"):
+                uid = int(chat["id"])
+                await self.send(uid, "🌿 <b>SUNPARK</b>", self.persistent(False))
+                await self.send(uid, "🍽 <b>Основное меню SUNPARK</b>\n\nВыберите раздел:", self.menu_only_main(menu, sections))
+            return
         text = msg.get("text") or msg.get("caption") or ""
         attachment, attachment_error = self.message_attachment(msg)
         if attachment and attachment.get("media_group_id") and msg.get("message_id") is not None:
@@ -1470,6 +1535,9 @@ class Bot(WorkerEntrypoint):
             await self.send(uid, confirmation, await self.guest_persistent(uid))
 
     async def callback(self, cb, menu, sections, info, cfg):
+        if MENU_ONLY:
+            await self.menu_only_callback(cb, menu, sections)
+            return
         data = cb.get("data", "")
         uid = int((cb.get("from") or {}).get("id"))
         msg = cb.get("message")
@@ -2235,6 +2303,8 @@ class Bot(WorkerEntrypoint):
 
     async def scheduled(self, controller, env, ctx):
         """Remind the responsible manager once after 15 minutes without a reply."""
+        if MENU_ONLY:
+            return
         try:
             _, _, _, cfg = await self.config()
             await self.process_admin_broadcasts(cfg)
