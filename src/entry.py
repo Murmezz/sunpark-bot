@@ -1,4 +1,5 @@
 from workers import WorkerEntrypoint, Response, fetch
+from events import EventsMixin
 from urllib.parse import urlparse
 import json
 import html
@@ -86,7 +87,7 @@ def items(cat):
     return out
 
 
-class Bot(WorkerEntrypoint):
+class Bot(EventsMixin, WorkerEntrypoint):
     def db_args(self, args):
         """Normalize Pyodide/JavaScript values before binding them to D1.
 
@@ -216,6 +217,7 @@ class Bot(WorkerEntrypoint):
             pass
 
     async def config(self):
+        await self.event_init()
         await self.db_run("CREATE TABLE IF NOT EXISTS manager_states (user_id INTEGER PRIMARY KEY, action TEXT NOT NULL)")
         await self.db_run(
             "CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, username TEXT, first_name TEXT, last_name TEXT, updated_at TEXT NOT NULL)"
@@ -348,6 +350,7 @@ class Bot(WorkerEntrypoint):
             [btn("🍽 Основное меню", "home:menu")],
             [btn("🥂 Хочу провести банкет", "banquet:contact")],
             [btn("📅 Забронировать стол", "booking:start")],
+            [btn("🎟 Мероприятия", "ev:list:0")],
             [btn("ℹ️ Частые вопросы", "faq")],
         ]
         if manager:
@@ -481,6 +484,7 @@ class Bot(WorkerEntrypoint):
             [btn("🔎 Поиск заявок", "admin:search")],
             [btn("📊 Статистика", "admin:stats")],
             [btn("👥 Менеджеры", "admin:managers")],
+            [btn("🎟 Мероприятия", "ev:manage:0")],
             [btn("👀 Открыть как гость", "admin:guest")],
         ])
 
@@ -1075,6 +1079,8 @@ class Bot(WorkerEntrypoint):
                 await self.send(uid, "🌿 <b>SUNPARK</b>", self.persistent(False))
                 await self.send(uid, "🍽 <b>Основное меню SUNPARK</b>\n\nВыберите раздел:", self.menu_only_main(menu, sections))
             return
+        if await self.event_message(msg, cfg):
+            return
         text = msg.get("text") or msg.get("caption") or ""
         attachment, attachment_error = self.message_attachment(msg)
         if attachment and attachment.get("media_group_id") and msg.get("message_id") is not None:
@@ -1342,6 +1348,8 @@ class Bot(WorkerEntrypoint):
     async def callback(self, cb, menu, sections, info, cfg):
         if MENU_ONLY:
             await self.menu_only_callback(cb, menu, sections)
+            return
+        if await self.event_callback(cb, cfg):
             return
         data = cb.get("data", "")
         uid = int((cb.get("from") or {}).get("id"))
