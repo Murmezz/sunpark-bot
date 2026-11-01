@@ -8,7 +8,7 @@ import re
 from validation import valid_date, valid_time, valid_guests, normalize_phone
 
 # Temporary catalogue mode. Set False and redeploy to restore all features.
-MENU_ONLY = True
+MENU_ONLY = False
 
 BANQUET_MAIN_SECTIONS = [
     ("🥂 Банкетные предложения", [0, 1, 2]),
