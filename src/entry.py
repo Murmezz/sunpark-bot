@@ -350,9 +350,10 @@ class Bot(EventsMixin, WorkerEntrypoint):
             [btn("🍽 Основное меню", "home:menu")],
             [btn("🥂 Хочу провести банкет", "banquet:contact")],
             [btn("📅 Забронировать стол", "booking:start")],
-            [btn("🎟 Мероприятия", "ev:list:0")],
             [btn("ℹ️ Частые вопросы", "faq")],
         ]
+        if self.events_visible(manager):
+            rows.insert(3, [btn("🎟 Мероприятия", "ev:list:0")])
         if manager:
             rows.append([btn("⚙️ Админ-панель", "admin:panel")])
         return ikb(rows)

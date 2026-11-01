@@ -12,6 +12,7 @@ from types import SimpleNamespace as NS
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'src'))
+import events as event_module
 from events import EventsMixin, russian_phone
 
 tree = ast.parse((ROOT / 'src' / 'entry.py').read_text())
@@ -68,9 +69,37 @@ def message(text='', uid=2, username=None, contact=None):
 
 class EventsTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
+        event_module.EVENTS_ADMIN_ONLY = False
         self.bot = Harness()
         await self.bot.event_init()
         await self.bot.db_run("INSERT INTO events(title,description,starts_at,location,price,capacity,is_open,created_by,creation_key) VALUES(?,?,?,?,?,?,?,?,?)", 'Вечер', 'Описание', '2099-01-01 16:00:00', 'SUNPARK', 'Бесплатно', 5, 1, 1, 'fixture')
+
+    async def test_admin_preview_hides_guest_button_and_preserves_admin_test_route(self):
+        event_module.EVENTS_ADMIN_ONLY = True
+        guest_buttons = [b['callback_data'] for row in self.bot.home_keyboard(False)['inline_keyboard'] for b in row]
+        admin_buttons = [b['callback_data'] for row in self.bot.home_keyboard(True)['inline_keyboard'] for b in row]
+        self.assertNotIn('ev:list:0', guest_buttons)
+        self.assertIn('ev:list:0', admin_buttons)
+        for data in ['ev:list:0', 'ev:view:1', 'ev:join:1', 'ev:save:old', 'ev:cancel:1:1']:
+            await self.bot.event_callback(callback(data, 2), {})
+            self.assertIn('только администраторам', self.bot.answers[-1][1])
+        self.assertFalse(self.bot.edited)
+        await self.bot.event_callback(callback('ev:join:1', 1), {})
+        self.assertIsNotNone(await self.bot.db_first('SELECT * FROM event_sessions WHERE user_id=1'))
+        self.assertEqual((await self.bot.event_get(1)).self_guests, 0)
+
+    async def test_admin_preview_rejects_commands_and_unfinished_guest_sessions(self):
+        event_module.EVENTS_ADMIN_ONLY = True
+        await self.bot.event_message(message('/events'), {})
+        self.assertIn('только администраторам', self.bot.sent[-1][1])
+        await self.bot.event_new_session(2, 'self', 1)
+        await self.bot.event_message(message('Иван'), {})
+        self.assertIsNone(await self.bot.db_first('SELECT * FROM event_sessions WHERE user_id=2'))
+        await self.bot.event_new_session(2, 'self', 1)
+        await self.bot.event_save(2, 'anything', False)
+        self.assertIsNone(await self.bot.db_first('SELECT * FROM event_sessions WHERE user_id=2'))
+        await self.bot.event_message(message('/events', uid=1), {})
+        self.assertIn('Мероприятия', self.bot.sent[-1][1])
 
     def person(self, phone='+79991234567', size=1):
         return {'first_name': 'Иван', 'last_name': 'Иванов', 'phone': phone, 'party_size': size, 'telegram_username': ''}

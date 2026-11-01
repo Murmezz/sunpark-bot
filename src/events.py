@@ -53,9 +53,14 @@ PERSON_FIELDS = [
     ("telegram_username", "Telegram-ник контактного лица, если есть. Можно нажать «Пропустить»:"),
 ]
 MSK = timezone(timedelta(hours=3))
+# Temporary preview: allow event functionality only to existing administrators.
+EVENTS_ADMIN_ONLY = True
 
 
 class EventsMixin:
+    def events_visible(self, manager):
+        return not EVENTS_ADMIN_ONLY or bool(manager)
+
     async def event_init(self):
         await self.db_run("CREATE TABLE IF NOT EXISTS events (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', starts_at TEXT NOT NULL, location TEXT NOT NULL, price TEXT NOT NULL, capacity INTEGER NOT NULL CHECK(capacity BETWEEN 1 AND 100000), is_open INTEGER NOT NULL DEFAULT 0, created_by INTEGER NOT NULL, creation_key TEXT NOT NULL UNIQUE, version INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT (datetime('now')))")
         await self.db_run("CREATE TABLE IF NOT EXISTS event_registrations (id INTEGER PRIMARY KEY AUTOINCREMENT, event_id INTEGER NOT NULL REFERENCES events(id), first_name TEXT NOT NULL, last_name TEXT NOT NULL, phone TEXT NOT NULL, party_size INTEGER NOT NULL CHECK(party_size BETWEEN 1 AND 100000), telegram_id INTEGER, telegram_username TEXT NOT NULL DEFAULT '', added_by_admin INTEGER NOT NULL DEFAULT 0, admin_id INTEGER, created_at TEXT NOT NULL DEFAULT (datetime('now')), UNIQUE(event_id,phone), UNIQUE(event_id,telegram_id))")
@@ -219,6 +224,12 @@ class EventsMixin:
         command = text.split()[0].split("@")[0] if text else ""
         session = await self.db_first("SELECT * FROM event_sessions WHERE user_id=?", uid)
         mgr = await self.is_manager(uid, cfg)
+        if not self.events_visible(mgr):
+            if session or command == "/events":
+                await self.event_clear_session(uid)
+                await self.send(uid, "Раздел мероприятий пока доступен только администраторам.", self.persistent(False))
+                return True
+            return False
         if command == "/events":
             await self.event_clear_session(uid)
             await self.clear_action(uid)
@@ -295,6 +306,10 @@ class EventsMixin:
             payload["first_name"], payload["last_name"], payload["phone"], payload["party_size"], 1 if manual else 0, uid, payload.get("telegram_username") or "", 1 if manual else 0, 1 if manual else 0, uid, event_id, 1 if manual else 0, payload["party_size"])
 
     async def event_save(self, uid, nonce, mgr):
+        if not self.events_visible(mgr):
+            await self.event_clear_session(uid)
+            await self.send(uid, "Раздел мероприятий пока доступен только администраторам.")
+            return
         s = await self.db_first("SELECT * FROM event_sessions WHERE user_id=? AND nonce=?", uid, nonce)
         if not s or int(s.step) != len(self.event_fields(s)):
             await self.send(uid, "Это подтверждение уже обработано или устарело.")
@@ -347,6 +362,10 @@ class EventsMixin:
             await self.answer(cb.get("id"))
             return True
         mgr = await self.is_manager(uid, cfg)
+        if not self.events_visible(mgr):
+            await self.event_clear_session(uid)
+            await self.answer(cb.get("id"), "Раздел мероприятий пока доступен только администраторам.", True)
+            return True
         parts = data.split(":")
         action = parts[1] if len(parts) > 1 else ""
         admin_actions = {"manage", "create", "admin", "settings", "edit", "toggle", "manual", "guests", "deleteask", "delete"}
