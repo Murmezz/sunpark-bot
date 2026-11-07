@@ -1,5 +1,6 @@
 from workers import WorkerEntrypoint, Response, fetch
 from events import EventsMixin
+from menu_preview import MenuPreviewMixin
 from urllib.parse import urlparse
 import json
 import html
@@ -87,7 +88,7 @@ def items(cat):
     return out
 
 
-class Bot(EventsMixin, WorkerEntrypoint):
+class Bot(MenuPreviewMixin, EventsMixin, WorkerEntrypoint):
     def db_args(self, args):
         """Normalize Pyodide/JavaScript values before binding them to D1.
 
@@ -486,6 +487,7 @@ class Bot(EventsMixin, WorkerEntrypoint):
             [btn("📊 Статистика", "admin:stats")],
             [btn("👥 Менеджеры", "admin:managers")],
             [btn("🎟 Мероприятия", "ev:manage:0")],
+            [btn("👁 Просмотр меню", "mp:home")],
             [btn("👀 Открыть как гость", "admin:guest")],
         ])
 
@@ -1347,6 +1349,8 @@ class Bot(EventsMixin, WorkerEntrypoint):
             await self.send(uid, confirmation, await self.guest_persistent(uid))
 
     async def callback(self, cb, menu, sections, info, cfg):
+        if await self.menu_preview_callback(cb, menu, sections, cfg):
+            return
         if MENU_ONLY:
             await self.menu_only_callback(cb, menu, sections)
             return
@@ -1732,6 +1736,9 @@ class Bot(EventsMixin, WorkerEntrypoint):
         await self.answer(cb.get("id"))
 
     async def fetch(self, request):
+        preview_response = await self.menu_preview_http(request)
+        if preview_response is not None:
+            return preview_response
         # Telegram webhook must always receive HTTP 200.
         # Keep diagnostics inside the response path so one bad update
         # cannot make the webhook return 500.

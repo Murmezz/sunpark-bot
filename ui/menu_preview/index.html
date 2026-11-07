@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <title>SUNPARK · Меню</title>
+  <link rel="stylesheet" href="/menu-preview.css">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="/menu-preview.js" defer></script>
+</head>
+<body>
+  <div class="app">
+    <header class="masthead">
+      <div class="topline"><span class="eyebrow">КУХНЯ · БАР · ХОРОШИЙ ДЕНЬ</span><button id="theme-switch" class="theme-switch" aria-label="Сменить вариант оформления">Сменить вид</button></div>
+      <div class="brand"><svg class="brand-symbol" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 55V29M32 40C13 40 9 21 9 12c20 0 23 12 23 28Zm0-9C32 11 45 7 57 7c0 18-10 24-25 24Z" fill="none" stroke="currentColor" stroke-width="2.5"/></svg><h1>SUNPARK<span>меню</span></h1><span class="edition" id="edition">04 / ДНЕВНОЙ</span></div>
+      <p class="intro" id="intro">Найдите своё любимое.</p>
+      <label class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path d="m15 15 5 5"/></svg><input id="search" type="search" placeholder="Найти блюдо или напиток" autocomplete="off" aria-label="Поиск по меню"><kbd>⌕</kbd></label>
+    </header>
+    <nav id="groups" class="groups" aria-label="Части меню"></nav>
+    <main>
+      <nav id="categories" class="categories" aria-label="Разделы меню"></nav>
+      <div class="section-heading"><div><span class="eyebrow" id="section-kicker">МЕНЮ SUNPARK</span><h2 id="section-title">Загружаем меню…</h2></div><span id="item-count" class="count"></span></div>
+      <div id="status" class="status" role="status" aria-live="polite">Проверяем доступ администратора…</div>
+      <div id="items" class="items"></div>
+      <p id="category-footer" class="category-footer"></p>
+    </main>
+    <footer class="page-footer"><span>SUNPARK</span><span>Состав — по нажатию на блюдо</span></footer>
+  </div>
+  <dialog id="dish-dialog" aria-labelledby="dish-name">
+    <button id="close-dialog" class="close-dialog" aria-label="Закрыть состав">×</button>
+    <div class="sheet-handle" aria-hidden="true"></div>
+    <span class="eyebrow" id="dish-section"></span>
+    <h2 id="dish-name"></h2>
+    <p class="dish-price" id="dish-price"></p>
+    <div class="detail-rule"></div>
+    <h3>Состав и подача</h3>
+    <p id="dish-description" class="dish-description"></p>
+    <p id="dish-footer" class="dish-footer"></p>
+    <button id="back-to-menu" class="back-to-menu">Вернуться к меню</button>
+  </dialog>
+</body>
+</html>
