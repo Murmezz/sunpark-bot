@@ -5,3 +5,49 @@ body.night{--bg:#141b19;--surface:#1d2723;--ink:#ece7d9;--muted:#929e95;--line:#
 @media(prefers-reduced-motion:no-preference){.item-row,.categories button,.groups button{transition:background .15s,color .15s}dialog[open]{animation:appear .18s ease-out}@keyframes appear{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}}
 
 .item-row .arrow{width:7px;height:7px;display:block;border-top:1px solid currentColor;border-right:1px solid currentColor;transform:rotate(45deg)}
+
+/* Variant 4: original SUNPARK printed menu, adapted to a phone. */
+.pdf-logo{display:none}
+body.pdf-menu{display:flow-root;--bg:#fff;--surface:#fff;--ink:#210b06;--muted:#796e67;--line:#c4d4bd;--accent:#edf4e9;--accent-ink:#3c7328;--gold:#3c7328;background-color:#fff;background-image:url("__SUNPARK_PATTERN_DATA_URL__");background-repeat:repeat;background-size:510px auto;color-scheme:light}
+.pdf-menu .app{width:calc(100% - 40px);max-width:720px;margin:22px auto 26px;padding:12px 27px 23px;border:2px solid var(--gold);border-radius:22px;background:#fff;min-height:calc(100dvh - 48px)}
+.pdf-menu .topline{min-height:18px;justify-content:flex-end}
+.pdf-menu .topline>.eyebrow{display:none}
+.pdf-menu .theme-switch{font-size:9px;color:#567849;padding:3px 0 7px;opacity:1}
+.pdf-menu .brand{justify-content:center;border:0;padding:0 0 15px;gap:0}
+.pdf-menu .brand-symbol,.pdf-menu .brand h1,.pdf-menu .brand .edition{display:none}
+.pdf-menu .pdf-logo{display:block;width:210px;max-width:80%;height:auto;aspect-ratio:2.5;object-fit:contain}
+.pdf-menu .intro{display:none}
+.pdf-menu .search{padding:10px 12px;border-color:#9fbb91;border-radius:7px;background:#fff}
+.pdf-menu .search input{font-size:12px;color:var(--ink)}
+.pdf-menu .search svg{stroke:var(--gold)}
+.pdf-menu .search kbd{color:var(--gold)}
+.pdf-menu .groups{margin:13px 0 0;padding:8px 0;gap:5px;border-bottom:1px solid var(--line);background:#fff}
+.pdf-menu .groups button{font-size:9px;letter-spacing:1px;border-radius:4px;padding:10px 12px;color:#4a683c}
+.pdf-menu .groups button[aria-pressed=true]{background:var(--gold);color:#fff}
+.pdf-menu .categories{gap:6px;margin:14px 0 20px}
+.pdf-menu .categories button{font-size:10px;border-color:#b4cca8;padding:7px 11px;color:#48653b}
+.pdf-menu .categories button[aria-pressed=true]{background:#eaf2e5;border-color:#8db47c;color:#2d5723}
+.pdf-menu .section-heading{display:block;margin:0 -12px 5px;padding:0;border:0}
+.pdf-menu .section-heading>div{width:100%;display:flex;align-items:center;justify-content:center;gap:13px}
+.pdf-menu .section-heading>div::before,.pdf-menu .section-heading>div::after{content:"";display:block;flex:1;height:1.5px;background:var(--gold)}
+.pdf-menu #section-kicker{display:none}
+.pdf-menu .section-heading h2{font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:600;letter-spacing:1.7px;line-height:1.25;text-align:center;text-transform:uppercase;max-width:74%;margin:0;overflow-wrap:normal;hyphens:auto}
+.pdf-menu .section-heading .count{display:block;margin:8px auto 0;padding:0;font-size:9px;text-align:center;color:#81776f}
+.pdf-menu .item-row{background:#fff;border:0;padding:18px 0;column-gap:13px;grid-template-columns:minmax(0,1fr) auto 7px}
+.pdf-menu .item-row:hover{background:#f8fbf5}
+.pdf-menu .item-row .name{font-size:14px;font-weight:500;line-height:1.4;color:var(--ink)}
+.pdf-menu .item-row .price{font-size:13px;font-weight:400;color:var(--ink)}
+.pdf-menu .item-row .arrow{color:#668851;width:5px;height:5px}
+.pdf-menu .subsection{font-family:Arial,Helvetica,sans-serif;text-align:center;color:var(--ink);letter-spacing:1.6px;font-size:12px;margin:24px 0 7px}
+.pdf-menu .category-footer{font-size:10px;line-height:1.6;border:1px solid #81a86f;border-radius:12px;padding:10px 12px;margin:18px 0 0;color:#6a5e55}
+.pdf-menu .category-footer:empty{display:none}
+.pdf-menu .page-footer{margin-top:24px;border-top:1px solid var(--line);color:#6b775c;padding-top:13px;font-size:9px}
+.pdf-menu .page-footer>span:first-child{color:#3c7328;font-size:10px}
+.pdf-menu dialog{background:#fff;color:var(--ink);border:2px solid var(--gold);border-radius:18px}
+.pdf-menu dialog h2{font-family:Arial,Helvetica,sans-serif;font-size:24px;font-weight:600;line-height:1.3}
+.pdf-menu .dish-price{font-weight:400;font-size:20px}
+.pdf-menu .detail-rule{background:#8daf7b}
+.pdf-menu dialog h3{color:#3c7328;letter-spacing:1.3px}
+.pdf-menu .back-to-menu{background:var(--gold);color:#fff;border-radius:5px}
+@media(max-width:420px){.pdf-menu .app{width:calc(100% - 28px);margin:16px auto 20px;padding:11px 17px 18px;border-radius:19px;min-height:calc(100dvh - 36px)}.pdf-menu .pdf-logo{width:190px}.pdf-menu .section-heading h2{font-size:16px;letter-spacing:1.4px}.pdf-menu .item-row{column-gap:9px;padding:16px 0}.pdf-menu .item-row .name{font-size:13px}.pdf-menu .item-row .price{font-size:12px}.pdf-menu .groups button{padding:9px 10px;font-size:8px}.pdf-menu .section-heading{margin-left:-7px;margin-right:-7px}.pdf-menu dialog{border-bottom:0;border-radius:18px 18px 0 0}}
+

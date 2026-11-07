@@ -8,9 +8,11 @@
   function theme() {
     const dark = variant === 5;
     document.body.classList.toggle('night', dark);
+    document.body.classList.toggle('pdf-menu', !dark);
+    if (!dark && !$('pdf-logo').getAttribute('src')) $('pdf-logo').src = '/menu-preview-logo.svg';
     $('edition').textContent = dark ? '05 / ВЕЧЕРНИЙ' : '04 / ДНЕВНОЙ';
     $('intro').textContent = dark ? 'Вкус вашего вечера.' : 'Найдите своё любимое.';
-    try { tg?.setHeaderColor(dark ? '#141b19' : '#f5f2e9'); tg?.setBackgroundColor(dark ? '#141b19' : '#f5f2e9'); } catch (_) {}
+    try { tg?.setHeaderColor(dark ? '#141b19' : '#ffffff'); tg?.setBackgroundColor(dark ? '#141b19' : '#ffffff'); } catch (_) {}
   }
   function node(tag, className, text) {
     const n = document.createElement(tag);
@@ -98,3 +100,4 @@
   }
   load().catch(error => { $('section-title').textContent = 'Меню SUNPARK'; $('status').textContent = error.message; });
 })();
+

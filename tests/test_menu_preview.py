@@ -171,7 +171,7 @@ class PreviewTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_auth_required_for_api_not_static_shell(self):
         with patch.dict(sys.modules,{'workers':NS(Response=FakeResponse)}):
-            for path in ['/menu-preview','/menu-preview.css','/menu-preview.js']:
+            for path in ['/menu-preview','/menu-preview.css','/menu-preview.js','/menu-preview-logo.svg']:
                 r=await self.bot.menu_preview_http(request(path,'GET'))
                 self.assertEqual(r.status,200)
                 self.assertNotIn(TOKEN,r.body)
@@ -213,3 +213,4 @@ class PreviewTests(unittest.IsolatedAsyncioTestCase):
 
 if __name__=='__main__':
     unittest.main()
+

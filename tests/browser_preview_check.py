@@ -53,7 +53,7 @@ async def main():
     async with async_playwright() as p:
         browser=await p.chromium.launch(headless=True,executable_path=shutil.which('chromium'))
         for variant in [4,5]:
-            for width in [390,820]:
+            for width in [320,390,820]:
                 page=await browser.new_page(viewport={'width':width,'height':844},device_scale_factor=1)
                 errors=[]
                 page.on('pageerror',lambda e:errors.append(str(e)))
@@ -62,6 +62,11 @@ async def main():
                 await page.locator('.item-row').first.wait_for()
                 assert await page.locator('.item-row').count()==14
                 assert await page.evaluate('document.documentElement.scrollWidth <= window.innerWidth')
+                assert await page.locator('.item-row').evaluate_all('(rows)=>rows.every(row=>row.querySelector(".name").getBoundingClientRect().right <= row.querySelector(".price").getBoundingClientRect().left)')
+                if variant==4:
+                    await page.wait_for_function('document.getElementById("pdf-logo").complete && document.getElementById("pdf-logo").naturalWidth > 0')
+                    assert await page.evaluate('getComputedStyle(document.body).backgroundImage.includes("data:image/webp;base64,")')
+                    assert await page.evaluate('getComputedStyle(document.querySelector(".app")).borderTopColor')=='rgb(60, 115, 40)'
                 if variant==5:
                     assert await page.evaluate('getComputedStyle(document.body).backgroundColor')=='rgb(20, 27, 25)'
                     assert await page.evaluate('getComputedStyle(document.querySelector(".item-row .name")).color')=='rgb(236, 231, 217)'
@@ -88,8 +93,9 @@ async def main():
             await page.close()
         await browser.close()
     server.shutdown()
-    print('PASS: both Mini App themes at 390/820px, search, dish details, close buttons, auth rejection, no horizontal overflow or JS errors')
+    print('PASS: both Mini App themes at 320/390/820px, full prices, search, dish details, close buttons, auth rejection, no horizontal overflow or JS errors')
 
 
 if __name__=='__main__':
     asyncio.run(main())
+

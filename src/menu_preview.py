@@ -6,14 +6,14 @@ import json
 import time
 from urllib.parse import parse_qsl, urlparse
 
-from menu_preview_assets import PREVIEW_HTML, PREVIEW_CSS, PREVIEW_JS
+from menu_preview_assets import PREVIEW_HTML, PREVIEW_CSS, PREVIEW_JS, PREVIEW_LOGO
 
 PREVIEW_ORIGIN = "https://sunparkbot.lovison1979.workers.dev"
 VARIANTS = {
     1: ("Навигатор", "Короткие списки и кнопки с ценами"),
     2: ("Меню на листе", "Таблица с кнопками прямо в тексте"),
     3: ("Раскрывающийся состав", "Название и цена; состав по нажатию"),
-    4: ("Светлый SUNPARK", "Mini App · светлый ресторанный стиль"),
+    4: ("Фирменный SUNPARK", "Mini App · оформление печатного меню"),
     5: ("Вечерний SUNPARK", "Mini App · тёмный стиль кухни и бара"),
 }
 
@@ -243,14 +243,14 @@ class MenuPreviewMixin:
         from workers import Response
         parsed = urlparse(str(request.url))
         path = parsed.path.rstrip("/")
-        if path not in ("/menu-preview", "/menu-preview.css", "/menu-preview.js", "/api/menu-preview"):
+        if path not in ("/menu-preview", "/menu-preview.css", "/menu-preview.js", "/menu-preview-logo.svg", "/api/menu-preview"):
             return None
         method = str(request.method)
         headers = {"cache-control": "no-store", "x-content-type-options": "nosniff", "referrer-policy": "no-referrer"}
         if path != "/api/menu-preview":
             if method != "GET":
                 return Response("Method not allowed", status=405, headers=headers)
-            assets = {"/menu-preview": (PREVIEW_HTML, "text/html; charset=utf-8"), "/menu-preview.css": (PREVIEW_CSS, "text/css; charset=utf-8"), "/menu-preview.js": (PREVIEW_JS, "application/javascript; charset=utf-8")}
+            assets = {"/menu-preview": (PREVIEW_HTML, "text/html; charset=utf-8"), "/menu-preview.css": (PREVIEW_CSS, "text/css; charset=utf-8"), "/menu-preview.js": (PREVIEW_JS, "application/javascript; charset=utf-8"), "/menu-preview-logo.svg": (PREVIEW_LOGO, "image/svg+xml; charset=utf-8")}
             body, mime = assets[path]
             headers["content-type"] = mime
             headers["content-security-policy"] = "default-src 'self'; script-src 'self' https://telegram.org; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors https://web.telegram.org https://webk.telegram.org https://webz.telegram.org"
@@ -271,3 +271,4 @@ class MenuPreviewMixin:
             return error("Просмотр вариантов доступен только администраторам.", 403)
         # Return menu only: no config secrets, profiles or event registrations.
         return Response(json.dumps(preview_catalog(menu, sections), ensure_ascii=False), headers=headers)
+
