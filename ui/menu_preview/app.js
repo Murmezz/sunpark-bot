@@ -28,7 +28,8 @@
     return `${n} ${m >= 11 && m <= 14 ? 'позиций' : n%10 === 1 ? 'позиция' : n%10 >=2 && n%10 <=4 ? 'позиции' : 'позиций'}`;
   }
   function groupName(title) {
-    return ({'ЕДА':'Еда','НАПИТКИ':'Напитки','АЛКОГОЛЬ':'Бар','СЕЗОННОЕ МЕНЮ':'Сезонное'})[title] || title;
+    const normalized = String(title).toLocaleUpperCase('ru').replace(/[^А-ЯЁA-Z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+    return ({'ЕДА':'Еда','НАПИТКИ':'Напитки','АЛКОГОЛЬ':'Бар','БАР':'Бар','СЕЗОННОЕ МЕНЮ':'Сезонное'})[normalized] || title;
   }
   function updateBackButton() {
     try { if(dialog.open || categoryKey || query) tg?.BackButton.show(); else tg?.BackButton.hide(); } catch (_) {}
@@ -115,7 +116,7 @@
     if(!response.ok)throw new Error(data.error||'Не удалось открыть меню. Попробуйте ещё раз.');
     catalog=data;
     if(!catalog.groups.length||!catalog.categories.length)throw new Error('Меню пока пусто.');
-    const food=catalog.groups.findIndex(g=>g.title==='ЕДА');
+    const food=catalog.groups.findIndex(g=>groupName(g.title)==='Еда');
     if(food>=0)groupIndex=food;
     renderHub();
   }

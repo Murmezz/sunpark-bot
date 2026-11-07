@@ -18,7 +18,9 @@ from playwright.async_api import async_playwright
 
 bot=MenuPreviewMixin()
 bot.env=NS(BOT_TOKEN=TOKEN)
-bot.config=AsyncMock(return_value=(MENU,SECTIONS,'',{}))
+browser_menu={**MENU,'seasonal':{'title':'Сезонное меню','items':[['Тестовое сезонное блюдо','','650 ₽']]}}
+browser_sections=[*SECTIONS,['🎃 СЕЗОННОЕ МЕНЮ',['seasonal']]]
+bot.config=AsyncMock(return_value=(browser_menu,browser_sections,'',{}))
 bot.is_manager=AsyncMock(side_effect=lambda uid,cfg:uid==1)
 
 
@@ -66,6 +68,8 @@ async def main():
                 assert not await page.locator('#catalog-view').is_visible()
                 assert await page.locator('.category-card').evaluate_all('(cards)=>cards.every(c=>c.getBoundingClientRect().height>=72 && parseFloat(getComputedStyle(c.querySelector(".category-title")).fontSize)>=16)')
                 assert await page.locator('#groups button').evaluate_all('(buttons)=>buttons.every(b=>b.getBoundingClientRect().height>=44 && parseFloat(getComputedStyle(b).fontSize)>=16)')
+                assert await page.locator('#groups button').evaluate_all('(buttons)=>buttons.every(b=>{const r=b.getBoundingClientRect(),p=b.parentElement.getBoundingClientRect();return r.left>=p.left && r.right<=p.right+1 && r.left>=0 && r.right<=innerWidth;})')
+                assert await page.locator('#groups').evaluate('(nav)=>nav.scrollWidth<=nav.clientWidth+1')
                 assert await page.evaluate('document.documentElement.scrollWidth <= window.innerWidth')
                 if variant==4:
                     await page.wait_for_function('document.getElementById("pdf-logo").complete && document.getElementById("pdf-logo").naturalWidth > 0')
@@ -75,9 +79,13 @@ async def main():
                     assert await page.evaluate('getComputedStyle(document.body).backgroundColor')=='rgb(20, 27, 25)'
                 await page.screenshot(path=str(screenshots/f'hub-{variant}-{width}.png'),full_page=True)
                 await page.get_by_role('button',name='Бар',exact=True).click()
-                await page.locator('.category-card').first.click()
-                assert 'Вино' in await page.locator('#section-title').inner_text()
-                await page.locator('#back-to-sections').click()
+                assert await page.locator('.category-title').all_text_contents()==['Пиво и сидр','Коктейльная карта','Вино','Крепкий алкоголь']
+                for title,price in [('Пиво и сидр','410 ₽ / 350 ₽'),('Коктейльная карта','790 ₽'),('Вино','4140 ₽'),('Крепкий алкоголь','250 ₽')]:
+                    await page.locator('.category-card').filter(has_text=title).click()
+                    assert title in await page.locator('#section-title').inner_text()
+                    assert price in await page.locator('#items').inner_text()
+                    await page.locator('#back-to-sections').click()
+                    assert await page.get_by_role('button',name='Бар',exact=True).get_attribute('aria-pressed')=='true'
                 assert await page.locator('#menu-hub').is_visible()
                 await page.get_by_role('button',name='Еда',exact=True).click()
                 await page.locator('.category-card').filter(has_text='Закуски').click()
@@ -120,7 +128,7 @@ async def main():
             await page.close()
         await browser.close()
     server.shutdown()
-    print('PASS: both themes at 320/390/820px; large category buttons, readable text and full prices, group/category navigation, Telegram Back, search, dish details, auth rejection; no theme switch, overflow or JS errors')
+    print('PASS: both themes at 320/390/820px; all four group buttons fully visible without horizontal scrolling, complete beer/cocktails/wine/spirits categories and prices, navigation, Telegram Back, search, dish details, auth rejection; no theme switch, overflow or JS errors')
 
 
 if __name__=='__main__':

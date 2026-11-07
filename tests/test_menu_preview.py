@@ -32,10 +32,13 @@ MENU = {
         ['Пирог с говяжьими щёчками','200 г / 2000 г. Наличие уточните у официанта','510 ₽ / 4600 ₽']]},
     'soups': {'title':'Супы','emoji':'🍲','items':[['Грибной крем-суп капучино','','610 ₽'],['Тыквенный крем-суп','Креветки +260 ₽ / краб +350 ₽','610 ₽'],['Борщ','с чёрным хлебом и домашним смальцем','790 ₽']]},
     'hot_drinks': {'title':'Горячие напитки','emoji':'☕','items':[['Капучино','200 мл','290 ₽']]},
+    'beer': {'title':'Пиво и сидр','emoji':'🍺','sections':[['Разливное',[['Амбер Вайс','330 мл / 500 мл','390 ₽ / 490 ₽']]],['Бутылочное',[['Эль Капулько','Алкогольный / безалкогольный','410 ₽ / 350 ₽']]]]},
+    'cocktails': {'title':'Коктейльная карта','emoji':'🍸','items':[['Апероль Спритц','Апероль, игристое вино, содовая','790 ₽']]},
     'wine': {'title':'Вино','emoji':'🍷','sections':[['Белое',[['Совиньон Блан','сухое, Чили','450 ₽ / 2800 ₽']]],['Красное',[['Мальбек','сухое, Аргентина','690 ₽ / 4140 ₽']]]], 'footer':'Цена за бокал / бутылку'},
+    'strong': {'title':'Крепкий алкоголь','emoji':'🥃','items':[['Водка Царская','40 мл','250 ₽']]},
     'banquet': {'title':'Скрытый раздел','items':[['Не показывать','','0 ₽']]},
 }
-SECTIONS = [['ЕДА',['snacks','soups']],['НАПИТКИ',['hot_drinks']],['АЛКОГОЛЬ',['wine','banquet']]]
+SECTIONS = [['🍽 ЕДА',['snacks','soups']],['☕ НАПИТКИ',['hot_drinks']],['🍷 АЛКОГОЛЬ',['beer','cocktails','wine','strong','banquet']]]
 TOKEN = '12345:test-secret-for-local-tests-only'
 
 
@@ -108,6 +111,16 @@ class PreviewTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(kb['inline_keyboard']),6)
         self.assertEqual(sum('web_app' in row[0] for row in kb['inline_keyboard']),2)
         self.assertIn('Доступ только администраторам',text)
+
+    def test_bar_includes_all_four_categories_and_every_position(self):
+        catalog=preview_catalog(MENU,SECTIONS)
+        bar=next(group for group in catalog['groups'] if 'АЛКОГОЛЬ' in group['title'])
+        self.assertEqual(bar['keys'],['beer','cocktails','wine','strong'])
+        categories={cat['key']:cat for cat in catalog['categories']}
+        for key in bar['keys']:
+            source=MENU[key]
+            rows=[row for _,items in source['sections'] for row in items] if source.get('sections') else source['items']
+            self.assertEqual([(item['name'],item['price']) for item in categories[key]['items']],[(row[0],row[2]) for row in rows])
 
     async def test_all_native_screens_paginate_without_guest_menu_callbacks(self):
         catalog=preview_catalog(MENU,SECTIONS)
@@ -213,4 +226,5 @@ class PreviewTests(unittest.IsolatedAsyncioTestCase):
 
 if __name__=='__main__':
     unittest.main()
+
 
