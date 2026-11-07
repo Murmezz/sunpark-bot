@@ -10,35 +10,44 @@
   <script src="/menu-preview.js" defer></script>
 </head>
 <body>
-  <div class="app">
-    <header class="masthead">
-      <div class="topline"><span class="eyebrow">КУХНЯ · БАР · ХОРОШИЙ ДЕНЬ</span><button id="theme-switch" class="theme-switch" aria-label="Сменить вариант оформления">Сменить вид</button></div>
-      <div class="brand"><img class="pdf-logo" id="pdf-logo" width="210" height="84" alt="SUNPARK Grill Bar — Saint Petersburg"><svg class="brand-symbol" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 55V29M32 40C13 40 9 21 9 12c20 0 23 12 23 28Zm0-9C32 11 45 7 57 7c0 18-10 24-25 24Z" fill="none" stroke="currentColor" stroke-width="2.5"/></svg><h1>SUNPARK<span>меню</span></h1><span class="edition" id="edition">04 / ДНЕВНОЙ</span></div>
-      <p class="intro" id="intro">Найдите своё любимое.</p>
-      <label class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path d="m15 15 5 5"/></svg><input id="search" type="search" placeholder="Найти блюдо или напиток" autocomplete="off" aria-label="Поиск по меню"><kbd>⌕</kbd></label>
+  <div class="menu-paper">
+    <header class="menu-header">
+      <div class="brand">
+        <img id="pdf-logo" class="pdf-logo" width="210" height="84" alt="SUNPARK Grill Bar — Saint Petersburg">
+        <div class="night-brand"><span>GRILL &amp; BAR</span><h1>SUNPARK</h1></div>
+      </div>
+      <label class="search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path d="m15 15 5 5"/></svg>
+        <input id="search" type="search" placeholder="Найти блюдо или напиток" autocomplete="off" aria-label="Поиск по всему меню">
+      </label>
     </header>
-    <nav id="groups" class="groups" aria-label="Части меню"></nav>
     <main>
-      <nav id="categories" class="categories" aria-label="Разделы меню"></nav>
-      <div class="section-heading"><div><span class="eyebrow" id="section-kicker">МЕНЮ SUNPARK</span><h2 id="section-title">Загружаем меню…</h2></div><span id="item-count" class="count"></span></div>
-      <div id="status" class="status" role="status" aria-live="polite">Проверяем доступ администратора…</div>
-      <div id="items" class="items"></div>
-      <p id="category-footer" class="category-footer"></p>
+      <p id="status" class="status" role="status" aria-live="polite">Загружаем меню…</p>
+      <section id="menu-hub" aria-labelledby="hub-title" hidden>
+        <h2 id="hub-title" class="ruled-title"><span>Наше меню</span></h2>
+        <nav id="groups" class="group-tabs" aria-label="Части меню"></nav>
+        <p class="navigation-hint">Выберите раздел</p>
+        <nav id="categories" class="category-grid" aria-label="Разделы меню"></nav>
+      </section>
+      <section id="catalog-view" aria-labelledby="section-title" hidden>
+        <button id="back-to-sections" class="back-link" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6M8 12h13"/></svg>К разделам меню</button>
+        <h2 id="section-title" class="ruled-title"><span>Меню</span></h2>
+        <p id="catalog-hint" class="catalog-hint">Нажмите на блюдо, чтобы посмотреть состав</p>
+        <div id="items" class="items"></div>
+        <p id="category-footer" class="category-footer"></p>
+      </section>
     </main>
-    <footer class="page-footer"><span>SUNPARK</span><span>Состав — по нажатию на блюдо</span></footer>
   </div>
   <dialog id="dish-dialog" aria-labelledby="dish-name">
-    <button id="close-dialog" class="close-dialog" aria-label="Закрыть состав">×</button>
-    <div class="sheet-handle" aria-hidden="true"></div>
-    <span class="eyebrow" id="dish-section"></span>
+    <button id="close-dialog" class="close-dialog" type="button" aria-label="Закрыть состав"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+    <p id="dish-section" class="dish-section"></p>
     <h2 id="dish-name"></h2>
-    <p class="dish-price" id="dish-price"></p>
+    <p id="dish-price" class="dish-price"></p>
     <div class="detail-rule"></div>
     <h3>Состав и подача</h3>
     <p id="dish-description" class="dish-description"></p>
     <p id="dish-footer" class="dish-footer"></p>
-    <button id="back-to-menu" class="back-to-menu">Вернуться к меню</button>
+    <button id="back-to-menu" class="primary-button" type="button">Вернуться к меню</button>
   </dialog>
 </body>
 </html>
-

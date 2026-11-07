@@ -40,7 +40,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def telegram_stub(init):
-    return 'window.Telegram={WebApp:{initData:'+json.dumps(init)+',ready(){},expand(){},setHeaderColor(){},setBackgroundColor(){},BackButton:{show(){},hide(){},onClick(){}},HapticFeedback:{selectionChanged(){}}}};'
+    return 'window.Telegram={WebApp:{initData:'+json.dumps(init)+',ready(){},expand(){},setHeaderColor(){},setBackgroundColor(){},BackButton:{show(){window.__backVisible=true;},hide(){window.__backVisible=false;},onClick(fn){window.__backHandler=fn;}},HapticFeedback:{selectionChanged(){}}}};'
 
 
 async def main():
@@ -59,32 +59,59 @@ async def main():
                 page.on('pageerror',lambda e:errors.append(str(e)))
                 await page.route('https://telegram.org/js/telegram-web-app.js',lambda route:route.fulfill(content_type='text/javascript',body=telegram_stub(signed())))
                 await page.goto(origin+f'/menu-preview?variant={variant}')
-                await page.locator('.item-row').first.wait_for()
-                assert await page.locator('.item-row').count()==14
+                await page.locator('.category-card').first.wait_for()
+                assert await page.locator('#theme-switch').count()==0
+                assert await page.get_by_text('Сменить вид').count()==0
+                assert await page.locator('#menu-hub').is_visible()
+                assert not await page.locator('#catalog-view').is_visible()
+                assert await page.locator('.category-card').evaluate_all('(cards)=>cards.every(c=>c.getBoundingClientRect().height>=72 && parseFloat(getComputedStyle(c.querySelector(".category-title")).fontSize)>=16)')
+                assert await page.locator('#groups button').evaluate_all('(buttons)=>buttons.every(b=>b.getBoundingClientRect().height>=44 && parseFloat(getComputedStyle(b).fontSize)>=16)')
                 assert await page.evaluate('document.documentElement.scrollWidth <= window.innerWidth')
-                assert await page.locator('.item-row').evaluate_all('(rows)=>rows.every(row=>row.querySelector(".name").getBoundingClientRect().right <= row.querySelector(".price").getBoundingClientRect().left)')
                 if variant==4:
                     await page.wait_for_function('document.getElementById("pdf-logo").complete && document.getElementById("pdf-logo").naturalWidth > 0')
                     assert await page.evaluate('getComputedStyle(document.body).backgroundImage.includes("data:image/webp;base64,")')
-                    assert await page.evaluate('getComputedStyle(document.querySelector(".app")).borderTopColor')=='rgb(60, 115, 40)'
+                    assert await page.evaluate('getComputedStyle(document.querySelector(".menu-paper")).borderTopColor')=='rgb(60, 115, 40)'
                 if variant==5:
                     assert await page.evaluate('getComputedStyle(document.body).backgroundColor')=='rgb(20, 27, 25)'
-                    assert await page.evaluate('getComputedStyle(document.querySelector(".item-row .name")).color')=='rgb(236, 231, 217)'
+                await page.screenshot(path=str(screenshots/f'hub-{variant}-{width}.png'),full_page=True)
+                await page.get_by_role('button',name='Бар',exact=True).click()
+                await page.locator('.category-card').first.click()
+                assert 'Вино' in await page.locator('#section-title').inner_text()
+                await page.locator('#back-to-sections').click()
+                assert await page.locator('#menu-hub').is_visible()
+                await page.get_by_role('button',name='Еда',exact=True).click()
+                await page.locator('.category-card').filter(has_text='Закуски').click()
+                assert await page.locator('.item-row').count()==14
+                assert not await page.locator('#menu-hub').is_visible()
+                assert await page.locator('#back-to-sections').evaluate('(b)=>b.getBoundingClientRect().height>=44')
+                assert await page.locator('.item-row').evaluate_all('(rows)=>rows.every(row=>row.getBoundingClientRect().height>=60 && parseFloat(getComputedStyle(row.querySelector(".name")).fontSize)>=16 && parseFloat(getComputedStyle(row.querySelector(".price")).fontSize)>=15 && row.querySelector(".name").getBoundingClientRect().right <= row.querySelector(".price").getBoundingClientRect().left)')
+                assert await page.evaluate('document.documentElement.scrollWidth <= window.innerWidth')
                 await page.screenshot(path=str(screenshots/f'menu-{variant}-{width}.png'),full_page=True)
                 await page.locator('.item-row').first.click()
                 assert await page.locator('#dish-dialog').evaluate('(d)=>d.open')
                 assert 'вялеными томатами' in await page.locator('#dish-description').inner_text()
                 await page.locator('#back-to-menu').click()
+                assert await page.evaluate('window.__backVisible')
                 await page.locator('#search').fill('мальбек')
                 assert await page.locator('.item-row').count()==1
                 assert '4140 ₽' in await page.locator('.item-row .price').inner_text()
                 await page.locator('.item-row').first.click()
                 assert 'Красное' in await page.locator('#dish-section').inner_text()
                 await page.locator('#close-dialog').click()
-                await page.locator('#theme-switch').click()
+                await page.evaluate('window.__backHandler()')
+                assert await page.locator('#menu-hub').is_visible()
+                assert await page.locator('#search').input_value()==''
+                assert not await page.evaluate('window.__backVisible')
+                await page.locator('#search').fill('Брускетты')
+                assert await page.locator('.item-row').count()==4
+                await page.locator('#search').fill('неттакогоблюда')
+                assert await page.locator('.item-row').count()==0
+                assert 'Ничего не найдено' in await page.locator('#catalog-hint').inner_text()
+                await page.locator('#search').fill('')
+                assert await page.locator('#menu-hub').is_visible()
                 assert not errors,errors
                 await page.close()
-        for init,expected in [('', 'Откройте этот экран'),(signed(2),'только администраторам')]:
+        for init,expected in [('', 'Откройте меню'),(signed(2),'только администраторам')]:
             page=await browser.new_page()
             await page.route('https://telegram.org/js/telegram-web-app.js',lambda route:route.fulfill(content_type='text/javascript',body=telegram_stub(init)))
             await page.goto(origin+'/menu-preview')
@@ -93,9 +120,10 @@ async def main():
             await page.close()
         await browser.close()
     server.shutdown()
-    print('PASS: both Mini App themes at 320/390/820px, full prices, search, dish details, close buttons, auth rejection, no horizontal overflow or JS errors')
+    print('PASS: both themes at 320/390/820px; large category buttons, readable text and full prices, group/category navigation, Telegram Back, search, dish details, auth rejection; no theme switch, overflow or JS errors')
 
 
 if __name__=='__main__':
     asyncio.run(main())
+
 
