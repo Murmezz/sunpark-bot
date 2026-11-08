@@ -144,11 +144,11 @@ async def read_preview_body(request, limit=20000):
 
 class MenuPreviewMixin:
     def menu_preview_chooser(self):
-        rows = [[button(f"{v}. {VARIANTS[v][0]}", f"mp:root:{v}")] for v in (1, 2, 3)]
-        for v in (4, 5):
-            rows.append([{"text": f"{v}. Mini App · {VARIANTS[v][0]}", "web_app": {"url": f"{PREVIEW_ORIGIN}/menu-preview?variant={v}"}}])
-        rows.append([button("◀️ В админ-панель", "admin:panel")])
-        text = "👁 <b>Просмотр меню</b>\n\nПять вариантов на одном актуальном меню:\n\n" + "\n".join(f"<b>{v}. {esc(name)}</b>\n{esc(note)}" for v, (name, note) in VARIANTS.items()) + "\n\nПервые три открываются в чате, два последних — отдельным экраном внутри Telegram. Доступ только администраторам."
+        rows = [
+            [{"text": "🌿 Меню SUNPARK", "web_app": {"url": f"{PREVIEW_ORIGIN}/menu-preview?variant=4"}}],
+            [button("◀️ В админ-панель", "admin:panel")],
+        ]
+        text = "🛠 <b>Разработка</b>\n\nМеню SUNPARK: кухня, напитки, бар и корзина.\n\nДоступ только администраторам."
         return text, keyboard(rows)
 
     def menu_preview_root(self, variant, catalog):
@@ -238,44 +238,16 @@ class MenuPreviewMixin:
         uid = int((cb.get("from") or {})["id"])
         msg = cb.get("message") or {}
         if not await self.is_manager(uid, cfg) or msg.get("chat", {}).get("type") != "private" or msg.get("chat", {}).get("id") != uid:
-            await self.answer(cb.get("id"), "Просмотр вариантов доступен только администраторам.", True)
+            await self.answer(cb.get("id"), "Разработка доступна только администраторам.", True)
             return True
         await self.answer(cb.get("id"))
         if data == "mp:noop":
             return True
         await self.event_clear_session(uid)
         await self.clear_action(uid)
-        parts = data.split(":")
-        catalog = preview_catalog(menu, sections)
-        try:
-            if data == "mp:home":
-                text, markup = self.menu_preview_chooser()
-                await self.menu_preview_render(msg, text, markup)
-                return True
-            variant = int(parts[2])
-            if variant not in (1, 2, 3):
-                raise ValueError()
-            if parts[1] == "root":
-                text, markup = self.menu_preview_root(variant, catalog)
-                await self.menu_preview_render(msg, text, markup)
-                return True
-            category = next((c for c in catalog["categories"] if c["key"] == parts[3]), None)
-            if category is None:
-                raise ValueError()
-            selected = None
-            if parts[1] == "cat":
-                page = int(parts[4])
-            elif parts[1] == "item":
-                selected, page = int(parts[4]), int(parts[5])
-                if not 0 <= selected < len(category["items"]):
-                    raise ValueError()
-            else:
-                raise ValueError()
-            plain, rich, markup = self.menu_preview_category(variant, category, page, selected)
-            await self.menu_preview_render(msg, plain, markup, rich)
-        except (ValueError, IndexError):
-            text, markup = self.menu_preview_chooser()
-            await self.menu_preview_render(msg, "Меню обновилось. Выберите вариант заново.\n\n"+text, markup)
+        # Old preview buttons also lead to the single current menu.
+        text, markup = self.menu_preview_chooser()
+        await self.menu_preview_render(msg, text, markup)
         return True
 
     async def menu_preview_http(self, request):
@@ -307,7 +279,7 @@ class MenuPreviewMixin:
             return error("Откройте меню заново через кнопку бота в Telegram.", 401)
         menu, sections, _, cfg = await self.config()
         if not await self.is_manager(uid, cfg):
-            return error("Просмотр вариантов доступен только администраторам.", 403)
+            return error("Разработка доступна только администраторам.", 403)
         # Return menu only: no config secrets, profiles or event registrations.
         return Response(json.dumps(preview_catalog(menu, sections), ensure_ascii=False), headers=headers)
 

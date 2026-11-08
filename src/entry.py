@@ -487,7 +487,7 @@ class Bot(MenuPreviewMixin, EventsMixin, WorkerEntrypoint):
             [btn("📊 Статистика", "admin:stats")],
             [btn("👥 Менеджеры", "admin:managers")],
             [btn("🎟 Мероприятия", "ev:manage:0")],
-            [btn("👁 Просмотр меню", "mp:home")],
+            [btn("🛠 Разработка", "mp:home")],
             [btn("👀 Открыть как гость", "admin:guest")],
         ])
 

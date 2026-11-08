@@ -241,7 +241,7 @@
   try { tg?.ready();tg?.expand();tg?.BackButton.onClick(()=>{if(dialog.open)closeDish();else if(cartOpen)closeCart();else if(catalog)showHub();}); } catch (_) {}
 
   async function load() {
-    if(!tg?.initData) throw new Error('Откройте меню из бота: /admin → «Просмотр меню». Доступ только администраторам.');
+    if(!tg?.initData) throw new Error('Откройте меню из бота: /admin → «Разработка» → «Меню SUNPARK». Доступ только администраторам.');
     const response=await fetch('/api/menu-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({init_data:tg.initData}),cache:'no-store'});
     const data=await response.json();
     if(!response.ok)throw new Error(data.error||'Не удалось открыть меню. Попробуйте ещё раз.');

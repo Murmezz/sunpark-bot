@@ -106,10 +106,13 @@ class PreviewTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn('banquet',[c['key'] for c in catalog['categories']])
         self.assertEqual(before,json.dumps(MENU))
 
-    def test_five_choices_and_two_mini_app_buttons(self):
+    def test_development_has_only_current_mini_app(self):
         text,kb=self.bot.menu_preview_chooser()
-        self.assertEqual(len(kb['inline_keyboard']),6)
-        self.assertEqual(sum('web_app' in row[0] for row in kb['inline_keyboard']),2)
+        self.assertEqual(kb['inline_keyboard'],[
+            [{'text':'🌿 Меню SUNPARK','web_app':{'url':'https://sunparkbot.lovison1979.workers.dev/menu-preview?variant=4'}}],
+            [{'text':'◀️ В админ-панель','callback_data':'admin:panel'}],
+        ])
+        self.assertIn('Разработка',text)
         self.assertIn('Доступ только администраторам',text)
 
     def test_bar_includes_all_four_categories_and_every_position(self):
@@ -181,13 +184,12 @@ class PreviewTests(unittest.IsolatedAsyncioTestCase):
         self.bot.tg.assert_not_called()
         self.bot.event_clear_session.assert_not_called()
 
-    async def test_admin_native_callback_and_escaping(self):
-        cb={'id':'x','from':{'id':1},'data':'mp:cat:2:snacks:0','message':{'message_id':7,'chat':{'id':1,'type':'private'}}}
-        await self.bot.menu_preview_callback(cb,MENU,SECTIONS,{})
-        method,p=self.bot.tg.call_args.args
-        self.assertEqual(method,'editMessageText')
-        self.assertIn('740 ₽',p['rich_message']['html'])
-        self.assertFalse(any(all(b['text'].isdecimal() for b in row) for row in p['reply_markup']['inline_keyboard']))
+    async def test_admin_current_and_old_buttons_open_development(self):
+        for data in ('mp:home','mp:root:1','mp:cat:2:snacks:0','mp:item:3:snacks:0:0'):
+            cb={'id':'x','from':{'id':1},'data':data,'message':{'message_id':7,'chat':{'id':1,'type':'private'}}}
+            await self.bot.menu_preview_callback(cb,MENU,SECTIONS,{})
+            self.assertEqual(self.bot.edit.call_args.args[1:],self.bot.menu_preview_chooser())
+        self.bot.tg.assert_not_called()
         cat={'key':'test','title':'<script>','emoji':'','footer':'','items':[{'name':'<b>Тест</b>','price':'10 & 20','description':'<img src=x onerror=1>','section':''}]}
         plain,rich,_=self.bot.menu_preview_category(3,cat,0,0)
         self.assertNotIn('<script>',rich)
@@ -246,7 +248,7 @@ class PreviewTests(unittest.IsolatedAsyncioTestCase):
         ns={'WorkerEntrypoint':type('WorkerEntrypoint',(),{})}
         exec(compile(tree,'entry.py','exec'),ns)
         bot=ns['Bot']()
-        self.assertTrue(any(b.get('callback_data')=='mp:home' for row in bot.admin_keyboard()['inline_keyboard'] for b in row))
+        self.assertIn({'text':'🛠 Разработка','callback_data':'mp:home'},[b for row in bot.admin_keyboard()['inline_keyboard'] for b in row])
         self.assertFalse(any(b.get('callback_data','').startswith('mp:') for row in bot.home_keyboard(False)['inline_keyboard'] for b in row))
         self.assertFalse(any(b.get('callback_data','').startswith('cart:') for row in bot.main_keyboard(MENU,SECTIONS)['inline_keyboard'] for b in row))
         self.assertLess(source.index('await self.menu_preview_http(request)'),source.index('if method != "POST"'))
