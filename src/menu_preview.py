@@ -3,6 +3,7 @@ import hashlib
 import hmac
 import html
 import json
+import re
 import time
 from urllib.parse import parse_qsl, urlparse
 
@@ -30,6 +31,39 @@ def keyboard(rows):
     return {"inline_keyboard": rows}
 
 
+def preview_price_options(name, description, price, footer=""):
+    """Exact prices in kopecks; an unpriced item never becomes a zero-price item."""
+    parts = [part.strip() for part in str(price).split("/")]
+    amounts = []
+    for part in parts:
+        match = re.fullmatch(r"\s*(\d[\d\s\u00a0\u202f]*(?:[,.]\d{1,2})?)\s*(?:₽|руб\.?|р\.?)?\s*", part, re.I)
+        if not match:
+            return [{"id": "0", "label": "", "price": str(price), "amount": None}]
+        value = re.sub(r"\s", "", match.group(1)).replace(",", ".")
+        rubles, _, fraction = value.partition(".")
+        amount = int(rubles) * 100 + int((fraction + "00")[:2])
+        if amount > 100_000_000:
+            return [{"id": "0", "label": "", "price": str(price), "amount": None}]
+        amounts.append(amount)
+    labels = [""] if len(parts) == 1 else []
+    lower_name = re.sub(r"[\s-]+", " ", str(name).casefold())
+    if len(parts) == 2:
+        if "капульк" in lower_name:
+            labels = ["Алкогольное", "Безалкогольное"]
+        elif "бенедикт" in lower_name:
+            labels = ["С форелью", "С ростбифом"]
+        elif "бокал" in footer.casefold() and "бутыл" in footer.casefold():
+            labels = ["Бокал", "Бутылка"]
+        else:
+            pair = re.search(r"(\d+(?:[,.]\d+)?)\s*(мл|л|кг|гр|г)?\s*/\s*(\d+(?:[,.]\d+)?)\s*(мл|л|кг|гр|г)\b", description, re.I)
+            measures = [(pair[1], pair[2] or pair[4]), (pair[3], pair[4])] if pair else re.findall(r"(\d+(?:[,.]\d+)?)\s*(мл|л|кг|гр|г)\b", description, re.I)
+            if len(measures) == 2:
+                labels = [f"{value.replace('.', ',')} {'г' if unit.casefold() == 'гр' else unit.casefold()}" for value, unit in measures]
+    if len(labels) != len(parts):
+        labels = [f"Вариант {i + 1}" for i in range(len(parts))]
+    return [{"id": str(i), "label": label, "price": part, "amount": amount} for i, (label, part, amount) in enumerate(zip(labels, parts, amounts))]
+
+
 def preview_catalog(menu, sections):
     groups, categories, seen = [], [], set()
     for group_title, keys in sections:
@@ -47,6 +81,11 @@ def preview_catalog(menu, sections):
             else:
                 for row in cat.get("items", []):
                     entries.append({"name": str(row[0]), "description": str(row[1] or ""), "price": str(row[2]), "section": ""})
+            for item in entries:
+                identity = [key, item["section"], item["name"], item["description"]]
+                item["id"] = hashlib.sha256(json.dumps(identity, ensure_ascii=False).encode()).hexdigest()[:24]
+                item["options"] = preview_price_options(item["name"], item["description"], item["price"], str(cat.get("footer") or ""))
+                item["cart_name"] = re.sub(r"\s*/\s*безалкогольн\w*", "", item["name"], flags=re.I).strip() if "капульк" in item["name"].casefold() else item["name"]
             categories.append({"key": key, "title": str(cat.get("title", key)), "emoji": str(cat.get("emoji", "")), "footer": str(cat.get("footer") or ""), "items": entries})
             group_keys.append(key)
         if group_keys:
@@ -271,4 +310,5 @@ class MenuPreviewMixin:
             return error("Просмотр вариантов доступен только администраторам.", 403)
         # Return menu only: no config secrets, profiles or event registrations.
         return Response(json.dumps(preview_catalog(menu, sections), ensure_ascii=False), headers=headers)
+
 

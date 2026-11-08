@@ -16,7 +16,7 @@
         <img id="pdf-logo" class="pdf-logo" width="210" height="84" alt="SUNPARK Grill Bar — Saint Petersburg">
         <div class="night-brand"><span>GRILL &amp; BAR</span><h1>SUNPARK</h1></div>
       </div>
-      <label class="search">
+      <label id="menu-search" class="search">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path d="m15 15 5 5"/></svg>
         <input id="search" type="search" placeholder="Найти блюдо или напиток" autocomplete="off" aria-label="Поиск по всему меню">
       </label>
@@ -36,18 +36,39 @@
         <div id="items" class="items"></div>
         <p id="category-footer" class="category-footer"></p>
       </section>
+      <section id="cart-view" aria-labelledby="cart-title" hidden>
+        <button id="cart-back" class="back-link" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6M8 12h13"/></svg>К меню</button>
+        <h2 id="cart-title" class="ruled-title"><span>Ваша корзина</span></h2>
+        <div id="cart-summary" class="cart-summary"><span id="cart-count"></span><strong id="cart-total"></strong></div>
+        <p id="cart-empty" class="status" hidden>Корзина пока пуста. Выберите блюдо в меню и нажмите «Добавить в корзину».</p>
+        <p id="cart-hint" class="catalog-hint">Нажмите на позицию, чтобы изменить количество или удалить её.</p>
+        <div id="cart-items" class="cart-items"></div>
+        <p id="cart-price-note" class="catalog-hint" hidden></p>
+        <p class="catalog-hint cart-order-note">Для заказа покажите корзину официанту.</p>
+        <button id="cart-clear" class="secondary-button" type="button">Очистить корзину</button>
+        <div id="cart-clear-confirm" class="clear-confirm" hidden>
+          <p>Удалить все выбранные позиции?</p>
+          <div class="confirm-actions"><button id="cart-clear-yes" class="secondary-button" type="button">Да, очистить</button><button id="cart-clear-no" class="secondary-button" type="button">Отмена</button></div>
+        </div>
+      </section>
     </main>
   </div>
+  <button id="cart-launcher" class="cart-launcher" type="button" hidden><span>Корзина <span id="cart-badge" class="cart-badge" hidden></span></span><strong id="cart-launcher-total">0 ₽</strong></button>
+  <div id="cart-toast" class="cart-toast" role="status" aria-live="polite" hidden></div>
   <dialog id="dish-dialog" aria-labelledby="dish-name">
     <button id="close-dialog" class="close-dialog" type="button" aria-label="Закрыть состав"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
     <p id="dish-section" class="dish-section"></p>
     <h2 id="dish-name"></h2>
     <p id="dish-price" class="dish-price"></p>
+    <fieldset id="dish-options" class="dish-options" hidden><legend>Выберите вариант</legend><div id="dish-option-list"></div></fieldset>
     <div class="detail-rule"></div>
     <h3>Состав и подача</h3>
     <p id="dish-description" class="dish-description"></p>
     <p id="dish-footer" class="dish-footer"></p>
-    <button id="back-to-menu" class="primary-button" type="button">Вернуться к меню</button>
+    <div id="dish-quantity" class="dish-quantity" hidden><span>Количество</span><div class="quantity-controls"><button id="quantity-minus" type="button" aria-label="Уменьшить количество">−</button><output id="quantity-value" aria-live="polite">1</output><button id="quantity-plus" type="button" aria-label="Увеличить количество">+</button></div></div>
+    <button id="dish-add" class="primary-button" type="button">Добавить в корзину</button>
+    <button id="dish-remove" class="secondary-button" type="button" hidden>Удалить из корзины</button>
+    <button id="back-to-menu" class="text-button" type="button">Вернуться к меню</button>
   </dialog>
 </body>
 </html>

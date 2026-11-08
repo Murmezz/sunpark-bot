@@ -22,6 +22,7 @@ browser_menu={**MENU,'seasonal':{'title':'Сезонное меню','items':[['
 browser_sections=[*SECTIONS,['🎃 СЕЗОННОЕ МЕНЮ',['seasonal']]]
 bot.config=AsyncMock(return_value=(browser_menu,browser_sections,'',{}))
 bot.is_manager=AsyncMock(side_effect=lambda uid,cfg:uid==1)
+WORKER_RESPONSE_LOCK=threading.Lock()
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -30,7 +31,7 @@ class Handler(BaseHTTPRequestHandler):
     def handle_request(self):
         raw=self.rfile.read(min(21000,int(self.headers.get('Content-Length',0))))
         req=NS(url='http://127.0.0.1'+self.path,method=self.command,headers=self.headers,body=Body([raw]))
-        with patch.dict(sys.modules,{'workers':NS(Response=FakeResponse)}):
+        with WORKER_RESPONSE_LOCK, patch.dict(sys.modules,{'workers':NS(Response=FakeResponse)}):
             result=asyncio.run(bot.menu_preview_http(req))
         self.send_response(result.status if result else 404)
         for k,v in (result.headers if result else {}).items():

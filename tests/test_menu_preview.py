@@ -12,7 +12,7 @@ from urllib.parse import urlencode
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'src'))
-from menu_preview import MenuPreviewMixin, preview_catalog, validate_init_data, read_preview_body
+from menu_preview import MenuPreviewMixin, preview_catalog, preview_price_options, validate_init_data, read_preview_body
 
 MENU = {
     'snacks': {'title':'Закуски', 'emoji':'🥟', 'items':[
@@ -121,6 +121,34 @@ class PreviewTests(unittest.IsolatedAsyncioTestCase):
             source=MENU[key]
             rows=[row for _,items in source['sections'] for row in items] if source.get('sections') else source['items']
             self.assertEqual([(item['name'],item['price']) for item in categories[key]['items']],[(row[0],row[2]) for row in rows])
+
+    def test_cart_prices_and_variant_labels(self):
+        cases=[
+            ('Пиво','330 мл / 500 мл','390 ₽ / 490 ₽','',['330 мл','500 мл'],[39000,49000]),
+            ('Пиво','0,33 / 0,5 л','390 / 490','',['0,33 л','0,5 л'],[39000,49000]),
+            ('Эль Капулько / безалкогольный','440 мл','410 ₽ / 350 ₽','',['Алкогольное','Безалкогольное'],[41000,35000]),
+            ('Яйцо Бенедикт','с форелью / ростбифом','850 ₽ / 810 ₽','',['С форелью','С ростбифом'],[85000,81000]),
+            ('Пирог','200 г / 2000 гр','510 ₽ / 4600 ₽','',['200 г','2000 г'],[51000,460000]),
+            ('Совиньон','','450 ₽ / 2800 ₽','Цена за бокал / бутылку',['Бокал','Бутылка'],[45000,280000]),
+            ('Другое','','100 ₽ / 200 ₽','',['Вариант 1','Вариант 2'],[10000,20000]),
+            ('Дробная цена','','1\u202f234,56 ₽','',[''],[123456]),
+        ]
+        for name,description,price,footer,labels,amounts in cases:
+            with self.subTest(name=name,price=price):
+                options=preview_price_options(name,description,price,footer)
+                self.assertEqual([o['label'] for o in options],labels)
+                self.assertEqual([o['amount'] for o in options],amounts)
+        for price in ['от 300 ₽','Уточните у официанта','100 ₽ за 100 г','-100 ₽','100–200 ₽','300 ₽ / уточняется']:
+            self.assertIsNone(preview_price_options('Тест','',price)[0]['amount'])
+
+    def test_cart_identity_survives_price_changes_without_stale_prices(self):
+        menu=json.loads(json.dumps(MENU))
+        before=preview_catalog(menu,SECTIONS)['categories'][0]['items'][0]
+        menu['snacks']['items'][0][2]='800 ₽'
+        after=preview_catalog(menu,SECTIONS)['categories'][0]['items'][0]
+        self.assertEqual(before['id'],after['id'])
+        self.assertEqual(after['options'][0]['amount'],80000)
+        self.assertEqual(before['options'][0]['amount'],74000)
 
     async def test_all_native_screens_paginate_without_guest_menu_callbacks(self):
         catalog=preview_catalog(MENU,SECTIONS)
