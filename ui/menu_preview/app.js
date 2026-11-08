@@ -5,7 +5,7 @@
   const dialog = $('dish-dialog');
   const dark = new URL(location.href).searchParams.get('variant') === '5';
   let catalog = null, groupIndex = 0, categoryKey = '', query = '';
-  let cartOpen = false, cartScroll = 0, currentDish = null, storageKey = null, toastTimer;
+  let cartOpen = false, cartScroll = 0, currentDish = null, storageKey = null, toastTimer, menuScroll = null;
   const cart = new Map(), products = new Map();
   const money = amount => new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2}).format(amount/100) + ' ₽';
   document.body.classList.toggle('night', dark);
@@ -141,7 +141,24 @@
     line.quantity=Math.max(1,Math.min(99,line.quantity+delta));
     saveCart(); renderCart(); updateDishAction();
   }
-  function closeDish() { if (dialog.open) dialog.close(); }
+  function lockMenuScroll() {
+    if(menuScroll) return;
+    const body=document.body;
+    menuScroll={x:window.scrollX,y:window.scrollY,top:body.style.top,left:body.style.left};
+    body.style.top=`-${menuScroll.y}px`; body.style.left=`-${menuScroll.x}px`;
+    document.documentElement.classList.add('modal-open'); body.classList.add('modal-open');
+  }
+  function unlockMenuScroll() {
+    if(!menuScroll) return;
+    const saved=menuScroll; menuScroll=null;
+    document.documentElement.classList.remove('modal-open'); document.body.classList.remove('modal-open');
+    document.body.style.top=saved.top; document.body.style.left=saved.left;
+    window.scrollTo(saved.x,saved.y);
+  }
+  function closeDish() {
+    if(dialog.open) dialog.close();
+    unlockMenuScroll(); updateBackButton();
+  }
   function showHub() {
     closeDish(); categoryKey = ''; query = ''; $('search').value = '';
     renderHub(); updateBackButton(); window.scrollTo(0,0);
@@ -164,7 +181,9 @@
     });
     $('back-to-menu').textContent=editing?'К корзине':'Вернуться к меню';
     updateDishAction();
-    dialog.showModal(); updateBackButton();
+    lockMenuScroll();
+    try { dialog.showModal(); dialog.scrollTop=0; } catch(error) { unlockMenuScroll(); throw error; }
+    updateBackButton();
     try { tg?.HapticFeedback.selectionChanged(); } catch (_) {}
   }
   function renderHub() {
@@ -237,7 +256,8 @@
   dialog.addEventListener('click',e=>{
     if(e.target===dialog){const r=dialog.getBoundingClientRect();if(e.clientY<r.top||e.clientY>r.bottom||e.clientX<r.left||e.clientX>r.right) closeDish();}
   });
-  dialog.addEventListener('close',updateBackButton);
+  dialog.addEventListener('cancel',e=>{e.preventDefault();closeDish();});
+  dialog.addEventListener('close',()=>{if(!dialog.open)unlockMenuScroll();updateBackButton();});
   try { tg?.ready();tg?.expand();tg?.BackButton.onClick(()=>{if(dialog.open)closeDish();else if(cartOpen)closeCart();else if(catalog)showHub();}); } catch (_) {}
 
   async function load() {
