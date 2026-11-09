@@ -145,10 +145,10 @@ async def read_preview_body(request, limit=20000):
 class MenuPreviewMixin:
     def menu_preview_chooser(self):
         rows = [
-            [{"text": "🌿 Меню SUNPARK", "web_app": {"url": f"{PREVIEW_ORIGIN}/menu-preview?variant=4"}}],
+            [{"text": "🌿 SUNPARK · Mini App", "web_app": {"url": f"{PREVIEW_ORIGIN}/app"}}],
             [button("◀️ В админ-панель", "admin:panel")],
         ]
-        text = "🛠 <b>Разработка</b>\n\nМеню SUNPARK: кухня, напитки, бар и корзина.\n\nДоступ только администраторам."
+        text = "🛠 <b>Разработка</b>\n\nSUNPARK: меню и корзина, бронирование, мероприятия, сообщения и админ-панель. Тема меняется автоматически.\n\nДоступ только администраторам."
         return text, keyboard(rows)
 
     def menu_preview_root(self, variant, catalog):
@@ -243,8 +243,6 @@ class MenuPreviewMixin:
         await self.answer(cb.get("id"))
         if data == "mp:noop":
             return True
-        await self.event_clear_session(uid)
-        await self.clear_action(uid)
         # Old preview buttons also lead to the single current menu.
         text, markup = self.menu_preview_chooser()
         await self.menu_preview_render(msg, text, markup)

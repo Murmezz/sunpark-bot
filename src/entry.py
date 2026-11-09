@@ -1,6 +1,7 @@
 from workers import WorkerEntrypoint, Response, fetch
 from events import EventsMixin
 from menu_preview import MenuPreviewMixin
+from mini_app import MiniAppMixin
 from urllib.parse import urlparse
 import json
 import html
@@ -88,7 +89,7 @@ def items(cat):
     return out
 
 
-class Bot(MenuPreviewMixin, EventsMixin, WorkerEntrypoint):
+class Bot(MiniAppMixin, MenuPreviewMixin, EventsMixin, WorkerEntrypoint):
     def db_args(self, args):
         """Normalize Pyodide/JavaScript values before binding them to D1.
 
@@ -1736,6 +1737,9 @@ class Bot(MenuPreviewMixin, EventsMixin, WorkerEntrypoint):
         await self.answer(cb.get("id"))
 
     async def fetch(self, request):
+        app_response = await self.mini_app_http(request)
+        if app_response is not None:
+            return app_response
         preview_response = await self.menu_preview_http(request)
         if preview_response is not None:
             return preview_response

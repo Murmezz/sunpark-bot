@@ -1,0 +1,32 @@
+[
+  {
+    "width": 320,
+    "themes": [
+      "dark",
+      "light"
+    ],
+    "console_errors": [],
+    "full_workflows": false
+  },
+  {
+    "width": 390,
+    "themes": [
+      "dark",
+      "light"
+    ],
+    "console_errors": [],
+    "full_workflows": true
+  },
+  {
+    "width": 820,
+    "themes": [
+      "dark",
+      "light"
+    ],
+    "console_errors": [],
+    "full_workflows": false
+  },
+  {
+    "telegram_theme_fallback": "passed"
+  }
+]
