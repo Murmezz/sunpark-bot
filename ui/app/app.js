@@ -7,6 +7,7 @@
   let cartOpen = false, cartScroll = 0, currentDish = null, storageKey = null, toastTimer, menuScroll = null;
   let appView='home', cartOrigin='menu', flowScope='guest', flowInput=null, inboxScope='guest', chatNumber=0, chatScope='guest', pendingUpload=null, busy=false, chatData=null;
   const cart = new Map(), products = new Map(), mediaCache = new Map();
+  // __WORKFLOWS__
   const money = amount => new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2}).format(amount/100) + ' ₽';
   const systemDark=window.matchMedia?.('(prefers-color-scheme: dark)'), systemLight=window.matchMedia?.('(prefers-color-scheme: light)');
   function applyTheme() {
@@ -42,7 +43,7 @@
     return ({'ЕДА':'Еда','НАПИТКИ':'Напитки','АЛКОГОЛЬ':'Бар','БАР':'Бар','СЕЗОННОЕ МЕНЮ':'Сезонное'})[normalized] || title;
   }
   function updateBackButton() {
-    try { if(dialog.open || cartOpen || categoryKey || query || appView!=='home') tg?.BackButton.show(); else tg?.BackButton.hide(); } catch (_) {}
+    try { if(dialog.open || $('picker-dialog').open || cartOpen || appView!=='home') tg?.BackButton.show(); else tg?.BackButton.hide(); } catch (_) {}
   }
   function toast(message) {
     clearTimeout(toastTimer); $('cart-toast').textContent=message; $('cart-toast').hidden=false;
@@ -274,7 +275,7 @@
   }
   async function api(operation,args={}) {
     const payload={...args,operation,init_data:tg?.initData||''};
-    if(!['bootstrap','tickets','chat'].includes(operation))payload.request_key=requestKey();
+    if(!['bootstrap','tickets','chat','screen'].includes(operation))payload.request_key=requestKey();
     const body=JSON.stringify(payload);
     let response;
     for(let attempt=0;attempt<2;attempt++) {
@@ -282,24 +283,29 @@
       catch(error){if(attempt)throw new Error('Не удалось связаться с сервером. Попробуйте ещё раз.');}
     }
     const data=await response.json();
-    if(!response.ok)throw new Error(data.error||'Не удалось выполнить действие.');
+    if(!response.ok){const error=new Error(data.error||'Не удалось выполнить действие.');error.fields=data.fields||{};error.status=response.status;throw error;}
     return data;
   }
   function setView(view) {
+    if(view!=='native')nativeSequence++;
+    if(view!==appView){clearTimeout(toastTimer);$('cart-toast').hidden=true;}
     if(dialog.open)closeDish();
     appView=view;
-    for(const name of ['home','menu','cart','flow','inbox','chat','more'])$(name+'-view').hidden=name!==view;
+    for(const name of ['home','menu','cart','flow','inbox','chat','more','native'])$(name+'-view').hidden=name!==view;
     if(view!=='cart')cartOpen=false;
     $('menu-search').hidden=view!=='menu';
     document.body.classList.toggle('chat-open',view==='chat');
+    document.body.classList.toggle('native-open',view==='native');$('native-back').hidden=view!=='native';
     for(const button of document.querySelectorAll('#app-nav [data-view]')) {
-      const active=button.dataset.view===view||(view==='chat'&&button.dataset.view==='inbox')||(view==='flow'&&button.dataset.view==='more');
+      const active=button.dataset.view===view||(view==='chat'&&button.dataset.view==='inbox')||(['flow','native'].includes(view)&&button.dataset.view===(nativeState?.screen==='tickets'?'inbox':nativeState?.screen==='booking'?'home':'more'));
       if(active)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');
     }
     renderCart();updateBackButton();
   }
   function goBack() {
-    if(dialog.open)closeDish();
+    if($('picker-dialog').open)closePicker();
+    else if(dialog.open)closeDish();
+    else if(appView==='native')nativeBack();
     else if(cartOpen)closeCart();
     else if(appView==='menu'&&(categoryKey||query))showHub();
     else if(appView==='chat')openInbox(chatScope);
@@ -332,7 +338,7 @@
   }
   function renderMore() {
     $('profile-name').textContent=[catalog.user?.first_name,catalog.user?.last_name].filter(Boolean).join(' ')||'SUNPARK';
-    const actions=[['Забронировать стол','booking:start'],['Провести банкет','banquet:contact'],['Мероприятия','ev:list:0'],['Правила и контакты','faq']];
+    const actions=[['Забронировать стол','booking:start'],['Провести банкет','banquet:contact'],['Мероприятия','ev:list:0'],['Правила и контакты','faq'],['Написать менеджеру','manager:start']];
     if(!catalog.events_visible)actions.splice(2,1);
     const root=$('more-actions');root.replaceChildren();
     for(const [label,callback] of actions)root.append(actionRow(label,actionIcon(callback),()=>runAction(callback,'guest')));
@@ -361,6 +367,7 @@
   }
   async function runAction(callback,scope='guest',keepChat=false) {
     if(busy)return;
+    try{if(await nativeAction(callback,scope,keepChat))return;}catch(error){toast(error.message);return;}
     if(callback==='back'||callback==='admin:guest'){setView('home');return;}
     if(callback==='home:menu'){goMenu();return;}
     busy=true;document.body.classList.add('busy');
@@ -430,28 +437,11 @@
     }
     sendFlowText(value);
   });
-  async function openInbox(scope=inboxScope) {
-    inboxScope=scope;setView('inbox');window.scrollTo(0,0);
-    for(const b of document.querySelectorAll('#inbox-scope button'))b.setAttribute('aria-pressed',String(b.dataset.scope===scope));
-    $('inbox-list').textContent='Загружаем обращения…';
-    try {
-      const data=await api('tickets',{scope});$('inbox-list').replaceChildren();
-      if(!data.tickets.length){$('inbox-list').append(node('p','empty-state','Здесь появятся ваши обращения и ответы менеджера.'));return;}
-      for(const ticket of data.tickets) {
-        const label=({booking:'Бронирование',banquet:'Банкет'})[ticket.request_type]||'Обращение';
-        const b=node('button','ticket-row');b.type='button';
-        const heading=node('span','ticket-heading',`${label} #${ticket.number}`);
-        heading.append(node('span','status-label',statusLabel(ticket.status)));
-        const name=scope==='staff'?([ticket.first_name,ticket.last_name].filter(Boolean).join(' ')||ticket.username||'Гость'):'';
-        b.append(heading,node('span','ticket-preview',[name,ticket.preview].filter(Boolean).join(' · ')));
-        b.addEventListener('click',()=>openChat(ticket.number,scope));$('inbox-list').append(b);
-      }
-    }catch(error){$('inbox-list').textContent=error.message;}
-  }
+  async function openInbox(scope=inboxScope) {inboxScope=scope;return openNative('tickets',{scope,filter:scope==='staff'?'waiting':'all'},true);}
   function statusLabel(status) {return ({draft:'Заполняется',waiting:'Новая',active:'В работе',waiting_guest:'Ждём ответа гостя',closed:'Закрыта'})[status]||status;}
   async function openChat(number,scope) {
-    if(chatNumber!==number){for(const url of mediaCache.values())URL.revokeObjectURL(url);mediaCache.clear();pendingUpload=null;}
-    chatNumber=number;chatScope=scope;setView('chat');window.scrollTo(0,0);await refreshChat();
+    if(chatNumber!==number){if(pendingUpload?.preview)URL.revokeObjectURL(pendingUpload.preview);for(const url of mediaCache.values())URL.revokeObjectURL(url);mediaCache.clear();pendingUpload=null;}
+    chatNumber=number;chatScope=scope;resetNativeChat(number,scope);setView('chat');window.scrollTo(0,0);await refreshChat();
   }
   async function loadMedia(message) {
     if(mediaCache.has(message.id))return mediaCache.get(message.id);
@@ -461,69 +451,24 @@
     if(mediaCache.size>20){const first=mediaCache.keys().next().value;URL.revokeObjectURL(mediaCache.get(first));mediaCache.delete(first);}
     return url;
   }
-  async function refreshChat() {
-    if(!chatNumber)return;
-    try {
-      const data=await api('chat',{ticket:chatNumber,scope:chatScope});chatData=data;
-      const ticket=data.ticket; $('chat-title').textContent=`${ticket.request_type==='booking'?'Бронирование':ticket.request_type==='banquet'?'Банкет':'Обращение'} #${ticket.number}`;
-      $('chat-status').textContent=statusLabel(ticket.status);
-      $('chat-details-body').replaceChildren();
-      const labels={name:'Имя',phone:'Телефон',date:'Дата',time:'Время',guests:'Гостей',event:'Повод',wishes:'Пожелания',comment:'Пожелания'};
-      for(const [key,value] of Object.entries(ticket.details||{})){
-        const p=node('p','',`${labels[key]||key}: ${value}`);$('chat-details-body').append(p);
-      }
-      if(ticket.note)$('chat-details-body').append(node('p','manager-note','Заметка менеджера: '+ticket.note));
-      const actions=$('chat-actions');actions.replaceChildren();
-      if(chatScope==='staff') {
-        let options=[];
-        if(ticket.status==='waiting')options=[['Взять в работу','claim:'+ticket.guest_id]];
-        else if(['active','waiting_guest'].includes(ticket.status)&&ticket.manager_id!==catalog.user.id)options=[['Забрать себе','take:'+ticket.number]];
-        else if(ticket.can_reply)options=[['Быстрый ответ','admin:templates:'+ticket.number],['Заметка','admin:note:'+ticket.number],['Закрыть заявку','close:'+ticket.guest_id]];
-        for(const [label,callback] of options){const b=node('button','secondary-button',label);b.addEventListener('click',()=>runAction(callback,'staff',/^(claim|take|close):/.test(callback)));actions.append(b);}
-      }
-      $('chat-form').hidden=!ticket.can_reply;$('chat-readonly').hidden=ticket.can_reply;
-      $('chat-readonly').textContent=ticket.status==='closed'?'Обращение закрыто.':'Чтобы ответить гостю, возьмите заявку в работу.';
-      const log=$('chat-log'),atBottom=log.scrollHeight-log.scrollTop-log.clientHeight<60,oldScroll=log.scrollTop;
-      log.replaceChildren();
-      if(!data.messages.length)log.append(node('p','empty-state','Здесь начнётся переписка с менеджером.'));
-      for(const message of data.messages) {
-        const mine=chatScope==='staff'?message.sender_role==='manager':message.sender_role==='guest';
-        const bubble=node('article','chat-bubble'+(mine?' mine':''));bubble.append(node('p','message-author',message.sender_role==='manager'?'Менеджер':'Гость'));
-        if(message.text)bubble.append(node('p','message-text',message.text));
-        if(message.attachment) {
-          const photo=message.attachment.kind==='photo';
-          const button=node('button','attachment-button',photo?'Открыть фото':`Скачать ${message.attachment.name||'PDF'}`);button.type='button';
-          button.addEventListener('click',async()=>{
-            button.disabled=true;
-            try {const url=await loadMedia(message);if(photo){const img=node('img','chat-photo');img.alt='Фото в переписке';img.src=url;bubble.append(img);button.hidden=true;}else{const link=node('a');link.href=url;link.download=message.attachment.name||'document.pdf';link.click();}}
-            catch(error){toast(error.message);}finally{button.disabled=false;}
-          });
-          if(photo&&mediaCache.has(message.id)){const img=node('img','chat-photo');img.alt='Фото в переписке';img.src=mediaCache.get(message.id);bubble.append(img);}else bubble.append(button);
-        }
-        if(message.created_at){const stamp=new Date(String(message.created_at).replace(' ','T')+'Z');bubble.append(node('time','message-time',Number.isNaN(stamp.getTime())?'':stamp.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})));}
-        log.append(bubble);
-      }
-      if(atBottom)log.scrollTop=log.scrollHeight;else log.scrollTop=oldScroll;
-      renderAttachment();
-    }catch(error){toast(error.message);}
-  }
+  async function refreshChat() {return refreshNativeChat();}
   function renderAttachment() {
     $('chat-attachment').hidden=!pendingUpload;$('chat-attachment').replaceChildren();
-    if(pendingUpload){$('chat-attachment').append(node('span','',pendingUpload.name));const b=node('button','icon-button');b.type='button';b.setAttribute('aria-label','Убрать вложение');b.append(icon('x'));b.addEventListener('click',()=>{pendingUpload=null;renderAttachment();});$('chat-attachment').append(b);}
+    if(pendingUpload){$('chat-attachment').append(node('span','',pendingUpload.name));const b=node('button','icon-button');b.type='button';b.setAttribute('aria-label','Убрать вложение');b.append(icon('x'));b.addEventListener('click',()=>{if(pendingUpload?.preview)URL.revokeObjectURL(pendingUpload.preview);pendingUpload=null;renderAttachment();});$('chat-attachment').append(b);}
   }
   $('chat-form').addEventListener('submit',async e=>{
     e.preventDefault();if(busy||!chatData?.ticket.can_reply)return;
     const text=$('chat-input').value.trim();if(!text&&!pendingUpload)return;
-    busy=true;$('chat-send').disabled=true;
-    try {const result=await api('chat_send',{ticket:chatNumber,scope:chatScope,text,upload:pendingUpload?.token});if(result.warning)toast(result.warning);$('chat-input').value='';pendingUpload=null;await refreshChat();$('chat-log').scrollTop=$('chat-log').scrollHeight;}
-    catch(error){toast(error.message);}finally{busy=false;$('chat-send').disabled=false;}
+    const sendingKey=nativeChatKey;busy=true;$('chat-send').disabled=true;$('chat-input').readOnly=true;
+    try {const result=await api('chat_send',{ticket:chatNumber,scope:chatScope,text,upload:pendingUpload?.token});if(result.warning)toast(result.warning);chatDrafts.delete(sendingKey);if(nativeChatKey!==sendingKey)return;$('chat-input').value='';$('chat-input').style.height='auto';if(pendingUpload?.preview)URL.revokeObjectURL(pendingUpload.preview);pendingUpload=null;await refreshChat();$('chat-log').scrollTop=$('chat-log').scrollHeight;}
+    catch(error){toast(error.message);}finally{busy=false;$('chat-send').disabled=false;$('chat-input').readOnly=false;}
   });
   $('attach-button').addEventListener('click',()=>$('chat-file').click());
   $('chat-file').addEventListener('change',async e=>{
-    const file=e.target.files?.[0];if(!file)return;
+    const file=e.target.files?.[0];if(!file)return;const uploadKey=nativeChatKey;
     if(file.size>5*1024*1024){toast('Максимальный размер вложения — 5 МБ.');e.target.value='';return;}
     busy=true;$('attach-button').disabled=true;toast('Загружаем вложение…');
-    try {const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.onerror=reject;reader.readAsDataURL(file);});pendingUpload=await api('upload',{name:file.name,data});renderAttachment();toast('Вложение готово к отправке');}
+    try {const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.onerror=reject;reader.readAsDataURL(file);});const uploaded=await api('upload',{name:file.name,data});if(nativeChatKey!==uploadKey)return;pendingUpload={...uploaded,size:file.size,preview:file.type.startsWith('image/')?URL.createObjectURL(file):null};renderAttachment();toast('Вложение готово к отправке');}
     catch(error){toast(error.message);}finally{busy=false;$('attach-button').disabled=false;e.target.value='';}
   });
   $('brand-home').addEventListener('click',()=>{setView('home');window.scrollTo(0,0);});

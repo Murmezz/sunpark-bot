@@ -2,31 +2,41 @@
   {
     "width": 320,
     "themes": [
-      "dark",
-      "light"
+      "light",
+      "dark"
     ],
-    "console_errors": [],
-    "full_workflows": false
+    "booking_and_cart": "passed",
+    "keyboard_viewport": "passed",
+    "full_admin": false,
+    "console_errors": []
   },
   {
     "width": 390,
     "themes": [
-      "dark",
-      "light"
+      "light",
+      "dark"
     ],
-    "console_errors": [],
-    "full_workflows": true
+    "booking_and_cart": "passed",
+    "keyboard_viewport": "passed",
+    "full_admin": true,
+    "console_errors": []
   },
   {
     "width": 820,
     "themes": [
-      "dark",
-      "light"
+      "light",
+      "dark"
     ],
-    "console_errors": [],
-    "full_workflows": false
+    "booking_and_cart": "passed",
+    "keyboard_viewport": "passed",
+    "full_admin": false,
+    "console_errors": []
   },
   {
-    "telegram_theme_fallback": "passed"
+    "capacity_error_visibility": "passed",
+    "expected_api_status": 409
+  },
+  {
+    "telegram_fallback": "passed"
   }
 ]

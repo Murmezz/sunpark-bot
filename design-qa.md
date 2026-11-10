@@ -1,43 +1,54 @@
-# SUNPARK design QA
+# SUNPARK Mini App adaptation — Product Design QA
 
 final result: passed
 
-## Reference and scope
+## Findings and revisions
 
-User selected concept 3 and requested the same light design with automatic phone theme selection. One responsive implementation, no manual theme picker. Existing Worker and D1 hosting retained; full application is admin-only first.
+- **P1, booking footer:** the initial calendar/time composition put the primary action behind bottom navigation. Added a sticky footer above navigation and corrected calendar/header spacing. Verified action visibility at 320, 390 and 820 px, including a reduced-height conversation viewport.
+- **P2, conversation density:** repeated metadata and a separate timestamp line made the conversation heavier than the reference. Replaced the header with a compact request summary, grouped messages by date, put timestamps alongside message content and removed empty-toolbar spacing. Re-captured and compared the revised conversation.
+- **P2, navigation and reading state:** returning through a form or polling chat could reset context. Added retained request values, per-conversation message drafts, stale-response guards, unchanged-message DOM preservation and scroll anchoring. Real browser polling verified that an incoming message preserves the reading position and offers a jump button.
+- **P2, active time typography:** only the regular display face was available. Bundled an official Cormorant Garamond 600 numeral subset; active wheel numbers now use a real semibold face. Re-captured both themes at all three widths.
 
-Selected reference: `/workspace/generated_images/exec-283f4f57-cd43-4406-a007-961db99eb415.png`.
-Light counterpart: `/workspace/generated_images/exec-aa937910-a934-410d-98f0-c324dd935dfd.png`.
-Both sources and browser implementations were opened and inspected visually.
+No unresolved P0/P1/P2 findings. Remaining small differences are listed below as intentional data/interaction constraints rather than pixel-equivalent claims.
 
-## Matched comparisons
+## Exact visual targets and evidence
 
-- Dark: [source and implementation](artifacts/compare-dark-final.webp).
-- Light: [source and implementation](artifacts/compare-light-final.webp).
-- Viewport: 390 × 844 CSS pixels, device scale factor 1. Sources normalized to 390 × 844; comparison canvas 780 × 872 with a 28 px label strip. No device or Telegram chrome included.
-- Same input: home screen, two real fixture menu rows (740 ₽ and 890 ₽), no cart, identical copy in both themes.
+The user retained the selected third SUNPARK direction, asked for native Mini App adaptation, and specified scrolling hours/minutes, future calendar dates, a familiar conversation and complete administrative screens. These are scoped revisions of the selected direction, not a replacement visual system.
 
-## Iterations and visual findings
+- Booking reference: `/workspace/generated_images/exec-8038acd1-3bdb-418d-a6b3-ee08bfe5f3ba.png`.
+- Conversation reference: `/workspace/generated_images/exec-a3b4a55e-30cd-4d83-8930-a9b5ce277707.png`.
+- [Booking comparison](artifacts/compare-booking-v2-final.webp), [wheel/footer detail](artifacts/compare-booking-v2-detail.webp).
+- [Conversation comparison](artifacts/compare-chat-v2-final.webp), [header/message detail](artifacts/compare-chat-v2-detail.webp).
 
-Initial comparison showed excessive title line spacing, oversized foliage, overlapping profile decoration, and an 8–20 px vertical shift in the following content. Adjusted title leading, hero spacing, decorative asset size and position, header stacking, sample spacing and button spacing. Small-screen decoration initially increased document width; clipping the app shell corrected horizontal overflow without reintroducing modal scrolling.
+The actual source images and rendered implementation were opened and inspected, then combined side by side. Sources are normalized from 852 × 1844 to 390 × 844; browser viewport is 390 × 844 CSS pixels at deviceScaleFactor 1. Full comparison canvas is 780 × 872 with a 28 px label strip. No phone or browser chrome is included.
 
-Compared font hierarchy, line breaks, spacing, colors, logo, foliage crop, controls, text and the persistent navigation. Original SUNPARK logo retained. Cormorant Garamond display type and Manrope interface text are self-hosted. Dark forest/ivory/sage and light warm-ivory/forest palettes follow the selected references. Official Phosphor icons use consistent stroke and sizing. Foliage is a dedicated ImageGen asset; its leaf shape and crop are a minor variation from the concept. Runtime prices and names remain actual menu data.
+Matched booking state: November 2026, today 10 November, Saturday 14 November selected, 19:30, first of three steps. Matched conversation fixture: booking №24, 14 November at 19:30, four guests, the same two message bodies, 14:20/14:22 timestamps and a PDF at 14:23. All data is isolated test data, not a production booking.
 
-Reviewed additional rendered menu/dish, event review and conversation screens. Removed duplicated Telegram reply-keyboard navigation from application forms, corrected heading treatment for event field labels, and gave conversations room for the composer at a reduced viewport height. No unresolved P0/P1/P2 findings in this implementation review.
+## Required fidelity surfaces
 
-## Interaction and technical checks
+- **Fonts/typography:** Cormorant Garamond editorial headings and time values; Manrope interface and body text. Real 600 numeral weight is bundled. Body/form text is 16–17 px, metadata is smaller, headings retain the approved hierarchy. Checked wrapping, number alignment, selected states and focus indicators.
+- **Spacing/layout:** compact centered brand header on workflow screens, seven-column calendar, independent wheel columns, a clear primary action and persistent navigation. Conversation header, summary, message sides, dates and composer follow the revised target. Forms and lists use grouping/dividers instead of Telegram message dumps.
+- **Colors/tokens:** retained warm ivory/forest light palette and approved forest/ivory/sage dark palette. All controls, fields, dialogs, conversation bubbles and Telegram panels follow automatic theme changes. Semantic error colors remain legible in both themes.
+- **Image quality/assets:** original supplied SUNPARK logo and existing ImageGen foliage are retained. New workflow screens require no new raster illustrations. Icons are official Phosphor assets of the same family, including PDF/photo attachments. Fonts and assets are locally bundled.
+- **Copy/content:** visible controls use application-specific Russian labels, Moscow booking time, honest availability/confirmation language, preserved drafts and inline field errors. The application never infers booking confirmation from the native message-status field.
 
-- Chromium at 320, 390 and 820 px widths, 844 px height, both themes: no horizontal overflow and no console errors. [Machine-readable results](artifacts/browser-results.json).
-- OS dark/light change without reload; OS preference wins over a conflicting Telegram setting; Telegram `themeChanged` fallback works when system preferences are unavailable. Telegram header/background/bottom colors follow the selected theme.
-- All bar categories, mandatory alcohol/non-alcohol selection, cart totals, quantity changes, removal, persistence and adding a dish from the home preview.
-- Dish dialog after deep scrolling: fixed viewport positioning, independent content scrolling, Telegram Back closes it and restores the original list position.
-- Full booking, own conversation, plain-text HTML-like content, staff claim/reply/note, admin screens, event creation/review/confirmation, and ticket phone search against real Python handlers and isolated SQLite.
-- Composer remains above bottom navigation at a 390 × 500 viewport (keyboard-size simulation).
-- 43 Python unit/integration tests passed, including native event behavior, signed authorization, nonadmin denial, guest ownership, idempotency, notification failure, attachments and media permissions.
-- Upload implementation executed in actual Pyodide with native Blob/FormData and mocked Telegram: PDF bytes, multipart fields, stored opaque token and temporary-message deletion verified.
+Intentional/P3 differences: real wheel neighbors are 29/31 around minute 30 (the generated reference repeated 00); the current day remains identifiable and selectable for future times; a replied conversation displays its actual response status instead of pretending a booking is confirmed. PDF size is omitted when historical Telegram data does not contain it. Calendar tap rows and message spacing are slightly roomier than the generated image for practical use. No additional P3 iteration is required for handoff.
 
-All fixture notifications were mocked. No real guest messages or production test bookings were created.
+## Functional validation
 
-## Environment limits
+- **52 Python tests passed:** complete booking submission and replay protection, Russian phone validation before writes, automatic Telegram identity, event limits, manual registration beyond the self-registration limit, duplicates, event edit version conflicts, past-event edits, manager CRUD/protected admins, Unicode Russian search, ticket pagination, guest cancellation, ownership checks and media permissions.
+- Chromium at **320, 390 and 820 px**, both themes, no unexpected console errors or horizontal overflow. [Browser results](artifacts/browser-results.json).
+- Full booking through actual calendar/wheel controls, return to previous steps without losing contact data, review and submission; own conversation and staff claim/reply/note; full template sheet; event creation using calendar/time dialogs, registration toggle, manual addition and deletion; manager add/rename/delete; address/contact links.
+- A **390 × 500**-style reduced-height viewport check (also at the other tested widths) keeps the composer above navigation. This simulates keyboard-sized space; it is not a physical-phone claim.
+- A rejected company registration (HTTP 409, insufficient capacity) scrolls its error into view above navigation without dropping the entered values.
+- Long-chat polling preserves scroll position and exposes a jump-to-new control. Older-history pagination is covered by API integration tests.
+- Cart/price variant/quantity/removal/persistence, all bar categories and deep-scrolled fixed dish modal remain covered by browser checks.
+- Actual Pyodide executed the upload method with native Blob/FormData and mocked Telegram, including byte content, multipart fields, opaque upload token and temporary-message deletion.
 
-No shared desktop/browser control is exposed in this session. `terminal.local:4173` was rejected by the environment proxy (`No approved upstream IPv4 address`). Actual browser testing used a loopback HTTP fixture server and real Chromium. This report does not claim a shared browser was opened or that physical iOS/Android Telegram clients were tested. Production handoff is the existing bot's administrator-only development button, not a separate Sites deployment.
+No real guest messages, admin broadcasts or production fixture bookings were created during testing.
+
+## Environment and handoff scope
+
+Existing Python Worker, D1 records and hosting are retained. Access remains admin-only through `/admin → Разработка → SUNPARK · Mini App`. Native bot handlers remain compatible.
+
+The managed environment exposes no shared desktop/browser control. Browser evidence was produced by real Chromium against a loopback fixture server. It does not claim a shared Desktop window or physical iOS/Android Telegram clients were tested. The user-requested production preview is the existing bot, not a separate Sites deployment.

@@ -10,15 +10,14 @@ from urllib.parse import parse_qsl, urlparse
 
 from menu_preview import preview_catalog, read_preview_body, validate_init_data
 from mini_app_assets import APP_HTML, APP_CSS, APP_JS, APP_LOGO, APP_ICONS
+from app_workflows import AppWorkflowsMixin, WorkflowError
 
 MINIAPP_ADMIN_ONLY = True
 MAX_UPLOAD = 5 * 1024 * 1024
 
 
-class AppError(Exception):
-    def __init__(self, message, status=400):
-        super().__init__(message)
-        self.status = status
+class AppError(WorkflowError):
+    pass
 
 
 def plain_row(row, keys):
@@ -90,7 +89,7 @@ class AppBridge:
         return None
 
 
-class MiniAppMixin:
+class MiniAppMixin(AppWorkflowsMixin):
     async def app_init(self):
         await self.db_run("CREATE TABLE IF NOT EXISTS miniapp_requests (user_id INTEGER NOT NULL, request_key TEXT NOT NULL, digest TEXT NOT NULL, response TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT (datetime('now')), PRIMARY KEY(user_id,request_key))")
         await self.db_run("CREATE TABLE IF NOT EXISTS miniapp_uploads (token TEXT PRIMARY KEY, user_id INTEGER NOT NULL, file_id TEXT NOT NULL, kind TEXT NOT NULL, file_name TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')))")
@@ -126,7 +125,7 @@ class MiniAppMixin:
             raise AppError("Заявка не найдена.", 404)
         return row
 
-    async def app_chat(self, uid, number, scope):
+    async def app_chat(self, uid, number, scope, cfg=None, before=None):
         row = await self.app_ticket(uid, number, scope)
         data = plain_row(row, ("number", "guest_id", "manager_id", "status", "request_type", "username", "first_name", "last_name"))
         try:
@@ -140,9 +139,19 @@ class MiniAppMixin:
             note = await self.ticket_note(number)
             data["note"] = str(note.note) if note else ""
         data["can_reply"] = can_reply
-        result = await self.db_all("SELECT id,sender_id,sender_role,body,created_at FROM ticket_messages WHERE ticket_number=? ORDER BY id DESC LIMIT 100", number)
+        names = await self.manager_names(cfg if cfg is not None else (await self.config())[3])
+        data["manager_name"] = names.get(str(row.manager_id), "Менеджер SUNPARK")
+        data["guest_name"] = str(data["details"].get("name") or " ".join(str(getattr(row, key, "") or "") for key in ("first_name", "last_name")).strip() or "Гость")
+        args = [number]
+        clause = ""
+        if before is not None:
+            if type(before) is not int or before < 1:
+                raise AppError("Не удалось загрузить историю.")
+            clause = " AND id<?"
+            args.append(before)
+        result = await self.db_all(f"SELECT id,sender_id,sender_role,body,created_at FROM ticket_messages WHERE ticket_number=?{clause} ORDER BY id DESC LIMIT 101", *args)
         messages = []
-        for item in reversed(result.results):
+        for item in reversed(list(result.results)[:100]):
             record = plain_row(item, ("id", "sender_id", "sender_role", "created_at"))
             record["text"] = str(item.body or "")
             if record["text"].startswith("ATTACH:"):
@@ -153,7 +162,7 @@ class MiniAppMixin:
                 except (ValueError, TypeError):
                     record["text"] = "Вложение"
             messages.append(record)
-        return {"ticket": data, "messages": messages}
+        return {"ticket": data, "messages": messages, "has_more": len(result.results) > 100}
 
     async def app_send_chat(self, bridge, payload, cfg):
         uid, number = bridge.uid, payload.get("ticket")
@@ -199,7 +208,7 @@ class MiniAppMixin:
                 except Exception as error:
                     print("SUNPARK MINIAPP NOTIFICATION", type(error).__name__)
                     warning = "Сообщение сохранено. Уведомление в Telegram не доставлено."
-        result = await self.app_chat(uid, number, scope)
+        result = await self.app_chat(uid, number, scope, cfg)
         if warning:
             result["warning"] = warning
         return result
@@ -276,6 +285,12 @@ class MiniAppMixin:
         uid, operation, scope = bridge.uid, payload.get("operation"), payload.get("scope", "guest")
         if scope not in ("guest", "staff"):
             raise AppError("Неизвестный режим.")
+        if operation == "screen":
+            return await self.workflow_screen(user, payload, info, cfg)
+        if operation == "submit_form":
+            return await self.workflow_submit(bridge, payload, cfg)
+        if operation == "command":
+            return await self.workflow_command(bridge, payload, cfg)
         if operation == "bootstrap":
             await self.db_run("INSERT INTO users(user_id,username,first_name,last_name,updated_at) VALUES(?,?,?,?,datetime('now')) ON CONFLICT(user_id) DO UPDATE SET username=excluded.username,first_name=excluded.first_name,last_name=excluded.last_name,updated_at=excluded.updated_at", uid, str(user.get("username") or ""), str(user.get("first_name") or ""), str(user.get("last_name") or ""))
             data = preview_catalog(menu, sections)
@@ -292,7 +307,7 @@ class MiniAppMixin:
                 rows.append(data)
             return {"tickets": rows}
         if operation == "chat":
-            return await self.app_chat(uid, payload.get("ticket"), scope)
+            return await self.app_chat(uid, payload.get("ticket"), scope, cfg, payload.get("before"))
         if operation == "chat_send":
             return await self.app_send_chat(bridge, payload, cfg)
         if operation == "upload":
@@ -367,7 +382,7 @@ class MiniAppMixin:
             if path == "/api/app/media":
                 return await self.app_media(uid, payload, headers)
             operation = payload.get("operation")
-            if operation in ("bootstrap", "tickets", "chat"):
+            if operation in ("bootstrap", "tickets", "chat", "screen"):
                 return respond(await self.app_dispatch(user, payload, menu, sections, info, cfg))
             if len(raw) > 24000 and operation != "upload":
                 raise AppError("Слишком большой запрос.", 413)
@@ -388,12 +403,12 @@ class MiniAppMixin:
             try:
                 result = await self.app_dispatch(user, payload, menu, sections, info, cfg)
                 status = 200
-            except AppError as error:
-                result, status = {"error": str(error)}, error.status
+            except WorkflowError as error:
+                result, status = {"error": str(error), "fields": error.fields}, error.status
             await self.db_run("UPDATE miniapp_requests SET response=? WHERE user_id=? AND request_key=?", json_body({"data": result, "status": status}), uid, key)
             return respond(result, status)
-        except AppError as error:
-            return respond({"error": str(error)}, error.status)
+        except WorkflowError as error:
+            return respond({"error": str(error), "fields": error.fields}, error.status)
         except Exception as error:
             print("SUNPARK MINIAPP API ERROR", type(error).__name__)
             return respond({"error": "Не удалось выполнить действие. Обновите экран."}, 500)

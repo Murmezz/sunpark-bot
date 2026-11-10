@@ -4,7 +4,7 @@ const {loadPyodide} = require('pyodide');
 const fs = require('node:fs');
 (async () => {
   const py = await loadPyodide();
-  py.FS.writeFile('/mini_app.py', fs.readFileSync('src/mini_app.py', 'utf8'));
+  for (const name of ['mini_app','app_workflows','events']) py.FS.writeFile('/'+name+'.py', fs.readFileSync('src/'+name+'.py', 'utf8'));
   await py.runPythonAsync(`
 import asyncio,sys,types,base64
 from types import SimpleNamespace as NS

@@ -90,6 +90,9 @@ def items(cat):
 
 
 class Bot(MiniAppMixin, MenuPreviewMixin, EventsMixin, WorkerEntrypoint):
+    def quick_reply_choices(self):
+        return list(QUICK_REPLIES)
+
     def db_args(self, args):
         """Normalize Pyodide/JavaScript values before binding them to D1.
 
