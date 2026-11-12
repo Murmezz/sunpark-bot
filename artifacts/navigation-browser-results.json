@@ -1,0 +1,55 @@
+[
+  {
+    "width": 320,
+    "directions": 4,
+    "themes": [
+      "light",
+      "dark"
+    ],
+    "empty_messages": "passed",
+    "back_navigation": "passed",
+    "scoped_cart": "passed",
+    "two_tab_navigation": "passed",
+    "photos_inert": true,
+    "phone_only_services": true,
+    "errors": []
+  },
+  {
+    "width": 390,
+    "directions": 4,
+    "themes": [
+      "light",
+      "dark"
+    ],
+    "empty_messages": "passed",
+    "back_navigation": "passed",
+    "scoped_cart": "passed",
+    "two_tab_navigation": "passed",
+    "photos_inert": true,
+    "phone_only_services": true,
+    "errors": []
+  },
+  {
+    "width": 820,
+    "directions": 4,
+    "themes": [
+      "light",
+      "dark"
+    ],
+    "empty_messages": "passed",
+    "back_navigation": "passed",
+    "scoped_cart": "passed",
+    "two_tab_navigation": "passed",
+    "photos_inert": true,
+    "phone_only_services": true,
+    "errors": []
+  },
+  {
+    "telegram_client": "old",
+    "fallback_and_close": "passed"
+  },
+  {
+    "telegram_client": "unsupported",
+    "fallback_and_close": "passed"
+  }
+]

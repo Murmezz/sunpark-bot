@@ -48,6 +48,11 @@ async def main():
             await page.goto(origin+'/app');await page.locator('#app-shell').wait_for(state='visible');await page.evaluate('document.fonts.ready')
             await page.locator('[id^=tg-mock]').evaluate_all("elements=>elements.forEach(e=>e.style.opacity='0')")
             assert await page.locator('#home-services .service-card').count()==4
+            assert await page.title()=='Sunpark'
+            assert await page.locator('.app-header,#home-inbox,#app-close').count()==0
+            assert await page.locator('#app-nav button').all_text_contents()==['Главная','Сообщения']
+            assert await page.locator('.complex-leaf').evaluate('e=>e.getBoundingClientRect().width<=118')
+            assert await page.locator('#cart-launcher').is_hidden()
             await page.wait_for_function("()=>[...document.querySelectorAll('#home-services img')].every(i=>i.complete&&i.naturalWidth>0)")
             assert await page.evaluate('window.__fullscreenRequests')==1
             assert await page.evaluate("document.body.classList.contains('telegram-fullscreen')")
@@ -57,7 +62,7 @@ async def main():
                 await page.set_viewport_size({'width':320,'height':844})
             for theme in ['light','dark']:
                 await page.emulate_media(color_scheme=theme);await page.wait_for_timeout(100)
-                await page.screenshot(path=str(ARTIFACTS/f'complex-home-{theme}-{width}.png'))
+                await page.screenshot(path=str(ARTIFACTS/f'navigation-home-{theme}-{width}.png'))
             await page.emulate_media(color_scheme='light')
             for key,title in [('wake','Вейк'),('wave','Волна'),('restaurant','Ресторан'),('hotel','Отель')]:
                 if key=='wake':await page.locator('#home-services [data-service=wake]').click()
@@ -94,14 +99,44 @@ async def main():
                     await page.locator('summary').filter(has_text='выходные и праздники').click()
                     assert await page.locator('.service-price-group[open]').count()==2
                 if key=='hotel' and width==390:
-                    await page.locator('.service-prices').scroll_into_view_if_needed();await page.screenshot(path=str(ARTIFACTS/'complex-hotel-prices-light-390.png'))
+                    await page.locator('.service-prices').scroll_into_view_if_needed();await page.screenshot(path=str(ARTIFACTS/'navigation-hotel-prices-light-390.png'))
             await page.keyboard.press('Escape');assert await page.locator('#home-view').is_visible()
-            await page.locator('#app-nav [data-view=more]').click()
-            await page.locator('#more-actions').get_by_role('button',name='Волна',exact=True).click()
-            await page.locator('#service-view .back-link').click();assert await page.locator('#more-view').is_visible()
-            await page.locator('#app-close').click();assert await page.evaluate('window.__closed')==1
+            await page.locator('#app-nav [data-view=inbox]').click()
+            await page.get_by_role('heading',name='Пока нет обращений',exact=True).wait_for()
+            for label in ['Забронировать стол','Провести банкет','Написать менеджеру']:
+                await page.get_by_role('button',name=label,exact=True).click()
+                await page.locator('#native-content').wait_for(state='visible')
+                await page.wait_for_function("()=>document.getElementById('native-content').getAttribute('aria-busy')!=='true'")
+                assert await page.locator('#view-back-label').inner_text()=='К сообщениям'
+                await page.locator('#native-back').click()
+                await page.get_by_role('heading',name='Пока нет обращений',exact=True).wait_for()
+            for theme in ['light','dark']:
+                await page.emulate_media(color_scheme=theme);await page.wait_for_timeout(100)
+                await page.screenshot(path=str(ARTIFACTS/f'navigation-messages-{theme}-{width}.png'))
+            await page.emulate_media(color_scheme='light')
+            await page.get_by_role('button',name='Управление',exact=True).click()
+            assert await page.locator('#more-view').is_visible()
+            await page.locator('#native-back').click()
+            await page.get_by_role('heading',name='Пока нет обращений',exact=True).wait_for()
+            await page.locator('#app-nav [data-view=home]').click()
+            await page.locator('#home-services [data-service=restaurant]').click()
+            await page.locator('#restaurant-menu').click()
+            assert await page.locator('#menu-back-label').inner_text()=='К ресторану'
+            for theme in ['light','dark']:
+                await page.emulate_media(color_scheme=theme);await page.wait_for_timeout(100)
+                await page.screenshot(path=str(ARTIFACTS/f'navigation-menu-{theme}-{width}.png'))
+            await page.emulate_media(color_scheme='light')
+            await page.locator('.category-card').first.click()
+            assert await page.locator('#menu-back-label').inner_text()=='К разделам меню'
+            await page.locator('#back-to-sections').click();assert await page.locator('#menu-hub').is_visible()
+            await page.locator('#back-to-sections').click();assert await page.locator('#service-view').is_visible()
+            assert await page.locator('#cart-launcher').is_visible()
+            await page.locator('.service-tabs').get_by_role('button',name='Вейк',exact=True).click()
+            assert await page.locator('#cart-launcher').is_hidden()
+            await page.locator('#app-nav [data-view=inbox]').click()
+            await page.get_by_role('button',name='Закрыть приложение',exact=True).click();assert await page.evaluate('window.__closed')==1
             assert not errors,errors
-            results.append({'width':width,'directions':4,'themes':['light','dark'],'photos_inert':True,'phone_only_services':True,'fullscreen_and_close':'passed','errors':errors})
+            results.append({'width':width,'directions':4,'themes':['light','dark'],'empty_messages':'passed','back_navigation':'passed','scoped_cart':'passed','two_tab_navigation':'passed','photos_inert':True,'phone_only_services':True,'errors':errors})
             await page.close()
         for mode in ['old','unsupported']:
             page=await browser.new_page(viewport={'width':390,'height':844})
@@ -109,10 +144,11 @@ async def main():
             await page.goto(origin+'/app');await page.locator('#app-shell').wait_for(state='visible')
             assert await page.evaluate('window.__fullscreenRequests')==(0 if mode=='old' else 1)
             assert await page.evaluate('window.__expandCalls')>0
-            await page.locator('#app-close').click();assert await page.evaluate('window.__closed')==1
+            await page.locator('#app-nav [data-view=inbox]').click()
+            await page.get_by_role('button',name='Закрыть приложение',exact=True).click();assert await page.evaluate('window.__closed')==1
             results.append({'telegram_client':mode,'fallback_and_close':'passed'});await page.close()
         await browser.close()
-    (ARTIFACTS/'complex-browser-results.json').write_text(json.dumps(results,ensure_ascii=False,indent=2))
+    (ARTIFACTS/'navigation-browser-results.json').write_text(json.dumps(results,ensure_ascii=False,indent=2))
     print(json.dumps(results,ensure_ascii=False))
 
 

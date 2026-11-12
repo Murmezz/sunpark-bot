@@ -1,5 +1,5 @@
 // Dedicated Mini App screens. Bundled inside app.js's existing private scope.
-let nativeState=null,nativeStack=[],nativeSequence=0,pickerDone=null;
+let nativeState=null,nativeStack=[],nativeSequence=0,pickerDone=null,nativeOrigin='home';
 let chatRenderKey='',chatTicketKey='',nativeChatKey='',chatRequest=null,chatMessages=new Map(),chatOlder=false;
 const chatDrafts=new Map();
 const formLabels={date:'Дата',time:'Время по Москве',guests:'Количество гостей',name:'Ваше имя',phone:'Телефон',comment:'Пожелания',event:'Повод или формат',wishes:'Пожелания',title:'Название',description:'Описание',starts_at:'Дата и время по Москве',location:'Место',price:'Стоимость и условия',capacity:'Лимит самостоятельной записи',first_name:'Имя',last_name:'Фамилия',party_size:'Гостей, включая контактное лицо',telegram_username:'Telegram-ник',username:'Telegram-ник',note:'Заметка менеджера',message:'Ваш вопрос'};
@@ -15,9 +15,14 @@ function message(root,text,kind='hint'){const p=node('p','native-'+kind,text);if
 function draftKey(kind){return `sunpark:request-draft:v2:${catalog?.user?.id}:${kind}`;}
 function saveNativeDraft(){if(!nativeState||!['booking','banquet'].includes(nativeState.screen))return;try{localStorage.setItem(draftKey(nativeState.screen),JSON.stringify(nativeState.values));}catch(_){}}
 function getNativeDraft(kind){try{const value=JSON.parse(localStorage.getItem(draftKey(kind))||'null');return value&&typeof value==='object'&&!Array.isArray(value)?value:{};}catch(_){return {};}}
-function nativeBack(){nativeSequence++;saveNativeDraft();if(nativeState&&['booking','banquet'].includes(nativeState.screen)&&nativeState.step>0){nativeState.step--;renderNative();return;}if(nativeStack.length){nativeState=nativeStack.pop();setView('native');renderNative();}else{const current=nativeState?.screen;if(['event','event_edit','manual','register','event_guests'].includes(current)){openNative(current==='event'?'events':'event',{...nativeState.args},true);return;}setView(['booking','banquet','success'].includes(current)?'home':'more');window.scrollTo(0,0);}}
-$('native-back').addEventListener('click',nativeBack);
+function nativeBack(){nativeSequence++;saveNativeDraft();if(nativeState&&['booking','banquet'].includes(nativeState.screen)&&nativeState.step>0){nativeState.step--;renderNative();return;}if(nativeStack.length){nativeState=nativeStack.pop();setView('native');renderNative();}else{const current=nativeState?.screen;if(['event','event_edit','manual','register','event_guests'].includes(current)){openNative(current==='event'?'events':'event',{...nativeState.args},true);return;}if(nativeOrigin==='restaurant'){openService('restaurant','home');return;}if(nativeOrigin==='messages'){openInbox('guest');return;}setView(nativeOrigin==='management'?'more':'home');window.scrollTo(0,0);}}
+$('native-back').addEventListener('click',()=>appView==='more'?openInbox('guest'):nativeBack());
 async function openNative(screen,args={},root=false){
+  if(screen==='tickets'&&args.scope!=='staff')nativeOrigin='home';
+  else if(appView==='service'&&currentServiceId==='restaurant')nativeOrigin='restaurant';
+  else if(appView==='native'&&nativeState?.screen==='tickets'&&nativeState.args.scope!=='staff')nativeOrigin='messages';
+  else if(appView==='more'||args.scope==='staff')nativeOrigin='management';
+  else if(appView!=='native')nativeOrigin='home';
   saveNativeDraft();if(root===true)nativeStack=[];else if(root!=='replace'&&appView==='native'&&nativeState?.data)nativeStack.push(clone(nativeState));
   const sequence=++nativeSequence;nativeState={screen,args,data:null,values:{},step:0};setView('native');window.scrollTo(0,0);
   $('native-content').replaceChildren(node('p','empty-state','Загружаем…'));$('native-content').setAttribute('aria-busy','true');
@@ -183,11 +188,17 @@ function renderDashboard(root,s){
 }
 function pagers(root,page,more,action){if(page===0&&!more)return;const row=node('div','pagination');const back=button('Назад','secondary-button',()=>action(page-1));back.disabled=page===0;const next=button('Далее','secondary-button',()=>action(page+1));next.disabled=!more;row.append(back,node('span','',String(page+1)),next);root.append(row);}
 function renderTicketList(root,s){
-  const staff=s.args.scope==='staff';heading(root,staff?'Заявки гостей':'Мои обращения',staff?'История и переписка с гостями':'Ответы менеджера и данные ваших заявок');
+  const staff=s.args.scope==='staff';heading(root,staff?'Заявки гостей':'Сообщения',staff?'История и переписка с гостями':'Заявки и переписка с командой Sunpark');
   if(staff){const tabs=node('div','list-tabs');for(const [label,filter] of [['Новые','waiting'],['Мои','mine'],['Коллеги','others'],['Архив','closed']]){const b=button(label,'',()=>openNative('tickets',{...s.args,filter,page:0,query:''},'replace'));b.setAttribute('aria-pressed',String(s.args.filter===filter));tabs.append(b);}root.append(tabs);
     const form=node('form','native-search'),input=node('input');input.type='search';input.placeholder='Имя, телефон или номер заявки';input.value=s.args.query||'';input.setAttribute('aria-label','Поиск заявок');const find=button('','icon-button');find.append(icon('magnifying-glass'));find.type='submit';find.setAttribute('aria-label','Найти');form.append(input,find);form.addEventListener('submit',event=>{event.preventDefault();openNative('tickets',{scope:'staff',filter:'search',query:input.value,page:0},'replace');});root.append(form);
   }
-  if(!s.data.tickets.length){message(root,s.args.query?'Ничего не найдено. Попробуйте другой запрос.':staff?'В этом разделе пока нет заявок.':'Здесь появятся ваши заявки и ответы менеджера.');if(!staff)root.append(button('Забронировать стол','primary-button',()=>openNative('booking',{},true)));}
+  if(!s.data.tickets.length){
+    if(staff)message(root,s.args.query?'Ничего не найдено. Попробуйте другой запрос.':'В этом разделе пока нет заявок.');
+    else{
+      const empty=node('section','inbox-empty');empty.append(node('h2','','Пока нет обращений'),node('p','','Забронируйте стол, обсудите банкет или задайте вопрос. Ответ менеджера появится здесь.'));root.append(empty);
+      for(const [label,name,screen] of [['Забронировать стол','calendar-blank','booking'],['Провести банкет','users-three','banquet'],['Написать менеджеру','chat-circle','inquiry']])root.append(actionRow(label,name,()=>openNative(screen,{},true)));
+    }
+  }
   for(const t of s.data.tickets){
     const b=button('','request-row',()=>openChat(t.number,staff?'staff':'guest'));const label=t.request_type==='booking'?'Бронирование':t.request_type==='banquet'?'Банкет':'Обращение';
     const top=node('span','request-row-top');top.append(node('strong','',staff?(t.details.name||[t.first_name,t.last_name].filter(Boolean).join(' ')||t.username||'Гость'):`${label} №${t.number}`),node('span','status-chip',statusLabel(t.status)));b.append(top);
@@ -195,6 +206,12 @@ function renderTicketList(root,s){
     const last=node('span','request-last',t.preview);if(t.unread){last.append(node('strong','unread-count',String(t.unread)));}b.append(last);root.append(b);
   }
   pagers(root,s.data.page,s.data.more,page=>openNative('tickets',{...s.args,page},'replace'));
+  if(!staff){
+    const links=node('div','message-tools');links.append(button('Правила и контакты','text-button',()=>openNative('info',{})));
+    if(catalog.events_visible)links.append(button('Мероприятия','text-button',()=>openNative('events',{})));
+    if(catalog.admin)links.append(button('Управление','text-button',()=>{setView('more');window.scrollTo(0,0);}));
+    links.append(button('Закрыть приложение','text-button',closeApp));root.append(links);
+  }
 }
 function renderEventList(root,s){
   const staff=s.args.scope==='staff';heading(root,staff?'Мероприятия':'Встречи в SUNPARK');if(staff)root.append(button('Создать мероприятие','primary-button',()=>openNative('event_create',{scope:'staff'})));

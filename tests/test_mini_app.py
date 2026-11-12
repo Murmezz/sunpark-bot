@@ -28,7 +28,7 @@ class AppHarness(namespace['Bot']):
         self.env=NS(BOT_TOKEN=TOKEN,MANAGER_IDS='1')
         self.ctx=NS(waitUntil=lambda task:None)
         self.notifications=[]
-        self.db.executescript("CREATE TABLE config(key TEXT PRIMARY KEY,value TEXT); CREATE TABLE tickets(number INTEGER PRIMARY KEY AUTOINCREMENT,guest_id INTEGER NOT NULL,manager_id INTEGER,status TEXT NOT NULL DEFAULT 'waiting',created_at TEXT DEFAULT (datetime('now')),claimed_at TEXT,closed_at TEXT);")
+        self.db.executescript("CREATE TABLE config(key TEXT PRIMARY KEY,value TEXT); CREATE TABLE tickets(number INTEGER PRIMARY KEY AUTOINCREMENT,guest_id INTEGER NOT NULL,manager_id INTEGER,status TEXT NOT NULL DEFAULT 'waiting',claimed_at TEXT,closed_at TEXT);")
         self.db.executemany('INSERT INTO config VALUES(?,?)',[
             ('menu',json.dumps({'MENU':MENU,'MENU_SECTIONS':SECTIONS,'INFO_TEXT':'Правила SUNPARK'},ensure_ascii=False)),('manager_ids','1'),('manager_names','{"1":"Менеджер"}')])
 

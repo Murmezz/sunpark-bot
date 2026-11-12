@@ -1,5 +1,5 @@
 // Public service information shares one server catalogue with the Telegram bot.
-let serviceOrigin='home', serviceScroll=0;
+let serviceOrigin='home', serviceScroll=0, currentServiceId=null;
 const serviceMoney=amount=>new Intl.NumberFormat('ru-RU').format(amount)+' ₽';
 function serviceLink(label,href,className='service-link') {
   const a=node('a',className,label);a.href=href;
@@ -29,6 +29,7 @@ function renderServiceLinks() {
 function closeService() {setView(serviceOrigin);window.scrollTo(0,serviceScroll);}
 function openService(id,origin=serviceOrigin) {
   const service=catalog.services?.items.find(s=>s.id===id);if(!service)return;
+  currentServiceId=id;
   if(appView!=='service'){serviceScroll=window.scrollY;serviceOrigin=origin;}
   const root=$('service-view');root.replaceChildren();
   const back=node('button','back-link','');back.type='button';back.append(icon('arrow-left'),node('span','',serviceOrigin==='more'?'К другим разделам':'На главную'));back.addEventListener('click',closeService);root.append(back);

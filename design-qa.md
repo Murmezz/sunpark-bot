@@ -2,6 +2,21 @@
 
 final result: passed
 
+## Navigation, compact home and Messages — 12 November 2026
+
+final result: passed
+
+This scoped revision follows the user's latest instructions and supersedes the retained-header and four-tab navigation descriptions below. The unavailable user screenshot was requested for clarification; restaurant category controls and food/drink/bar tabs were restyled using the existing design as the source.
+
+Opened and visually inspected the current 390 × 844 light home, menu, empty Messages and dark home. [Previous/current home comparison](artifacts/navigation-home-comparison.webp) records the intentional removal of the app-owned brand/profile/close header and home inquiry row, restoration of the compact leaf and reduction of bottom navigation to two tabs. [Menu](artifacts/navigation-menu-light-390.png) uses divided category rows and underlined group tabs. [Empty Messages](artifacts/navigation-messages-light-390.png) provides booking, banquet and inquiry actions, secondary information and administrative access.
+
+- **Typography:** retained Cormorant display and Manrope controls; Sunpark is the home title and app launch label. Category labels, counts and return labels remain readable at all tested widths.
+- **Layout:** four directions remain visible at 320 × 640. The leaf occupies at most 118 px of width. Cart appears only in restaurant/menu. Visible return buttons connect menu to restaurant, category to menu and forms to their entry context. The only bottom tabs are Home and Messages.
+- **Colors and assets:** existing ivory/forest and forest/sage palettes, original leaf and official service photos; no replacement imagery or icon family introduced. Gallery images remain inert.
+- **Copy and states:** true empty Messages offers three restaurant/contact actions. Server errors remain distinguishable from an empty inbox. The legacy production schema issue was fixed without migrating tickets. Management remains restricted to existing administrators.
+
+Validation: 59 Python tests passed against a fixture matching the actual legacy tickets schema. Both browser suites passed at 320/390/820 px in light/dark themes with no console errors or horizontal overflow. [Navigation results](artifacts/navigation-browser-results.json) cover entry/return paths, empty-state actions, two tabs, scoped cart, old/unsupported Telegram clients and close. Existing booking, calendar, cart, chat, events and staff workflows also passed. No unresolved P0/P1/P2 visual findings in the inspected states. Headless Chromium and SDK mocks do not establish physical-device testing; the user's existing publication waiver remains applicable.
+
 ## Whole-complex hub and requested corrections — 12 November 2026
 
 final result: passed

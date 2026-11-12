@@ -42,9 +42,17 @@ async def choose_day(page,iso):
     raise AssertionError('Calendar could not reach date '+iso)
 
 async def open_more(page,title):
-    await page.locator('#app-nav [data-view=more]').click()
+    await page.locator('#app-nav [data-view=inbox]').click();await native_ready(page)
+    if title in ['Правила и контакты','Мероприятия']:
+        await page.locator('#native-content').get_by_role('button',name=title,exact=True).click();await native_ready(page);return
+    await page.get_by_role('button',name='Управление',exact=True).click()
     await page.locator('#more-actions').get_by_role('button',name=title,exact=True).click()
     await native_ready(page)
+
+async def open_menu(page):
+    await page.locator('#app-nav [data-view=home]').click()
+    await page.locator('#home-services [data-service=restaurant]').click()
+    await page.locator('#restaurant-menu').click()
 
 async def main():
     ARTIFACTS.mkdir(exist_ok=True)
@@ -94,15 +102,15 @@ async def main():
             assert await page.locator('#chat-send').evaluate('(e)=>e.getBoundingClientRect().bottom<=document.getElementById("app-nav").getBoundingClientRect().top+1')
             await page.set_viewport_size({'width':width,'height':844})
             # Menu/cart regressions and deep-scrolled dish modal.
-            await page.locator('#app-nav [data-view=menu]').click();await page.get_by_role('button',name='Бар',exact=True).click()
+            await open_menu(page);await page.get_by_role('button',name='Бар',exact=True).click()
             assert await page.locator('.category-title').all_text_contents()==['Пиво и сидр','Коктейльная карта','Вино','Крепкий алкоголь']
             await page.locator('.category-card').filter(has_text='Пиво и сидр').click();await page.locator('.item-row').filter(has_text='Эль Капулько').click()
             assert await page.locator('#dish-add').is_disabled();await page.locator('.option-choice').filter(has_text='350 ₽').click();await page.locator('#dish-add').click()
             await page.locator('#cart-launcher').click();assert await page.locator('#cart-total').inner_text()=='350 ₽'
             await page.locator('.cart-row').click();await page.locator('#quantity-plus').click();await page.locator('#dish-add').click();assert await page.locator('#cart-total').inner_text()=='700 ₽'
-            await page.reload();await page.locator('#app-shell').wait_for(state='visible');await page.locator('#cart-launcher').click();assert await page.locator('#cart-total').inner_text()=='700 ₽'
+            await page.reload();await page.locator('#app-shell').wait_for(state='visible');assert await page.locator('#cart-launcher').is_hidden();await page.locator('#home-services [data-service=restaurant]').click();await page.locator('#cart-launcher').click();assert await page.locator('#cart-total').inner_text()=='700 ₽'
             await page.locator('.cart-row').click();await page.locator('#dish-remove').click()
-            await page.locator('#app-nav [data-view=menu]').click();await page.get_by_role('button',name='Еда',exact=True).click();await page.locator('.category-card').filter(has_text='Закуски').click()
+            await open_menu(page);await page.get_by_role('button',name='Еда',exact=True).click();await page.locator('.category-card').filter(has_text='Закуски').click()
             await page.locator('.item-row').last.scroll_into_view_if_needed();old_y=await page.evaluate('scrollY');await page.locator('.item-row').last.click()
             assert await page.evaluate("getComputedStyle(document.querySelector('#dish-dialog')).position")=='fixed'
             await page.evaluate('window.__backHandler()');assert abs(await page.evaluate('scrollY')-old_y)<2
@@ -122,7 +130,7 @@ async def main():
                 await fixture.bot.db_run("UPDATE ticket_messages SET created_at='2026-11-10 11:23:00' WHERE id=(SELECT MAX(id) FROM ticket_messages WHERE ticket_number=24)")
                 # Guest chat visual evidence with real typed data, no admin controls.
                 await page.locator('#app-nav [data-view=inbox]').click();await native_ready(page)
-                await page.locator('#app-nav [data-view=home]').click();await page.locator('#home-inbox').click();await native_ready(page);await page.locator('.request-row').first.click();await page.locator('#chat-input').wait_for(state='visible')
+                await page.locator('#app-nav [data-view=inbox]').click();await native_ready(page);await page.locator('.request-row').first.click();await page.locator('#chat-input').wait_for(state='visible')
                 await page.locator('#cart-toast').wait_for(state='hidden')
                 for theme in ['light','dark']:
                     await page.emulate_media(color_scheme=theme);await page.wait_for_timeout(180);await page.screenshot(path=str(ARTIFACTS/f'adapt-chat-{theme}-390.png'))
