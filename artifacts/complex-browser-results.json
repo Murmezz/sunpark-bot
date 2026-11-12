@@ -1,0 +1,46 @@
+[
+  {
+    "width": 320,
+    "directions": 4,
+    "themes": [
+      "light",
+      "dark"
+    ],
+    "photos_inert": true,
+    "phone_only_services": true,
+    "fullscreen_and_close": "passed",
+    "errors": []
+  },
+  {
+    "width": 390,
+    "directions": 4,
+    "themes": [
+      "light",
+      "dark"
+    ],
+    "photos_inert": true,
+    "phone_only_services": true,
+    "fullscreen_and_close": "passed",
+    "errors": []
+  },
+  {
+    "width": 820,
+    "directions": 4,
+    "themes": [
+      "light",
+      "dark"
+    ],
+    "photos_inert": true,
+    "phone_only_services": true,
+    "fullscreen_and_close": "passed",
+    "errors": []
+  },
+  {
+    "telegram_client": "old",
+    "fallback_and_close": "passed"
+  },
+  {
+    "telegram_client": "unsupported",
+    "fallback_and_close": "passed"
+  }
+]

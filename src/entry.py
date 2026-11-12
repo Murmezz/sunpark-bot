@@ -349,18 +349,16 @@ class Bot(MiniAppMixin, MenuPreviewMixin, EventsMixin, ServicesMixin, WorkerEntr
         await self.answer(cb.get("id"))
 
     def home_text(self):
-        return "👋 <b>Здравствуйте!</b>\n\n🌿 Это меню <b>SUNPARK</b>.\nВыберите, что хотите посмотреть:"
+        return "<b>Добро пожаловать в SUNPARK!</b>\n\nВейк, искусственная волна, ресторан и отель на берегу Суздальского озера.\n\nВыберите направление:"
 
     def home_keyboard(self, manager):
         rows = [
-            [btn("🍽 Основное меню", "home:menu")],
-            [btn("Вейк", "service:wake"), btn("Волна", "service:wave"), btn("Отель", "service:hotel")],
-            [btn("🥂 Хочу провести банкет", "banquet:contact")],
-            [btn("📅 Забронировать стол", "booking:start")],
+            [btn("Вейк", "service:wake"), btn("Волна", "service:wave")],
+            [btn("Ресторан", "service:restaurant"), btn("Отель", "service:hotel")],
             [btn("ℹ️ Частые вопросы", "faq")],
         ]
         if self.events_visible(manager):
-            rows.insert(3, [btn("🎟 Мероприятия", "ev:list:0")])
+            rows.insert(2, [btn("🎟 Мероприятия", "ev:list:0")])
         if manager:
             rows.append([btn("⚙️ Админ-панель", "admin:panel")])
         return ikb(rows)

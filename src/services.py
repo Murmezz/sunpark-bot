@@ -4,6 +4,7 @@ Amounts are in roubles, unlike the restaurant menu's kopeck amounts.
 Keep the seasonal price label: wakeprice is explicitly the summer 2026 tariff.
 """
 import html
+from urllib.parse import quote
 
 CHECKED_AT = "2026-11-12"
 CONTACTS_URL = "https://sunparkspb.ru/contacts/"
@@ -18,13 +19,12 @@ def price(label, amount, unit="", note=""):
 SERVICES = [
     {
         "id": "wake", "title": "Вейк", "subtitle": "На доске по озеру",
-        "description": "Кольцевая лебёдка Rixen и реверсивная лебёдка для обучения. Можно заниматься с тренером и взять снаряжение в прокат.",
+        "description": "Вейкпарк на Среднем Суздальском озере с кольцевой установкой Rixen и реверсивной лебёдкой для обучения. Здесь катаются на вейкборде, вейкскейте, водных лыжах и книборде. Занятия проводят тренеры, среди которых есть призёры чемпионатов. В прокате доступны доски, гидрокостюм, спасательный жилет и шлем.",
         "price_label": "Прайс на лето 2026", "teaser": "Кольцо · от 1 900 ₽ / час",
-        "notice": "Катание сезонное. На сайте опубликован прайс на лето 2026. Даты открытия и актуальные тарифы уточните перед поездкой.",
+        "notice": "Катание сезонное. Тарифы относятся к лету 2026. Даты открытия и действующие цены уточните по телефону перед поездкой.",
         "phone": "+79817549368", "phone_label": "+7 (981) 754-93-68",
         "hours": "Летний график: пн 15:00–23:00, вт–пт 12:00–23:00, сб–вс и праздники 11:00–23:00. Время зависит от светового дня.",
         "url": "https://sunparkspb.ru/portfolio/wakepark/", "prices_url": "https://sunparkspb.ru/wakeprice/",
-        "booking_url": "https://w895407.yclients.com/", "booking_label": "Запись на вейк",
         "photos": ["https://sunparkspb.ru/wp-content/uploads/2018/11/wake1.jpg", "https://sunparkspb.ru/wp-content/uploads/2018/11/wake2.jpg", "https://sunparkspb.ru/wp-content/uploads/2018/11/wake3.jpg"],
         "groups": [
             {"title": "Кольцевая лебёдка · будни", "rows": [price("1 час",1900),price("2 часа",3100),price("День",4300)]},
@@ -37,13 +37,12 @@ SERVICES = [
     },
     {
         "id": "wave", "title": "Волна", "subtitle": "Сёрфинг круглый год",
-        "description": "Искусственная волна в помещении. Подойдёт и для первого знакомства с доской: вводный инструктаж и аренда бодиборда или флоуборда входят в стоимость.",
-        "price_label": "Цены на сайте SUNPARK", "teaser": "В группе · 2 200 ₽ / человек",
+        "description": "Сёрфинг на искусственной волне в тёплом помещении круглый год. Предварительная физическая подготовка не нужна: инструкторы проводят вводный инструктаж и помогают со стартом. Кататься можно на бодиборде или флоуборде — аренда доски включена в стоимость. Доступны групповые и индивидуальные сеансы, занятия с тренером и аренда всей волны для компании до 20 человек.",
+        "price_label": "Катание и занятия с тренером", "teaser": "В группе · 2 200 ₽ / человек",
         "notice": "Приходите не менее чем за 30 минут. Возьмите купальник или плавки и полотенце. При недоборе группы сокращается продолжительность, цена за человека остаётся той же.",
         "phone": "+79119262650", "phone_label": "+7 (911) 926-26-50",
         "hours": "Пн–пт 12:00–23:00, сб–вс и праздники 11:00–23:00.",
         "url": "https://sunparkspb.ru/portfolio/surf/", "prices_url": "https://sunparkspb.ru/surfprice/",
-        "booking_url": "https://w895504.yclients.com/", "booking_label": "Запись на волну",
         "photos": ["https://sunparkspb.ru/wp-content/uploads/2018/11/Wave9.jpg", "https://sunparkspb.ru/wp-content/uploads/2018/11/Wave8.jpg", "https://sunparkspb.ru/wp-content/uploads/2018/11/Wave7.jpg"],
         "groups": [
             {"title": "Катание", "rows": [price("Группа 3–4 человека · 30 минут",2200,"/ человек"),price("Группа 5–8 человек · 60 минут",2200,"/ человек"),price("Индивидуально · 15 минут",2650,"", "Для 1 человека"),price("Индивидуально · 30 минут",5300,"", "Для 1–2 человек"),price("Начинающий сёрфер · 30 минут",6900,"", "Для 1–2 человек, тренер и оборудование включены"),price("Аренда волны · 1 час",21500,"/ группа", "До 20 человек, работа двух инструкторов включена")]},
@@ -52,17 +51,26 @@ SERVICES = [
         ],
     },
     {
+        "id": "restaurant", "title": "Ресторан", "subtitle": "Кухня и бар у озера",
+        "description": "SUNPARK Grill Bar — два светлых зала с панорамными окнами и открытые террасы у самой воды. За обедом или ужином можно наблюдать за катающимися вейкбордистами. Здесь проводят встречи с друзьями, дни рождения, корпоративы и свадьбы. Праздник можно совместить с катанием на вейке или искусственной волне.",
+        "price_label": "Меню ресторана", "teaser": "Кухня, бар и террасы у воды", "notice": "Наличие стола на выбранное время подтвердит менеджер.",
+        "phone": "+79117144012", "phone_label": "+7 (911) 714-40-12",
+        "hours": "Пн–пт 12:00–23:00, сб–вс и праздники 11:00–23:00. Кухня работает до 22:30.",
+        "url": "https://sunparkspb.ru/portfolio/bar/", "prices_url": "https://sunparkspb.ru/bar-menu/",
+        "photos": [quote("https://sunparkspb.ru/wp-content/uploads/2018/10/Зимний-зал_4.jpeg", safe=":/"), quote("https://sunparkspb.ru/wp-content/uploads/2018/10/Зимний-зал_1.jpeg", safe=":/"), quote("https://sunparkspb.ru/wp-content/uploads/2018/10/Зимний-зал_2.jpeg", safe=":/")],
+        "groups": [],
+    },
+    {
         "id": "hotel", "title": "Отель", "subtitle": "Проснуться у озера",
-        "description": "SUNPARK HOTEL — 19 номеров на берегу Среднего Суздальского озера, в 15 минутах пешком от метро Озерки. Завтрак включён в опубликованные тарифы.",
+        "description": "SUNPARK HOTEL — 19 номеров на берегу Среднего Суздальского озера, в 15 минутах пешком от метро Озерки. Завтрак включён в стоимость проживания.",
         "price_label": "За номер в сутки · с завтраком", "teaser": "С завтраком · от 5 000 ₽ / сутки",
         "notice": "Стоимость и наличие номера на нужные даты проверьте при бронировании.",
         "phone": "+79119262650", "phone_label": "+7 (911) 926-26-50",
         "additional_phone": "+78129262650", "additional_phone_label": "+7 (812) 926-26-50",
-        "phone_note": "Основной телефон — со страницы «Контакты». На странице отеля также указан городской номер.",
+        "phone_note": "Городской телефон отеля",
         "hours": "Время заезда и выезда уточните при бронировании.",
         "url": "https://sunparkspb.ru/portfolio/hotel/", "prices_url": "https://sunparkspb.ru/portfolio/hotel/",
-        "booking_url": "https://booking-online.agast.ru/?hms_system_id=8736/", "booking_label": "Бронирование номера",
-        "photos": ["https://sunparkspb.ru/wp-content/uploads/2018/11/hotel9.jpg", "https://sunparkspb.ru/wp-content/uploads/2018/10/IMG_9325.png", "https://sunparkspb.ru/wp-content/uploads/2018/10/IMG_9324.png"],
+        "photos": ["https://sunparkspb.ru/wp-content/uploads/2018/10/IMG_9324.png", "https://sunparkspb.ru/wp-content/uploads/2018/10/IMG_9325.png", "https://sunparkspb.ru/wp-content/uploads/2018/11/hotel9.jpg"],
         "groups": [{"title": "Номера с завтраком", "rows": [price("Стандарт двухместный",5000,"/ сутки"),price("Улучшенный двухместный",6000,"/ сутки"),price("Стандарт трёхместный",7000,"/ сутки"),price("Люкс с видом на озеро",15000,"/ сутки")]}],
     },
 ]
@@ -80,7 +88,8 @@ def service_text(service, full=False):
     esc = html.escape
     lines = [f"<b>{esc(service['title'])} · SUNPARK</b>", esc(service["description"]), ""]
     groups = service["groups"] if full else service["groups"][:2 if service["id"] == "wake" else 1]
-    lines.append(f"<b>{esc(service['price_label'])}</b>")
+    if groups:
+        lines.append(f"<b>{esc(service['price_label'])}</b>")
     for group in groups:
         lines.append(f"\n<b>{esc(group['title'])}</b>")
         for row in group["rows"]:
@@ -91,8 +100,8 @@ def service_text(service, full=False):
             lines.append(esc(group["note"]))
     lines.extend(["", esc(service["notice"]), "", f"Телефон: <b>{service['phone_label']}</b>"])
     if service.get("additional_phone"):
-        lines.extend([f"Городской: <b>{service['additional_phone_label']}</b>", esc(service["phone_note"])])
-    lines.extend([esc(service["hours"]), esc(ADDRESS), f'\n<a href="{service["prices_url"]}">Цены на сайте SUNPARK</a> · проверено 12.11.2026'])
+        lines.append(f"Городской: <b>{service['additional_phone_label']}</b>")
+    lines.extend([esc(service["hours"]), esc(ADDRESS)])
     return "\n".join(lines)
 
 
@@ -133,7 +142,7 @@ class ServicesMixin:
                     await self.tg("sendPhoto", {**params, "photo": service["photos"][index], "caption": caption})
             except Exception as error:
                 if "not modified" not in str(error).lower():
-                    await self.send(msg["chat"]["id"], f"Фото временно не загрузилось. Посмотреть фотографии можно на сайте: {service['url']}")
+                    await self.send(msg["chat"]["id"], "Фото временно не загрузилось. Попробуйте открыть галерею ещё раз.")
             return True
         full = len(parts) == 3 and parts[2] == "prices"
         if len(parts) != 2 and not full:
@@ -142,6 +151,8 @@ class ServicesMixin:
         rows = [[{"text": "Фотографии", "callback_data": f"service:{key}:photo:0"}]]
         if not full and len(service["groups"]) > (2 if key == "wake" else 1):
             rows.append([{"text": "Все тарифы и прокат", "callback_data": f"service:{key}:prices"}])
-        rows.extend([[{"text": service["booking_label"], "url": service["booking_url"]}], [{"text": "На главную", "callback_data": "back"}]])
+        if key == "restaurant":
+            rows.extend([[{"text": "Меню ресторана", "callback_data": "home:menu"}], [{"text": "Забронировать стол", "callback_data": "booking:start"}], [{"text": "Провести банкет", "callback_data": "banquet:contact"}]])
+        rows.append([{"text": "На главную", "callback_data": "back"}])
         await self.edit(msg, service_text(service, full), {"inline_keyboard": rows})
         return True

@@ -6,3 +6,8 @@
 - Icons: official `@phosphor-icons/core@2.1.1` regular SVGs, MIT license (`LICENSE-Phosphor.txt`). https://phosphoricons.com/
 
 Fonts and raster imagery are bundled locally; runtime requests do not depend on a font or image CDN.
+# SUNPARK complex logo
+
+The light and dark complex logos are the original SUNPARK website assets, used for this SUNPARK bot at the owner's request:
+https://sunparkspb.ru/wp-content/uploads/2018/09/Logo2-500x136.png
+https://sunparkspb.ru/wp-content/uploads/2018/09/Logo1-500x136.png

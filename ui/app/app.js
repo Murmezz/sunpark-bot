@@ -315,14 +315,6 @@
   }
   function goMenu() {setView('menu');if(query||categoryKey)renderItems();else renderHub();window.scrollTo(0,0);}
   function renderHome() {
-    const all=catalog.categories.flatMap(category=>category.items.map(item=>({item,category})));
-    const first=all.find(p=>/брускетт.*ростбиф/i.test(p.item.name))||all[0];
-    const second=all.find(p=>/тар.?тар.*тунц/i.test(p.item.name))||all.find(p=>p!==first);
-    $('home-samples').replaceChildren();
-    [first,second].filter(Boolean).forEach(({item,category})=>{
-      const b=node('button','sample-row');b.type='button';b.append(node('span','',item.name),node('strong','',item.price));
-      b.addEventListener('click',()=>showDish(item,category));$('home-samples').append(b);
-    });
     renderServiceLinks();
   }
   function cleanLabel(value) {return String(value||'').replace(/^[\p{Extended_Pictographic}\p{Regional_Indicator}\uFE0F\u200D\s]+/u,'').trim();}
@@ -344,9 +336,10 @@
     const actions=[['Забронировать стол','booking:start'],['Провести банкет','banquet:contact'],['Мероприятия','ev:list:0'],['Правила и контакты','faq'],['Написать менеджеру','manager:start']];
     if(!catalog.events_visible)actions.splice(2,1);
     const root=$('more-actions');root.replaceChildren();
-    for(const [label,callback] of actions)root.append(actionRow(label,actionIcon(callback),()=>runAction(callback,'guest')));
-    root.append(node('h3','subsection','Весь SUNPARK'));
+    root.append(node('h3','subsection','Направления'));
     for(const service of catalog.services?.items||[])root.append(actionRow(service.title,'arrow-right',()=>openService(service.id,'more')));
+    root.append(node('h3','subsection','Ресторан и обращения'));
+    for(const [label,callback] of actions)root.append(actionRow(label,actionIcon(callback),()=>runAction(callback,'guest')));
     if(catalog.admin) {
       root.append(node('h3','subsection','Управление'));
       for(const [label,callback] of [['Админ-панель','admin:panel'],['Очередь заявок','admin:waiting'],['Мои активные заявки','admin:active'],['Мероприятия и регистрации','ev:manage:0'],['Менеджеры','admin:managers'],['Поиск заявок','admin:search'],['Статистика','admin:stats']])root.append(actionRow(label,actionIcon(callback),()=>runAction(callback,'staff')));
@@ -478,8 +471,6 @@
   });
   $('brand-home').addEventListener('click',()=>{setView('home');window.scrollTo(0,0);});
   $('profile-button').addEventListener('click',()=>{setView('more');window.scrollTo(0,0);});
-  $('home-menu-button').addEventListener('click',goMenu);
-  $('home-booking').addEventListener('click',()=>runAction('booking:start','guest'));
   $('home-inbox').addEventListener('click',()=>openInbox('guest'));
   $('flow-back').addEventListener('click',()=>{setView('home');window.scrollTo(0,0);});
   $('chat-back').addEventListener('click',()=>openInbox(chatScope));
@@ -490,6 +481,17 @@
   const resize=()=>document.documentElement.style.setProperty('--viewport-height',`${tg?.viewportStableHeight||window.visualViewport?.height||innerHeight}px`);
   window.visualViewport?.addEventListener('resize',resize);window.addEventListener('resize',resize);resize();
   try {tg?.onEvent?.('viewportChanged',event=>{if(event.isStateStable)resize();});} catch (_) {}
+  function closeApp(){try{if(tg?.close)tg.close();else window.close();}catch(_){}}
+  $('app-close').addEventListener('click',closeApp);
+  const chatClose=node('button','icon-button');chatClose.type='button';chatClose.setAttribute('aria-label','Закрыть приложение');chatClose.append(icon('x'));chatClose.addEventListener('click',closeApp);document.querySelector('.chat-heading').append(chatClose);
+  function syncFullscreen(){document.body.classList.toggle('telegram-fullscreen',!!tg?.isFullscreen);resize();}
+  try {
+    tg?.onEvent?.('fullscreenChanged',syncFullscreen);
+    tg?.onEvent?.('safeAreaChanged',resize);tg?.onEvent?.('contentSafeAreaChanged',resize);
+    tg?.onEvent?.('fullscreenFailed',event=>{if(event?.error!=='ALREADY_FULLSCREEN')tg?.expand();syncFullscreen();});
+    if(tg?.isVersionAtLeast?.('8.0')&&typeof tg.requestFullscreen==='function'&&!tg.isFullscreen)tg.requestFullscreen();
+  } catch(_){try{tg?.expand();}catch(_){}}
+  syncFullscreen();
 
   async function load() {
     if(!tg?.initData) throw new Error('Откройте приложение из бота: /admin → «Разработка» → «SUNPARK · Mini App». Доступ только администраторам.');

@@ -32,7 +32,12 @@ class ServiceTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(method, "editMessageText")
             self.assertIn(service["phone_label"], params["text"])
             self.assertIn('service:'+service['id']+':photo:0', json.dumps(params["reply_markup"]))
-            self.assertIn(service["booking_url"], json.dumps(params["reply_markup"]))
+            self.assertFalse(any('url' in button for row in params['reply_markup']['inline_keyboard'] for button in row))
+            self.assertNotIn('https://',params['text'])
+            self.assertNotIn('Цены на сайте',params['text'])
+            if service['id']=='restaurant':
+                self.assertIn('booking:start',json.dumps(params['reply_markup']))
+                self.assertIn('banquet:contact',json.dumps(params['reply_markup']))
         self.assertIsNone(await self.bot.db_first("SELECT * FROM tickets"))
 
     async def test_photo_carousel_edits_existing_photo_and_recovers_from_source_failure(self):
@@ -61,7 +66,7 @@ class ServiceTests(unittest.IsolatedAsyncioTestCase):
             response = await self.bot.mini_app_http(app_request({"operation": "bootstrap", "init_data": signed()}))
             data = json.loads(response.body)
             self.assertEqual(response.status, 200)
-            self.assertEqual([s["id"] for s in data["services"]["items"]], ["wake", "wave", "hotel"])
+            self.assertEqual([s["id"] for s in data["services"]["items"]], ["wake", "wave", "restaurant", "hotel"])
             response = await self.bot.mini_app_http(app_request(path="/app", method="GET"))
             self.assertIn("img-src 'self' data: blob: https://sunparkspb.ru;", response.headers["content-security-policy"])
             response = await self.bot.mini_app_http(app_request({"operation": "bootstrap"}))

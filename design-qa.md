@@ -2,6 +2,24 @@
 
 final result: passed
 
+## Whole-complex hub and requested corrections — 12 November 2026
+
+final result: passed
+
+The user explicitly changed the hierarchy from a restaurant-led home to an equal four-direction SUNPARK hub, retained the in-app header, requested removal of Telegram's native header, and preserved restaurant forms while removing external booking. This section supersedes the previous service-extension layout and link behavior below.
+
+Opened evidence: [old/new home at identical 390 × 844 viewport](artifacts/complex-home-comparison.png), [all four direction pages](artifacts/complex-directions-light.png), [small dark home](artifacts/complex-home-dark-320.png), [hotel tariffs](artifacts/complex-hotel-prices-light-390.png). The actual source room and restaurant images were also opened. The comparison was assembled into the same input; the requested structural changes are intentional, not accidental deviations from the former home.
+
+- **Typography:** existing Manrope interface and Cormorant display family; readable card labels, telephone numbers and tariff rows at 320/390/820 px. The display heading introduces the whole complex. No restaurant-only wording or Grill Bar mark remains on the shared home.
+- **Layout:** four equal cards in a 2 × 2 grid, all visible above navigation at 320 × 640. Restaurant booking/banquet actions moved inside its own direction. The preserved header now stays visible while scrolling, with profile and own close control. Native forms retain back/profile/close controls without overlap at 320 px; chat has its own close control.
+- **Color:** previous ivory/forest and dark forest/sage tokens are retained. The official SUNPARK complex logo uses its original colored light and white dark variants.
+- **Images:** original photographs from the source site; first hotel image is the bright room `IMG_9324.png`. Gallery photos are inert elements, without anchor, click handler or source-site fallback. Arrows and swipe remain functional. Existing Phosphor icons are retained.
+- **Copy:** descriptions are available directly in the application and bot. External registration buttons, source/footer copy and links to source/pricing pages are removed. Service actions use telephone links; restaurant menu, table booking, banquet and chat stay internal. The season of the wake tariff remains visible for accuracy.
+
+Validation passed: 57 Python tests; full workflow regression suite and service suite at 320/390/820 px, both themes; no page errors or horizontal overflow. Tests cover inert photo clicks with no new browser tab/openLink call, phone-only service links, restaurant entry points, correct hotel cover, four visible home cards, fullscreen request and close, plus old-client and `UNSUPPORTED` fallback. The Telegram SDK is mocked, so these are API integration checks rather than a physical-phone claim. Per Telegram's official API documentation, fullscreen is available from Bot API 8.0 and can be unsupported by the client; such clients retain their native bar. User authorization to publish without physical-device testing remains recorded in `SERVICES.md`.
+
+No unresolved P0/P1/P2 visual findings. One test-harness route callback initially bound Playwright's request object over the intended client mode; corrected the callback and re-ran old/unsupported scenarios successfully. This was a test setup issue, not a production-client finding.
+
 ## Service extension — 12 November 2026
 
 final result: passed
