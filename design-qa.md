@@ -1,6 +1,27 @@
-# SUNPARK Mini App adaptation — Product Design QA
+# SUNPARK Mini App — Product Design QA
 
 final result: passed
+
+## Service extension — 12 November 2026
+
+final result: passed
+
+This is a scoped extension of the previously selected visual system. There is no separate supplied mock of the new service pages, so this review checks preservation of the selected design and the quality of the extension; it does not claim a pixel clone of an unavailable service-page mock.
+
+Evidence opened and compared together:
+
+- [Existing home against updated home, same 390 × 844 viewport and state](artifacts/services-home-comparison.png). The top-level home composition is preserved; the three new cards follow the existing restaurant actions.
+- [Three service screens, light theme](artifacts/services-sections-comparison.png) and [dark theme](artifacts/services-sections-dark-comparison.png). Each source is captured at 390 × 844 CSS pixels, deviceScaleFactor 1. The SDK mock's native controls are excluded from the app-owned design.
+- [Home service cards](artifacts/services-home-list-light-390.png) and [room tariffs](artifacts/services-hotel-prices-light-390.png), examined at native size for wrapping, price alignment and labels.
+- The real wake, wave and hotel photographs were opened separately and checked against their use in the rendered interface. Their source galleries and tariff sources are listed in `SERVICES.md`.
+
+Initial P2 findings and fixes: square website thumbnails cropped the surfer's head in the wide gallery; the first composition put booking/call actions below the first mobile viewport. Gallery JPEGs now use the small original full-composition files, header spacing is tighter, and the price summary and actions precede the longer description. Revised captures show the subject, tariff summary, booking and telephone clearly at 390 px. Room PNGs use the site's smaller published variants. Home thumbnails were captured after actual image loading.
+
+Required surfaces: **Typography** retains the existing Manrope controls, weights and price numerals; the Cormorant home hero is unchanged. **Layout** retains 26/20 px gutters, 48 px gallery controls, existing tabs/dividers/buttons and persistent navigation; price rows wrap without horizontal overflow at 320/390/820 px. **Colors** use existing ivory/forest and dark forest/sage tokens in both themes. **Assets** are the actual site photographs, original logo and existing Phosphor icons. **Copy** distinguishes roubles from the menu's kopecks, per-person sessions from individual sessions, the summer 2026 wake tariff, equipment charges and the hotel's two source phone numbers. No availability or booking confirmation is invented.
+
+No unresolved P0/P1/P2 visual findings. Publication validation is separate: automated Chromium and mocked Telegram cannot establish a physical iOS/Android Telegram pass. The supplied `telegram-webapps` skill explicitly requires that check before release; the implementation is prepared for review while production remains unchanged.
+
+Validation: 57 Python tests passed; service and existing workflow browser suites passed at 320/390/820 px and both themes. Source images load from the exact CSP-allowed website host; photo arrows, tab navigation, return state, telephone links and `openLink` work. The complete SDK mock is loaded only by tests. The shared browser could not initialize (`the gaas-browser node_repl sandbox cannot be disabled`); the evidence above comes from real headless Chromium against the local fixture server.
 
 ## Findings and revisions
 

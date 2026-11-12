@@ -2,6 +2,7 @@ from workers import WorkerEntrypoint, Response, fetch
 from events import EventsMixin
 from menu_preview import MenuPreviewMixin
 from mini_app import MiniAppMixin
+from services import ServicesMixin
 from urllib.parse import urlparse
 import json
 import html
@@ -89,7 +90,7 @@ def items(cat):
     return out
 
 
-class Bot(MiniAppMixin, MenuPreviewMixin, EventsMixin, WorkerEntrypoint):
+class Bot(MiniAppMixin, MenuPreviewMixin, EventsMixin, ServicesMixin, WorkerEntrypoint):
     def quick_reply_choices(self):
         return list(QUICK_REPLIES)
 
@@ -353,6 +354,7 @@ class Bot(MiniAppMixin, MenuPreviewMixin, EventsMixin, WorkerEntrypoint):
     def home_keyboard(self, manager):
         rows = [
             [btn("🍽 Основное меню", "home:menu")],
+            [btn("Вейк", "service:wake"), btn("Волна", "service:wave"), btn("Отель", "service:hotel")],
             [btn("🥂 Хочу провести банкет", "banquet:contact")],
             [btn("📅 Забронировать стол", "booking:start")],
             [btn("ℹ️ Частые вопросы", "faq")],
@@ -1357,6 +1359,8 @@ class Bot(MiniAppMixin, MenuPreviewMixin, EventsMixin, WorkerEntrypoint):
             return
         if MENU_ONLY:
             await self.menu_only_callback(cb, menu, sections)
+            return
+        if await self.service_callback(cb):
             return
         if await self.event_callback(cb, cfg):
             return

@@ -1,0 +1,38 @@
+[
+  {
+    "width": 320,
+    "themes": [
+      "light",
+      "dark"
+    ],
+    "services": 3,
+    "gallery": "passed",
+    "links": "passed",
+    "navigation": "passed",
+    "errors": []
+  },
+  {
+    "width": 390,
+    "themes": [
+      "light",
+      "dark"
+    ],
+    "services": 3,
+    "gallery": "passed",
+    "links": "passed",
+    "navigation": "passed",
+    "errors": []
+  },
+  {
+    "width": 820,
+    "themes": [
+      "light",
+      "dark"
+    ],
+    "services": 3,
+    "gallery": "passed",
+    "links": "passed",
+    "navigation": "passed",
+    "errors": []
+  }
+]
