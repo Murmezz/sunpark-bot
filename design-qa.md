@@ -2,6 +2,16 @@
 
 final result: passed
 
+## Fullscreen top inset correction — 12 November 2026
+
+final result: passed
+
+The user's Android screenshot showed Telegram's floating Close/menu controls covering the Sunpark title and leaf. The earlier header removal left fixed 12/18 px shell padding, so the already defined device/content top safe area was not applied. A browser reproduction failed with the title at 28 px inside an 88 px reserved region.
+
+The shell now adds the existing combined top inset, and sticky menu/form return controls stay below it during scrolling. Typography, leaf size, cards, colors and bottom navigation are unchanged. Opened and inspected the [corrected dark 393 px home](artifacts/safe-area-home-dark-393.png), captured with representative test-only Telegram controls. These overlays are browser evidence and are never bundled into the app.
+
+[Safe-area regression results](artifacts/safe-area-browser-results.json) passed at 320 × 853, 393 × 853 and 820 × 1024, with device/content top inset pairs 32/56, 44/64 and 0/0. The title and leaf clear the reserved region, all four directions remain visible, dynamic inset changes update layout, and restaurant/menu/messages return buttons remain reachable. No page errors or horizontal overflow; 59 Python tests passed. This verifies the screenshot's layout failure using Chromium and SDK mocks; physical Telegram retesting remains with the user. No unresolved P0/P1/P2 visual findings in these inspected states.
+
 ## Navigation, compact home and Messages — 12 November 2026
 
 final result: passed
