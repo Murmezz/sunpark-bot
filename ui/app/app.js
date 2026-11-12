@@ -8,6 +8,7 @@
   let appView='home', cartOrigin='menu', flowScope='guest', flowInput=null, inboxScope='guest', chatNumber=0, chatScope='guest', pendingUpload=null, busy=false, chatData=null;
   const cart = new Map(), products = new Map(), mediaCache = new Map();
   // __WORKFLOWS__
+  // __SERVICES__
   const money = amount => new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2}).format(amount/100) + ' ₽';
   const systemDark=window.matchMedia?.('(prefers-color-scheme: dark)'), systemLight=window.matchMedia?.('(prefers-color-scheme: light)');
   function applyTheme() {
@@ -291,13 +292,13 @@
     if(view!==appView){clearTimeout(toastTimer);$('cart-toast').hidden=true;}
     if(dialog.open)closeDish();
     appView=view;
-    for(const name of ['home','menu','cart','flow','inbox','chat','more','native'])$(name+'-view').hidden=name!==view;
+    for(const name of ['home','menu','cart','flow','inbox','chat','more','native','service'])$(name+'-view').hidden=name!==view;
     if(view!=='cart')cartOpen=false;
     $('menu-search').hidden=view!=='menu';
     document.body.classList.toggle('chat-open',view==='chat');
     document.body.classList.toggle('native-open',view==='native');$('native-back').hidden=view!=='native';
     for(const button of document.querySelectorAll('#app-nav [data-view]')) {
-      const active=button.dataset.view===view||(view==='chat'&&button.dataset.view==='inbox')||(['flow','native'].includes(view)&&button.dataset.view===(nativeState?.screen==='tickets'?'inbox':nativeState?.screen==='booking'?'home':'more'));
+      const active=button.dataset.view===view||(view==='service'&&button.dataset.view===serviceOrigin)||(view==='chat'&&button.dataset.view==='inbox')||(['flow','native'].includes(view)&&button.dataset.view===(nativeState?.screen==='tickets'?'inbox':nativeState?.screen==='booking'?'home':'more'));
       if(active)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');
     }
     renderCart();updateBackButton();
@@ -306,6 +307,7 @@
     if($('picker-dialog').open)closePicker();
     else if(dialog.open)closeDish();
     else if(appView==='native')nativeBack();
+    else if(appView==='service')closeService();
     else if(cartOpen)closeCart();
     else if(appView==='menu'&&(categoryKey||query))showHub();
     else if(appView==='chat')openInbox(chatScope);
@@ -321,6 +323,7 @@
       const b=node('button','sample-row');b.type='button';b.append(node('span','',item.name),node('strong','',item.price));
       b.addEventListener('click',()=>showDish(item,category));$('home-samples').append(b);
     });
+    renderServiceLinks();
   }
   function cleanLabel(value) {return String(value||'').replace(/^[\p{Extended_Pictographic}\p{Regional_Indicator}\uFE0F\u200D\s]+/u,'').trim();}
   function actionIcon(callback) {
@@ -342,6 +345,8 @@
     if(!catalog.events_visible)actions.splice(2,1);
     const root=$('more-actions');root.replaceChildren();
     for(const [label,callback] of actions)root.append(actionRow(label,actionIcon(callback),()=>runAction(callback,'guest')));
+    root.append(node('h3','subsection','Весь SUNPARK'));
+    for(const service of catalog.services?.items||[])root.append(actionRow(service.title,'arrow-right',()=>openService(service.id,'more')));
     if(catalog.admin) {
       root.append(node('h3','subsection','Управление'));
       for(const [label,callback] of [['Админ-панель','admin:panel'],['Очередь заявок','admin:waiting'],['Мои активные заявки','admin:active'],['Мероприятия и регистрации','ev:manage:0'],['Менеджеры','admin:managers'],['Поиск заявок','admin:search'],['Статистика','admin:stats']])root.append(actionRow(label,actionIcon(callback),()=>runAction(callback,'staff')));
@@ -482,8 +487,9 @@
   document.querySelectorAll('#inbox-scope [data-scope]').forEach(b=>b.addEventListener('click',()=>openInbox(b.dataset.scope)));
   document.querySelectorAll('#app-nav [data-view]').forEach(b=>b.addEventListener('click',()=>{const view=b.dataset.view;if(view==='menu')goMenu();else if(view==='inbox')openInbox();else{setView(view);window.scrollTo(0,0);}}));
   setInterval(()=>{if(!document.hidden&&appView==='chat'&&!busy)refreshChat();},6000);
-  const resize=()=>document.documentElement.style.setProperty('--viewport-height',`${window.visualViewport?.height||innerHeight}px`);
+  const resize=()=>document.documentElement.style.setProperty('--viewport-height',`${tg?.viewportStableHeight||window.visualViewport?.height||innerHeight}px`);
   window.visualViewport?.addEventListener('resize',resize);window.addEventListener('resize',resize);resize();
+  try {tg?.onEvent?.('viewportChanged',event=>{if(event.isStateStable)resize();});} catch (_) {}
 
   async function load() {
     if(!tg?.initData) throw new Error('Откройте приложение из бота: /admin → «Разработка» → «SUNPARK · Mini App». Доступ только администраторам.');

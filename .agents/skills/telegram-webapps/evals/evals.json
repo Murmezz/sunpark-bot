@@ -1,0 +1,177 @@
+{
+  "skill_name": "telegram-webapps",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "I'm building a Telegram Mini App for my e-commerce bot. I need a basic HTML page that shows the user's name from Telegram, has a 'Checkout' button at the bottom that uses Telegram's native button, and when clicked it sends the cart data back to my bot. The cart is just [{id: 1, name: 'Widget', qty: 2}]. Can you build this?",
+      "expected_output": "A complete HTML file that: includes the telegram-web-app.js SDK script first, calls tg.ready() and optionally tg.expand(), reads the user name from tg.initDataUnsafe.user, sets up tg.MainButton with text 'Checkout', uses tg.sendData() or an HTTP call to send cart data, and applies at least one CSS variable for theming.",
+      "assertions": [
+        {
+          "name": "SDK script included before other JS",
+          "description": "The telegram-web-app.js script tag appears in the HTML head before any custom JavaScript"
+        },
+        {
+          "name": "ready() called",
+          "description": "tg.ready() is called to signal the app is ready to display"
+        },
+        {
+          "name": "Uses MainButton not a plain HTML button for checkout",
+          "description": "Uses tg.MainButton to show the checkout CTA, not just a raw HTML button"
+        },
+        {
+          "name": "Sends cart data to bot",
+          "description": "Uses tg.sendData() or HTTP fetch with initData auth to deliver cart data"
+        },
+        {
+          "name": "Theme CSS variables used",
+          "description": "At least one --tg-theme-* CSS variable is referenced for theming"
+        },
+        {
+          "name": "User name displayed from initDataUnsafe",
+          "description": "Reads tg.initDataUnsafe.user.first_name or similar for display"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 1,
+      "prompt": "I have a Telegram Mini App where users submit forms. I need Node.js/Express backend code that validates the initData coming from the Mini App (sent in the Authorization header as 'tma <initData>') and rejects invalid or expired requests. My bot token is in process.env.BOT_TOKEN.",
+      "expected_output": "Node.js code that: extracts initData from the Authorization header, parses the URL-encoded string, removes 'hash', sorts remaining fields alphabetically, builds the check string with newlines, computes HMAC-SHA256 using 'WebAppData' as the HMAC key for the bot token, then HMAC again with the secret key, uses constant-time comparison, checks auth_date recency.",
+      "assertions": [
+        {
+          "name": "Uses HMAC-SHA256 with WebAppData key",
+          "description": "Creates secretKey using HMAC-SHA256('WebAppData', botToken)"
+        },
+        {
+          "name": "Sorts fields alphabetically",
+          "description": "Sorts the key=value pairs alphabetically before building the check string"
+        },
+        {
+          "name": "Excludes hash from check string",
+          "description": "Removes the 'hash' field before building the data check string"
+        },
+        {
+          "name": "Uses constant-time comparison",
+          "description": "Uses crypto.timingSafeEqual or equivalent, not === for hash comparison"
+        },
+        {
+          "name": "Checks auth_date freshness",
+          "description": "Verifies auth_date is recent (within some time window like 3600s)"
+        },
+        {
+          "name": "Returns 401 on invalid",
+          "description": "Returns HTTP 401 when validation fails"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "I'm creating a Telegram Mini App that looks native — it should adapt to dark/light mode automatically, show a back button when navigating to sub-pages, give haptic feedback when items are selected, and respect the device safe areas (notch/home bar). Show me how to implement all of this.",
+      "expected_output": "Code showing: CSS variables --tg-theme-* for colors, tg.onEvent('themeChanged',...) handler, tg.BackButton.show/hide for navigation, tg.HapticFeedback usage (impactOccurred and/or selectionChanged), safe area CSS with --tg-safe-area-inset-* variables, and optionally viewportStableHeight usage.",
+      "assertions": [
+        {
+          "name": "CSS theme variables used for adaptive colors",
+          "description": "Uses var(--tg-theme-bg-color) and similar for automatic dark/light adaptation"
+        },
+        {
+          "name": "themeChanged event handled",
+          "description": "Listens to tg.onEvent('themeChanged', ...) to update dynamic styles"
+        },
+        {
+          "name": "BackButton controlled for navigation",
+          "description": "Shows tg.BackButton when on sub-pages and hides on root"
+        },
+        {
+          "name": "HapticFeedback used",
+          "description": "Calls tg.HapticFeedback.impactOccurred() or selectionChanged() for tactile response"
+        },
+        {
+          "name": "Safe area insets respected",
+          "description": "Uses --tg-safe-area-inset-bottom or --tg-content-safe-area-inset-* CSS vars"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "I'm building a multi-page Telegram Mini App (product list → product detail → checkout). Each sub-page should show the Telegram back button, and tapping it should go back one level. I also want page transitions (slide in from right). Walk me through the navigation implementation.",
+      "expected_output": "Code that: uses a single BackButton handler pattern with offClick before onClick (to prevent handler stacking), shows BackButton on sub-pages and hides on root, navigates between named div-based pages or uses a hash router, ideally includes CSS page transition animations. Must not call onClick multiple times without offClick.",
+      "assertions": [
+        {
+          "name": "offClick called before re-registering BackButton handler",
+          "description": "The implementation removes the previous handler with offClick before calling onClick, preventing handler stacking"
+        },
+        {
+          "name": "BackButton hidden on root page",
+          "description": "BackButton.hide() is called when navigating back to the root/home page"
+        },
+        {
+          "name": "BackButton shown on sub-pages",
+          "description": "BackButton.show() is called when pushing to a sub-page"
+        },
+        {
+          "name": "No location.href or page reloads for navigation",
+          "description": "Navigation uses div show/hide, hash changes, or framework router — not full page loads"
+        },
+        {
+          "name": "Three distinct pages implemented",
+          "description": "At least three page states (list, detail, checkout) are represented"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "I want to add Telegram Stars payment to my Mini App. Users should be able to buy 'Premium Access' for 100 Stars. Walk me through the complete flow — frontend JS, backend invoice creation (Python/FastAPI), and the bot handlers for pre_checkout_query and successful_payment.",
+      "expected_output": "A complete Stars payment implementation including: backend create_invoice_link call with currency='XTR', frontend openInvoice() call with status callback, bot handler for pre_checkout_query that answers within 10s, bot handler for successful_payment that saves the charge_id and activates the purchase. Should note that 'paid' status in openInvoice callback is not authoritative.",
+      "assertions": [
+        {
+          "name": "Currency set to XTR",
+          "description": "Invoice is created with currency='XTR' (Telegram Stars), not USD or other fiat"
+        },
+        {
+          "name": "openInvoice used on frontend",
+          "description": "Uses tg.openInvoice(url, callback) to show the payment sheet"
+        },
+        {
+          "name": "pre_checkout_query answered within deadline",
+          "description": "pre_checkout_query handler answers within 10 seconds; code shows timeout awareness (asyncio.wait_for, timeout param, or explicit note)"
+        },
+        {
+          "name": "successful_payment handler saves charge_id",
+          "description": "Saves telegram_payment_charge_id from the successful_payment message for refund capability"
+        },
+        {
+          "name": "paid callback status noted as non-authoritative",
+          "description": "Code or comment indicates that 'paid' in the openInvoice callback must be verified server-side via successful_payment update"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "I'm starting a new Telegram Mini App project and want to develop it locally in a browser without opening Telegram every time I make a change. How do I set up local development? I'm using plain HTML/JS.",
+      "expected_output": "Instructions that include: the miniapp-mock.js file (or equivalent polyfill) added as the first script before the Telegram SDK, explanation that it activates in browser when tgWebAppData is absent, mention of HTTPS requirement for actual Telegram testing and how to solve it (ngrok or similar tunnel), and ideally that window.isTelegramMockActive is set so app code can detect the mock.",
+      "assertions": [
+        {
+          "name": "Mock script loaded before Telegram SDK",
+          "description": "The mock/polyfill script appears before telegram-web-app.js in the HTML — loading order is explicit"
+        },
+        {
+          "name": "Mock activates only in browser, not inside Telegram",
+          "description": "Explains or implements the detection: mock is inactive when tgWebAppData param is present (i.e., inside Telegram)"
+        },
+        {
+          "name": "HTTPS requirement for Telegram mentioned",
+          "description": "Notes that actual Telegram testing requires HTTPS and suggests ngrok, Cloudflare Tunnel, or similar"
+        },
+        {
+          "name": "Core API stubs functional in browser",
+          "description": "The mock or instructions ensure tg.MainButton, tg.initDataUnsafe.user, tg.ready(), and tg.expand() work in a plain browser"
+        }
+      ],
+      "files": []
+    }
+  ]
+}

@@ -11,6 +11,7 @@ from urllib.parse import parse_qsl, urlparse
 from menu_preview import preview_catalog, read_preview_body, validate_init_data
 from mini_app_assets import APP_HTML, APP_CSS, APP_JS, APP_LOGO, APP_ICONS
 from app_workflows import AppWorkflowsMixin, WorkflowError
+from services import service_catalog
 
 MINIAPP_ADMIN_ONLY = True
 MAX_UPLOAD = 5 * 1024 * 1024
@@ -296,6 +297,7 @@ class MiniAppMixin(AppWorkflowsMixin):
             data = preview_catalog(menu, sections)
             manager = await self.is_manager(uid, cfg)
             data.update({"user": {key: user.get(key, "") for key in ("id", "first_name", "last_name", "username")}, "info": info, "admin": manager, "events_visible": self.events_visible(manager)})
+            data["services"] = service_catalog()
             return data
         if operation == "tickets":
             clause, args = ("t.guest_id=?", [uid]) if scope == "guest" else ("t.status!='draft'", [])
@@ -357,7 +359,7 @@ class MiniAppMixin(AppWorkflowsMixin):
             if not asset:
                 return respond({"error": "Not found"}, 404)
             headers["content-type"] = asset[1]
-            headers["content-security-policy"] = "default-src 'self'; script-src 'self' https://telegram.org; style-src 'self'; font-src 'self' data:; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors https://web.telegram.org https://webk.telegram.org https://webz.telegram.org"
+            headers["content-security-policy"] = "default-src 'self'; script-src 'self' https://telegram.org; style-src 'self'; font-src 'self' data:; img-src 'self' data: blob: https://sunparkspb.ru; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors https://web.telegram.org https://webk.telegram.org https://webz.telegram.org"
             return Response(asset[0], headers=headers)
         if str(request.method) != "POST":
             return respond({"error": "Откройте приложение в Telegram."}, 405)
