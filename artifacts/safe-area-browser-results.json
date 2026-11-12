@@ -1,0 +1,65 @@
+[
+  {
+    "width": 320,
+    "safe_top_pairs": [
+      [
+        32,
+        56
+      ],
+      [
+        44,
+        64
+      ],
+      [
+        0,
+        0
+      ]
+    ],
+    "home_and_leaf_clear": true,
+    "sticky_back_clear": true,
+    "directions_visible": 4,
+    "errors": []
+  },
+  {
+    "width": 393,
+    "safe_top_pairs": [
+      [
+        32,
+        56
+      ],
+      [
+        44,
+        64
+      ],
+      [
+        0,
+        0
+      ]
+    ],
+    "home_and_leaf_clear": true,
+    "sticky_back_clear": true,
+    "directions_visible": 4,
+    "errors": []
+  },
+  {
+    "width": 820,
+    "safe_top_pairs": [
+      [
+        32,
+        56
+      ],
+      [
+        44,
+        64
+      ],
+      [
+        0,
+        0
+      ]
+    ],
+    "home_and_leaf_clear": true,
+    "sticky_back_clear": true,
+    "directions_visible": 4,
+    "errors": []
+  }
+]
