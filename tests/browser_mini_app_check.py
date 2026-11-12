@@ -70,7 +70,7 @@ async def main():
                 assert await page.evaluate('document.documentElement.scrollWidth<=innerWidth')
                 await page.screenshot(path=str(ARTIFACTS/f'adapt-home-{theme}-{width}.png'))
             await page.emulate_media(color_scheme='light')
-            await page.locator('#home-booking').click();await native_ready(page)
+            await page.locator('#home-services [data-service=restaurant]').click();await page.locator('#restaurant-booking').click();await native_ready(page)
             iso=await future_date(page)
             assert await page.locator('.calendar-day:disabled').count()>0
             await choose_day(page,iso);await set_time(page,19,30)
