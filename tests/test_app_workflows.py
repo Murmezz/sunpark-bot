@@ -26,6 +26,33 @@ class WorkflowTests(unittest.IsolatedAsyncioTestCase):
     def event(self,**changes):
         return {'title':'Вечер в SUNPARK','description':'','starts_at':'2099-01-01T19:00','location':'SUNPARK','price':'Бесплатно','capacity':'2',**changes}
 
+    async def test_inbox_works_with_actual_legacy_tickets_schema(self):
+        columns=await self.bot.db_all('PRAGMA table_info(tickets)')
+        self.assertNotIn('created_at',[row.name for row in columns.results])
+        status,data=await self.call('screen',screen='tickets',scope='guest')
+        self.assertEqual(status,200,data)
+        self.assertEqual(data['tickets'],[])
+        await self.bot.db_run("INSERT INTO tickets(guest_id,status,claimed_at) VALUES(1,'closed','2026-11-12 12:00:00')")
+        status,data=await self.call('screen',screen='tickets',scope='guest')
+        self.assertEqual(status,200,data)
+        self.assertEqual(data['tickets'][0]['created_at'],'2026-11-12 12:00:00')
+        self.assertEqual(data['tickets'][0]['details'],{})
+        await self.bot.db_run("INSERT INTO ticket_messages(ticket_number,sender_id,sender_role,body,created_at) VALUES(1,1,'guest','Вопрос','2026-11-11 12:00:00')")
+        status,data=await self.call('screen',screen='tickets',scope='staff',filter='all')
+        self.assertEqual(status,200,data)
+        self.assertEqual(data['tickets'][0]['created_at'],'2026-11-11 12:00:00')
+
+    async def test_app_name_sync_is_idempotent_and_sends_no_messages(self):
+        calls=[]
+        async def metadata(method,params):
+            calls.append((method,params))
+            return {'first_name':'Sunpark'} if method=='getMe' else True
+        self.bot.tg=metadata
+        self.assertTrue(await self.bot.sync_app_name())
+        self.assertTrue(await self.bot.sync_app_name())
+        self.assertEqual([method for method,_ in calls],['setMyName','setMyName','getMe'])
+        self.assertEqual(self.bot.notifications,[])
+
     async def test_whole_booking_and_duplicate_retry(self):
         for _ in range(2):
             status,data=await self.call('submit_form',kind='booking',values=self.booking(),request_key='same-full-booking-12345')

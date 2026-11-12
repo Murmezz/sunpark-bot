@@ -139,7 +139,9 @@ class AppWorkflowsMixin:
         elif mode not in ("all", "search"):
             raise WorkflowError("Неизвестный фильтр.")
         query = str(p.get("query") or "").strip()[:150]
-        base = "SELECT t.number,t.status,t.guest_id,t.manager_id,t.created_at,d.request_type,d.payload,u.first_name,u.last_name,u.username FROM tickets t LEFT JOIN ticket_details d ON d.ticket_number=t.number LEFT JOIN users u ON u.user_id=t.guest_id WHERE " + " AND ".join(clauses)
+        # The original production tickets table has no created_at column.
+        # Request metadata and the first message provide the available timestamp.
+        base = "SELECT t.number,t.status,t.guest_id,t.manager_id,COALESCE(d.created_at,(SELECT MIN(created_at) FROM ticket_messages WHERE ticket_number=t.number),t.claimed_at,t.closed_at,'') created_at,d.request_type,d.payload,u.first_name,u.last_name,u.username FROM tickets t LEFT JOIN ticket_details d ON d.ticket_number=t.number LEFT JOIN users u ON u.user_id=t.guest_id WHERE " + " AND ".join(clauses)
         if query:
             alphabet = "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ"
             half = sql_russian_fold("COALESCE(first_name,'')||' '||COALESCE(last_name,'')||' '||COALESCE(username,'')||' '||COALESCE(payload,'')||' #'||number", alphabet[:16])

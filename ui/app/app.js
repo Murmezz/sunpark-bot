@@ -89,7 +89,7 @@
   function totalText(total) { return total.unknown?(total.sum?`${money(total.sum)} + уточняется`:'Сумма уточняется'):money(total.sum); }
   function renderCart() {
     const total=cartTotals();
-    const showLauncher=!cartOpen&&catalog&&(appView==='menu'||(appView==='home'&&total.quantity>0));
+    const showLauncher=!cartOpen&&catalog&&(appView==='menu'||(appView==='service'&&currentServiceId==='restaurant'));
     $('cart-launcher').hidden=!showLauncher;document.body.classList.toggle('has-cart',!!showLauncher);
     $('cart-badge').textContent=total.quantity; $('cart-badge').hidden=!total.quantity;
     $('cart-launcher-total').textContent=totalText(total);
@@ -115,6 +115,7 @@
   function openCart() {
     if(!catalog||cartOpen) return;
     closeDish(); cartScroll=window.scrollY; cartOrigin=appView; cartOpen=true;setView('cart');
+    $('cart-back').lastChild.textContent=cartOrigin==='service'?'К ресторану':'К меню';
     $('menu-search').hidden=true; $('menu-hub').hidden=true; $('catalog-view').hidden=true; $('cart-view').hidden=false;
     renderCart(); updateBackButton(); window.scrollTo(0,0);
   }
@@ -197,6 +198,7 @@
     try { tg?.HapticFeedback.selectionChanged(); } catch (_) {}
   }
   function renderHub() {
+    $('menu-back-label').textContent='К ресторану';
     $('menu-hub').hidden = false; $('catalog-view').hidden = true;
     $('status').textContent = ''; $('items').replaceChildren();
     $('groups').replaceChildren();
@@ -219,6 +221,7 @@
     updateBackButton();
   }
   function renderItems() {
+    $('menu-back-label').textContent='К разделам меню';
     $('menu-hub').hidden=true; $('catalog-view').hidden=false;
     const category=catalog.categories.find(c=>c.key===categoryKey), list=[];
     if(query) catalog.categories.forEach(cat=>cat.items.forEach(item=>{
@@ -248,7 +251,7 @@
     if(!catalog) return;
     if(query || categoryKey) renderItems();else renderHub();
   });
-  $('back-to-sections').addEventListener('click',showHub);
+  $('back-to-sections').addEventListener('click',()=>{if(categoryKey||query)showHub();else openService('restaurant','home');});
   $('close-dialog').addEventListener('click',closeDish);
   $('back-to-menu').addEventListener('click',closeDish);
   $('dish-add').addEventListener('click',addDish);
@@ -296,9 +299,11 @@
     if(view!=='cart')cartOpen=false;
     $('menu-search').hidden=view!=='menu';
     document.body.classList.toggle('chat-open',view==='chat');
-    document.body.classList.toggle('native-open',view==='native');$('native-back').hidden=view!=='native';
+    document.body.classList.toggle('native-open',view==='native');$('view-back').hidden=!['native','more'].includes(view);
+    $('view-back-label').textContent=view==='more'?'К сообщениям':nativeState?.step>0?'Назад':nativeOrigin==='restaurant'?'К ресторану':nativeOrigin==='messages'?'К сообщениям':nativeOrigin==='management'?'К управлению':'На главную';
     for(const button of document.querySelectorAll('#app-nav [data-view]')) {
-      const active=button.dataset.view===view||(view==='service'&&button.dataset.view===serviceOrigin)||(view==='chat'&&button.dataset.view==='inbox')||(['flow','native'].includes(view)&&button.dataset.view===(nativeState?.screen==='tickets'?'inbox':nativeState?.screen==='booking'?'home':'more'));
+      const messages=view==='chat'||view==='more'||(view==='native'&&(nativeState?.screen==='tickets'||['messages','management'].includes(nativeOrigin)));
+      const active=button.dataset.view===(messages?'inbox':'home');
       if(active)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');
     }
     renderCart();updateBackButton();
@@ -310,6 +315,8 @@
     else if(appView==='service')closeService();
     else if(cartOpen)closeCart();
     else if(appView==='menu'&&(categoryKey||query))showHub();
+    else if(appView==='menu')openService('restaurant','home');
+    else if(appView==='more')openInbox('guest');
     else if(appView==='chat')openInbox(chatScope);
     else {setView('home');window.scrollTo(0,0);}
   }
@@ -332,16 +339,8 @@
     const b=node('button','action-row');b.type='button';b.append(icon(name),node('span','',title),icon('arrow-right'));b.addEventListener('click',onClick);return b;
   }
   function renderMore() {
-    $('profile-name').textContent=[catalog.user?.first_name,catalog.user?.last_name].filter(Boolean).join(' ')||'SUNPARK';
-    const actions=[['Забронировать стол','booking:start'],['Провести банкет','banquet:contact'],['Мероприятия','ev:list:0'],['Правила и контакты','faq'],['Написать менеджеру','manager:start']];
-    if(!catalog.events_visible)actions.splice(2,1);
     const root=$('more-actions');root.replaceChildren();
-    root.append(node('h3','subsection','Направления'));
-    for(const service of catalog.services?.items||[])root.append(actionRow(service.title,'arrow-right',()=>openService(service.id,'more')));
-    root.append(node('h3','subsection','Ресторан и обращения'));
-    for(const [label,callback] of actions)root.append(actionRow(label,actionIcon(callback),()=>runAction(callback,'guest')));
     if(catalog.admin) {
-      root.append(node('h3','subsection','Управление'));
       for(const [label,callback] of [['Админ-панель','admin:panel'],['Очередь заявок','admin:waiting'],['Мои активные заявки','admin:active'],['Мероприятия и регистрации','ev:manage:0'],['Менеджеры','admin:managers'],['Поиск заявок','admin:search'],['Статистика','admin:stats']])root.append(actionRow(label,actionIcon(callback),()=>runAction(callback,'staff')));
     }
     $('inbox-scope').hidden=!catalog.admin;
@@ -469,21 +468,16 @@
     try {const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.onerror=reject;reader.readAsDataURL(file);});const uploaded=await api('upload',{name:file.name,data});if(nativeChatKey!==uploadKey)return;pendingUpload={...uploaded,size:file.size,preview:file.type.startsWith('image/')?URL.createObjectURL(file):null};renderAttachment();toast('Вложение готово к отправке');}
     catch(error){toast(error.message);}finally{busy=false;$('attach-button').disabled=false;e.target.value='';}
   });
-  $('brand-home').addEventListener('click',()=>{setView('home');window.scrollTo(0,0);});
-  $('profile-button').addEventListener('click',()=>{setView('more');window.scrollTo(0,0);});
-  $('home-inbox').addEventListener('click',()=>openInbox('guest'));
   $('flow-back').addEventListener('click',()=>{setView('home');window.scrollTo(0,0);});
   $('chat-back').addEventListener('click',()=>openInbox(chatScope));
   $('inbox-reload').addEventListener('click',()=>openInbox());
   document.querySelectorAll('#inbox-scope [data-scope]').forEach(b=>b.addEventListener('click',()=>openInbox(b.dataset.scope)));
-  document.querySelectorAll('#app-nav [data-view]').forEach(b=>b.addEventListener('click',()=>{const view=b.dataset.view;if(view==='menu')goMenu();else if(view==='inbox')openInbox();else{setView(view);window.scrollTo(0,0);}}));
+  document.querySelectorAll('#app-nav [data-view]').forEach(b=>b.addEventListener('click',()=>{const view=b.dataset.view;if(view==='inbox')openInbox('guest');else{setView(view);window.scrollTo(0,0);}}));
   setInterval(()=>{if(!document.hidden&&appView==='chat'&&!busy)refreshChat();},6000);
   const resize=()=>document.documentElement.style.setProperty('--viewport-height',`${tg?.viewportStableHeight||window.visualViewport?.height||innerHeight}px`);
   window.visualViewport?.addEventListener('resize',resize);window.addEventListener('resize',resize);resize();
   try {tg?.onEvent?.('viewportChanged',event=>{if(event.isStateStable)resize();});} catch (_) {}
   function closeApp(){try{if(tg?.close)tg.close();else window.close();}catch(_){}}
-  $('app-close').addEventListener('click',closeApp);
-  const chatClose=node('button','icon-button');chatClose.type='button';chatClose.setAttribute('aria-label','Закрыть приложение');chatClose.append(icon('x'));chatClose.addEventListener('click',closeApp);document.querySelector('.chat-heading').append(chatClose);
   function syncFullscreen(){document.body.classList.toggle('telegram-fullscreen',!!tg?.isFullscreen);resize();}
   try {
     tg?.onEvent?.('fullscreenChanged',syncFullscreen);
@@ -494,7 +488,7 @@
   syncFullscreen();
 
   async function load() {
-    if(!tg?.initData) throw new Error('Откройте приложение из бота: /admin → «Разработка» → «SUNPARK · Mini App». Доступ только администраторам.');
+    if(!tg?.initData) throw new Error('Откройте Sunpark из бота: /admin → «Разработка» → «Sunpark». Доступ только администраторам.');
     const data=await api('bootstrap');
     catalog=data;
     if(!catalog.groups.length||!catalog.categories.length)throw new Error('Меню пока пусто.');

@@ -1958,6 +1958,7 @@ class Bot(MiniAppMixin, MenuPreviewMixin, EventsMixin, ServicesMixin, WorkerEntr
             return
         try:
             _, _, _, cfg = await self.config()
+            await self.sync_app_name()
             await self.process_admin_broadcasts(cfg)
             rows = await self.db_all(
                 "SELECT t.number,t.guest_id,t.manager_id,t.status,d.request_type,d.payload,"

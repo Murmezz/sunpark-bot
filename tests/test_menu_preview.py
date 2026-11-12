@@ -109,7 +109,7 @@ class PreviewTests(unittest.IsolatedAsyncioTestCase):
     def test_development_has_only_current_mini_app(self):
         text,kb=self.bot.menu_preview_chooser()
         self.assertEqual(kb['inline_keyboard'],[
-            [{'text':'🌿 SUNPARK · Mini App','web_app':{'url':'https://sunparkbot.lovison1979.workers.dev/app'}}],
+            [{'text':'Sunpark','web_app':{'url':'https://sunparkbot.lovison1979.workers.dev/app'}}],
             [{'text':'◀️ В админ-панель','callback_data':'admin:panel'}],
         ])
         self.assertIn('Разработка',text)

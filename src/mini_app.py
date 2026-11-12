@@ -91,6 +91,23 @@ class AppBridge:
 
 
 class MiniAppMixin(AppWorkflowsMixin):
+    async def sync_app_name(self):
+        """Apply the requested Telegram display name once, without sending messages."""
+        saved = await self.db_first("SELECT value FROM config WHERE key='telegram_app_name_v1'")
+        if saved and str(saved.value) == "Sunpark":
+            return True
+        try:
+            for language in ("", "ru"):
+                await self.tg("setMyName", {"name": "Sunpark", "language_code": language})
+            me = await self.tg("getMe", {})
+            if not isinstance(me, dict) or me.get("first_name") != "Sunpark":
+                return False
+            await self.db_run("INSERT INTO config(key,value) VALUES('telegram_app_name_v1','Sunpark') ON CONFLICT(key) DO UPDATE SET value=excluded.value")
+            return True
+        except Exception as error:
+            print("SUNPARK APP NAME SYNC", type(error).__name__)
+            return False
+
     async def app_init(self):
         await self.db_run("CREATE TABLE IF NOT EXISTS miniapp_requests (user_id INTEGER NOT NULL, request_key TEXT NOT NULL, digest TEXT NOT NULL, response TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT (datetime('now')), PRIMARY KEY(user_id,request_key))")
         await self.db_run("CREATE TABLE IF NOT EXISTS miniapp_uploads (token TEXT PRIMARY KEY, user_id INTEGER NOT NULL, file_id TEXT NOT NULL, kind TEXT NOT NULL, file_name TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')))")
