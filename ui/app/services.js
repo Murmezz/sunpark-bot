@@ -49,13 +49,18 @@ function openService(id,origin=serviceOrigin) {
   controls.append(previous,counter,next);gallery.append(track,controls);root.append(gallery);
   const actions=node('div','service-actions');
   if(id==='restaurant'){
-    const menu=node('button','primary-button','Меню ресторана');menu.id='restaurant-menu';menu.type='button';menu.addEventListener('click',goMenu);actions.append(menu);
-    for(const [label,callback,buttonId] of [['Забронировать стол','booking:start','restaurant-booking'],['Провести банкет','banquet:contact','restaurant-banquet']]){
-      const b=node('button','secondary-button',label);b.id=buttonId;b.type='button';b.addEventListener('click',()=>runAction(callback,'guest'));actions.append(b);
+    actions.classList.add('restaurant-actions');actions.setAttribute('role','group');actions.setAttribute('aria-label','Действия ресторана');
+    const menu=node('button','restaurant-menu-link'),copy=node('span','restaurant-menu-copy');menu.id='restaurant-menu';menu.type='button';copy.append(node('strong','','Меню ресторана'),node('span','','Еда, напитки и бар'));menu.append(icon('fork-knife'),copy,icon('arrow-right'));menu.addEventListener('click',goMenu);actions.append(menu);
+    const requests=node('div','restaurant-requests');
+    for(const [label,name,callback,buttonId] of [['Забронировать стол','calendar-blank','booking:start','restaurant-booking'],['Провести банкет','users-three','banquet:contact','restaurant-banquet']]){
+      const b=node('button','restaurant-request');b.id=buttonId;b.type='button';b.append(icon(name),node('span','',label));b.addEventListener('click',()=>runAction(callback,'guest'));requests.append(b);
     }
+    actions.append(requests,serviceLink('Позвонить · '+service.phone_label,'tel:'+service.phone,'restaurant-call'));
+    root.insertBefore(actions,gallery);
+  }else{
+    actions.append(serviceLink('Позвонить · '+service.phone_label,'tel:'+service.phone,'primary-button'));
+    root.append(actions);
   }
-  actions.append(serviceLink('Позвонить · '+service.phone_label,'tel:'+service.phone,id==='restaurant'?'secondary-button':'primary-button'));
-  root.append(actions);
   root.append(node('p','service-description',service.description));
   if(service.additional_phone)root.append(serviceLink('Городской: '+service.additional_phone_label,'tel:'+service.additional_phone,'service-phone'));
   if(service.notice)root.append(node('p','service-notice',service.notice));

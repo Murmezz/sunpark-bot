@@ -8,7 +8,8 @@ import time
 import uuid
 from urllib.parse import parse_qsl, urlparse
 
-from menu_preview import preview_catalog, read_preview_body, validate_init_data
+from menu_preview import preview_catalog, read_preview_body
+from mini_app_auth import authenticate_app
 from mini_app_assets import APP_HTML, APP_CSS, APP_JS, APP_LOGO, APP_ICONS
 from app_workflows import AppWorkflowsMixin, WorkflowError
 from services import service_catalog
@@ -385,12 +386,12 @@ class MiniAppMixin(AppWorkflowsMixin):
         try:
             raw = await read_preview_body(request, limit=8 * 1024 * 1024)
             payload = json.loads(raw)
-            uid = validate_init_data(payload.get("init_data"), self.env.BOT_TOKEN)
+            uid, session = authenticate_app(payload.get("init_data"), self.env.BOT_TOKEN, request.headers.get("X-Sunpark-Session"))
             user = json.loads(dict(parse_qsl(payload["init_data"]))["user"])
             if user.get("id") != uid:
                 raise ValueError()
         except (ValueError, TypeError, KeyError, AttributeError):
-            return respond({"error": "Откройте приложение заново через бота."}, 401)
+            return respond({"error": "Сеанс завершён. Закройте приложение и откройте Sunpark заново в боте.", "code": "AUTH_REQUIRED"}, 401)
         try:
             menu, sections, info, cfg = await self.config()
             manager = await self.is_manager(uid, cfg)
@@ -402,7 +403,10 @@ class MiniAppMixin(AppWorkflowsMixin):
                 return await self.app_media(uid, payload, headers)
             operation = payload.get("operation")
             if operation in ("bootstrap", "tickets", "chat", "screen"):
-                return respond(await self.app_dispatch(user, payload, menu, sections, info, cfg))
+                result = await self.app_dispatch(user, payload, menu, sections, info, cfg)
+                if operation == "bootstrap":
+                    result["session"] = session
+                return respond(result)
             if len(raw) > 24000 and operation != "upload":
                 raise AppError("Слишком большой запрос.", 413)
             key = payload.get("request_key", "")

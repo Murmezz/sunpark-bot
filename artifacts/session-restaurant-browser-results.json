@@ -1,0 +1,26 @@
+[
+  {
+    "width": 320,
+    "restaurant_actions": "passed",
+    "two_hour_messages_and_reload": "passed",
+    "server_error_retry": "passed",
+    "session_expiry_recovery": "passed",
+    "errors": []
+  },
+  {
+    "width": 390,
+    "restaurant_actions": "passed",
+    "two_hour_messages_and_reload": "passed",
+    "server_error_retry": "passed",
+    "session_expiry_recovery": "passed",
+    "errors": []
+  },
+  {
+    "width": 820,
+    "restaurant_actions": "passed",
+    "two_hour_messages_and_reload": "passed",
+    "server_error_retry": "passed",
+    "session_expiry_recovery": "passed",
+    "errors": []
+  }
+]

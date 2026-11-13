@@ -2,6 +2,24 @@
 
 final result: passed
 
+## Restaurant actions and long-open sessions — 13 November 2026
+
+final result: passed
+
+The user clarified that the restaurant's menu/table/banquet actions were the disliked controls, and confirmed that reopening resolved Messages. Production telemetry showed HTTP 401 responses from the current Worker after a previously successful open; the retained one-hour initData check explained the long-open failure. Fresh Telegram data now exchanges for a launch-bound twelve-hour app session. Signature validation, per-request roles, ownership and replay protection remain in place. Expiry has its own recovery screen; an actual server error retains retry and never becomes a false empty inbox.
+
+The existing coded restaurant screen is the source for this scoped revision. Opened the [before/after comparison](artifacts/restaurant-actions-comparison.webp): both captures are 390 × 844 CSS/pixel dimensions, density 1, light theme, same fixture and 32/56 px Telegram top insets, restaurant at its initial scroll position. The replacement of filled/outlined buttons and movement above the gallery are intentional requested improvements. Also opened the final [320 px dark actions](artifacts/restaurant-actions-after-dark-320.png) and [session recovery](artifacts/session-expired-dark-390.png). Controls are readable at native capture size; no additional crop was needed to inspect their labels and icons.
+
+- **Typography:** retained Manrope and Cormorant families; menu entry uses a clear heading and short description. Table and banquet labels wrap as two readable lines with whole words.
+- **Layout:** menu row, two neighboring request actions and telephone link precede the gallery. All three actions remain above the cart launcher at 320/390/820 px. Their existing handlers and contextual returns are retained.
+- **Color:** ivory/forest and forest/sage tokens are unchanged. Initial immediate theme-switch captures caught the existing 120 ms button transition; final captures wait for the requested theme and settled transition.
+- **Images and icons:** same official restaurant photos, inert gallery and existing Phosphor fork/knife, calendar, people and arrow assets. No generated replacement artwork or native-device chrome is part of the implementation.
+- **Copy and states:** clear menu/table/banquet/telephone labels. Empty Messages, server failure/retry, long-open session and absolute expiry are distinct states.
+
+P2 found and fixed: the selected Restaurant direction label wrapped its last letter at 320 px. Narrow-screen tab gaps and padding now preserve a single line; the browser test explicitly checks line boxes, and the final dark 320 px capture confirms the fix. No unresolved P0/P1/P2 visual findings.
+
+Validation: 63 Python tests passed, including session tampering, user/launch binding, absolute expiry, role removal and replay protection. [Focused Chromium results](artifacts/session-restaurant-browser-results.json) passed at 320/390/820 px: menu/table/banquet paths, two-hour Messages, sessionStorage reload, genuine 500/retry, twelve-hour expiry and closing. The complete existing booking/cart/chat/events/staff suite also passed in both themes with no console errors. Physical Telegram testing was not repeated; the user's earlier publication authorization remains applicable.
+
 ## Fullscreen top inset correction — 12 November 2026
 
 final result: passed
