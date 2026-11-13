@@ -2,6 +2,9 @@
 (() => {
   const $ = id => document.getElementById(id);
   const tg = window.Telegram?.WebApp;
+  const sessionLaunch=new URLSearchParams(tg?.initData||'').get('hash')||'';
+  let appSession='',authExpired=false;
+  try{const saved=JSON.parse(sessionStorage.getItem('sunpark:session:v1')||'null');if(saved?.launch===sessionLaunch&&typeof saved.token==='string')appSession=saved.token;}catch(_){}
   const dialog = $('dish-dialog');
   let catalog = null, groupIndex = 0, categoryKey = '', query = '';
   let cartOpen = false, cartScroll = 0, currentDish = null, storageKey = null, toastTimer, menuScroll = null;
@@ -277,17 +280,31 @@
     if(crypto.randomUUID)return crypto.randomUUID();
     return [...crypto.getRandomValues(new Uint8Array(16))].map(n=>n.toString(16).padStart(2,'0')).join('');
   }
+  function appHeaders(){return {'Content-Type':'application/json',...(appSession?{'X-Sunpark-Session':appSession}:{})};}
+  function saveSession(token){
+    if(typeof token!=='string'||!/^v1\.\d+\.[0-9a-f]{64}$/.test(token))return;
+    appSession=token;authExpired=false;
+    try{sessionStorage.setItem('sunpark:session:v1',JSON.stringify({launch:sessionLaunch,token}));}catch(_){}
+  }
+  function expiredSession(message){
+    appSession='';authExpired=true;try{sessionStorage.removeItem('sunpark:session:v1');}catch(_){}
+    const error=new Error(message||'Закройте приложение и откройте Sunpark заново в боте.');error.status=401;return error;
+  }
+  function renderSessionRecovery(root,error){root.replaceChildren(node('h1','native-title','Сеанс завершён'),node('p','native-hint',error.message),button('Закрыть приложение','primary-button',closeApp));}
   async function api(operation,args={}) {
+    if(authExpired&&operation!=='bootstrap')throw expiredSession();
     const payload={...args,operation,init_data:tg?.initData||''};
     if(!['bootstrap','tickets','chat','screen'].includes(operation))payload.request_key=requestKey();
     const body=JSON.stringify(payload);
     let response;
     for(let attempt=0;attempt<2;attempt++) {
-      try {response=await fetch('/api/app',{method:'POST',headers:{'Content-Type':'application/json'},body,cache:'no-store'});break;}
+      try {response=await fetch('/api/app',{method:'POST',headers:appHeaders(),body,cache:'no-store'});break;}
       catch(error){if(attempt)throw new Error('Не удалось связаться с сервером. Попробуйте ещё раз.');}
     }
     const data=await response.json();
+    if(response.status===401)throw expiredSession(data.error);
     if(!response.ok){const error=new Error(data.error||'Не удалось выполнить действие.');error.fields=data.fields||{};error.status=response.status;throw error;}
+    if(operation==='bootstrap')saveSession(data.session);
     return data;
   }
   function setView(view) {
@@ -442,7 +459,8 @@
   }
   async function loadMedia(message) {
     if(mediaCache.has(message.id))return mediaCache.get(message.id);
-    const response=await fetch('/api/app/media',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({init_data:tg.initData,message_id:message.id,scope:chatScope}),cache:'no-store'});
+    const response=await fetch('/api/app/media',{method:'POST',headers:appHeaders(),body:JSON.stringify({init_data:tg.initData,message_id:message.id,scope:chatScope}),cache:'no-store'});
+    if(response.status===401){const data=await response.json();throw expiredSession(data.error);}
     if(!response.ok){const data=await response.json();throw new Error(data.error||'Не удалось загрузить вложение.');}
     const url=URL.createObjectURL(await response.blob());mediaCache.set(message.id,url);
     if(mediaCache.size>20){const first=mediaCache.keys().next().value;URL.revokeObjectURL(mediaCache.get(first));mediaCache.delete(first);}
@@ -473,7 +491,7 @@
   $('inbox-reload').addEventListener('click',()=>openInbox());
   document.querySelectorAll('#inbox-scope [data-scope]').forEach(b=>b.addEventListener('click',()=>openInbox(b.dataset.scope)));
   document.querySelectorAll('#app-nav [data-view]').forEach(b=>b.addEventListener('click',()=>{const view=b.dataset.view;if(view==='inbox')openInbox('guest');else{setView(view);window.scrollTo(0,0);}}));
-  setInterval(()=>{if(!document.hidden&&appView==='chat'&&!busy)refreshChat();},6000);
+  setInterval(()=>{if(!authExpired&&!document.hidden&&appView==='chat'&&!busy)refreshChat();},6000);
   const resize=()=>document.documentElement.style.setProperty('--viewport-height',`${tg?.viewportStableHeight||window.visualViewport?.height||innerHeight}px`);
   window.visualViewport?.addEventListener('resize',resize);window.addEventListener('resize',resize);resize();
   try {tg?.onEvent?.('viewportChanged',event=>{if(event.isStateStable)resize();});} catch (_) {}
@@ -497,5 +515,5 @@
     catalog.categories.forEach(category=>category.items.forEach(item=>products.set(item.id,{item,category})));
     restoreCart();renderHub();renderHome();renderMore();$('app-shell').hidden=false;$('app-nav').hidden=false;$('status').textContent='';setView('home');
   }
-  load().catch(error=>{$('app-shell').hidden=true;$('app-nav').hidden=true;$('cart-launcher').hidden=true;$('status').textContent=error.message;});
+  load().catch(error=>{$('app-shell').hidden=true;$('app-nav').hidden=true;$('cart-launcher').hidden=true;if(error.status===401)renderSessionRecovery($('status'),error);else $('status').textContent=error.message;});
 })();

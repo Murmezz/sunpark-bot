@@ -34,7 +34,7 @@ async function openNative(screen,args={},root=false){
     nativeState.values={...(data.data||{})};
     if(['booking','banquet'].includes(screen))nativeState.values={guests:'2',name:data.profile_name||'',...nativeState.values,...getNativeDraft(screen)};
     renderNative();
-  }catch(error){if(sequence===nativeSequence&&appView==='native'){$('native-content').replaceChildren();heading($('native-content'),'Не удалось загрузить');message($('native-content'),error.message,'error');$('native-content').append(button('Попробовать ещё раз','primary-button',()=>openNative(screen,args,'replace')));}}
+  }catch(error){if(sequence===nativeSequence&&appView==='native'){if(error.status===401)renderSessionRecovery($('native-content'),error);else{$('native-content').replaceChildren();heading($('native-content'),'Не удалось загрузить');message($('native-content'),error.message,'error');$('native-content').append(button('Попробовать ещё раз','primary-button',()=>openNative(screen,args,'replace')));}}}
   finally{if(sequence===nativeSequence)$('native-content').removeAttribute('aria-busy');}
 }
 function openLocalForm(kind,data={},args={}){if(appView==='native'&&nativeState)nativeStack.push(clone(nativeState));nativeState={screen:'local_form',args:{scope:'staff',...args},kind,values:{...data},data:{today:new Date().toISOString().slice(0,10)}};setView('native');renderNative();}
