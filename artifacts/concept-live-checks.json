@@ -1,0 +1,44 @@
+[
+  {
+    "path": "/app",
+    "status": 200,
+    "matches_tested_bundle": true,
+    "bytes": 392098
+  },
+  {
+    "path": "/app/app.js",
+    "status": 200,
+    "matches_tested_bundle": true,
+    "bytes": 207004
+  },
+  {
+    "path": "/app/style.css",
+    "status": 200,
+    "matches_tested_bundle": true,
+    "bytes": 203940
+  },
+  {
+    "path": "/app/legacy",
+    "status": 200,
+    "matches_tested_bundle": true,
+    "bytes": 391587
+  },
+  {
+    "path": "/app/legacy/app.js",
+    "status": 200,
+    "matches_tested_bundle": true,
+    "bytes": 96666
+  },
+  {
+    "path": "/app/icons/qr-code.svg",
+    "status": 200
+  },
+  {
+    "path": "/app/legacy/icons/house.svg",
+    "status": 200
+  },
+  {
+    "path": "/api/app",
+    "unauthenticated_status": 401
+  }
+]

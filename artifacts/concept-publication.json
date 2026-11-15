@@ -1,0 +1,10 @@
+{
+  "worker": "sunparkbot",
+  "source_commit": "508881720cd6af0aede1c2bbe30c31a6bf73f39d",
+  "deployment_id": "42ac076e-cb96-4edb-8d94-1f7d5f176968",
+  "version_id": "e4d77a2e-6820-4dc9-9a80-7760df4b641f",
+  "published_at": "2026-11-15T20:15:22.596681Z",
+  "admin_only": true,
+  "legacy_path": "/app/legacy",
+  "payments_configured": false
+}

@@ -38,3 +38,13 @@ Restore code by deploying the backup tag or original Worker version. The legacy 
 - Generated static bundle passes JS syntax checking; original frozen legacy constants match the backup source.
 
 No physical Telegram device or real provider payment has been tested. This is a closed development publication for the owner's device review, not a guest release. Tests use local fixture inventory only. Browser QA photos are verified source photographs routed locally; no fixture code ships in the Worker.
+
+## Closed development publication
+
+Published 2026-11-15 at 20:15 UTC to `sunparkbot`, Worker version `e4d77a2e-6820-4dc9-9a80-7760df4b641f`, deployment `42ac076e-cb96-4edb-8d94-1f7d5f176968`. Runtime source: `508881720cd6af0aede1c2bbe30c31a6bf73f39d`. The content-only API upload preserved all 47 module paths (including existing runtime packages), compatibility settings, D1 binding and existing secrets. Uploaded source hashes match the tested files.
+
+Applied 48 additive migration statements. Verification found 15 source-price rates and zero v2 orders, published slots, room records or restaurant tables. The existing ticket count stayed 18. No fixture records were inserted into D1.
+
+The new and legacy HTML/JS/CSS endpoints return HTTP 200 and exactly match the tested bundles. Icons return 200; unauthenticated API access returns 401. Chromium also loaded the deployed shell successfully. Python HTTP checks use the descriptive `SunPark-Development-Verification/1.0` user agent because Cloudflare rejects default urllib clients on workers.dev ([Cloudflare error 1010](https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-1xxx-errors/error-1010/)). No security setting was changed. Authenticated business flows were checked on isolated local data; the owner's physical Telegram review remains outstanding.
+
+GitHub Actions passed for the runtime commit: [Tests](https://github.com/Murmezz/sunpark-bot/actions/runs/43756666083). Source review: [draft PR #7](https://github.com/Murmezz/sunpark-bot/pull/7). Main branch remains at the backup commit.
