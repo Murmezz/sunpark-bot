@@ -1,0 +1,38 @@
+[
+  {
+    "width": 320,
+    "height": 640,
+    "safe_top": 88,
+    "direct_menu_and_variants": "passed",
+    "inline_quantity": "passed",
+    "return_history": "passed",
+    "booking_controls_clear": "passed",
+    "success_summary": "passed",
+    "keyboard_chat": "passed",
+    "errors": []
+  },
+  {
+    "width": 390,
+    "height": 844,
+    "safe_top": 88,
+    "direct_menu_and_variants": "passed",
+    "inline_quantity": "passed",
+    "return_history": "passed",
+    "booking_controls_clear": "passed",
+    "success_summary": "passed",
+    "keyboard_chat": "passed",
+    "errors": []
+  },
+  {
+    "width": 820,
+    "height": 1024,
+    "safe_top": 88,
+    "direct_menu_and_variants": "passed",
+    "inline_quantity": "passed",
+    "return_history": "passed",
+    "booking_controls_clear": "passed",
+    "success_summary": "passed",
+    "keyboard_chat": "passed",
+    "errors": []
+  }
+]

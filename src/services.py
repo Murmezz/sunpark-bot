@@ -77,7 +77,13 @@ SERVICES = [
 
 
 def service_catalog():
-    return {"checked_at": CHECKED_AT, "address": ADDRESS, "contacts_url": CONTACTS_URL, "items": SERVICES}
+    facts = {
+        "wake": [["Катание", "Кольцо и реверсивная лебёдка"], ["Экипировка", "Доска и защита доступны в прокате"]],
+        "wave": [["Доска и инструктаж", "Включены"], ["Приходите", "За 30 минут"], ["С собой", "Купальник или плавки и полотенце"]],
+        "restaurant": [["Кухня", "До 22:30"], ["Пространство", "Два зала и террасы"]],
+        "hotel": [["Завтрак", "Включён в стоимость"], ["Расположение", "15 минут пешком от м. Озерки"]],
+    }
+    return {"checked_at": CHECKED_AT, "address": ADDRESS, "contacts_url": CONTACTS_URL, "map_url": "https://yandex.ru/maps/org/sunpark/1696243668", "items": [{**service, "facts": facts[service["id"]]} for service in SERVICES]}
 
 
 def roubles(amount):

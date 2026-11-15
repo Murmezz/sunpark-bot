@@ -15,16 +15,18 @@ function message(root,text,kind='hint'){const p=node('p','native-'+kind,text);if
 function draftKey(kind){return `sunpark:request-draft:v2:${catalog?.user?.id}:${kind}`;}
 function saveNativeDraft(){if(!nativeState||!['booking','banquet'].includes(nativeState.screen))return;try{localStorage.setItem(draftKey(nativeState.screen),JSON.stringify(nativeState.values));}catch(_){}}
 function getNativeDraft(kind){try{const value=JSON.parse(localStorage.getItem(draftKey(kind))||'null');return value&&typeof value==='object'&&!Array.isArray(value)?value:{};}catch(_){return {};}}
-function nativeBack(){nativeSequence++;saveNativeDraft();if(nativeState&&['booking','banquet'].includes(nativeState.screen)&&nativeState.step>0){nativeState.step--;renderNative();return;}if(nativeStack.length){nativeState=nativeStack.pop();setView('native');renderNative();}else{const current=nativeState?.screen;if(['event','event_edit','manual','register','event_guests'].includes(current)){openNative(current==='event'?'events':'event',{...nativeState.args},true);return;}if(nativeOrigin==='restaurant'){openService('restaurant','home');return;}if(nativeOrigin==='messages'){openInbox('guest');return;}setView(nativeOrigin==='management'?'more':'home');window.scrollTo(0,0);}}
+function nativeBack(){nativeSequence++;saveNativeDraft();if(nativeState&&['booking','banquet'].includes(nativeState.screen)&&nativeState.step>0){nativeState.step--;renderNative();return;}if(nativeStack.length){nativeState=nativeStack.pop();nativeOrigin=nativeState.origin||'home';setView('native');renderNative();}else{const current=nativeState?.screen;if(['event','event_edit','manual','register','event_guests'].includes(current)){openNative(current==='event'?'events':'event',{...nativeState.args},true);return;}if(nativeOrigin==='restaurant'){openService('restaurant','home');return;}if(nativeOrigin==='messages'){openInbox('guest');return;}setView(nativeOrigin==='management'?'more':'home');window.scrollTo(0,0);}}
 $('native-back').addEventListener('click',()=>appView==='more'?openInbox('guest'):nativeBack());
+function rememberNative(){if(nativeState){const saved=clone(nativeState);saved.origin=nativeState.origin||nativeOrigin;nativeStack.push(saved);}}
 async function openNative(screen,args={},root=false){
-  if(screen==='tickets'&&args.scope!=='staff')nativeOrigin='home';
-  else if(appView==='service'&&currentServiceId==='restaurant')nativeOrigin='restaurant';
-  else if(appView==='native'&&nativeState?.screen==='tickets'&&nativeState.args.scope!=='staff')nativeOrigin='messages';
-  else if(appView==='more'||args.scope==='staff')nativeOrigin='management';
-  else if(appView!=='native')nativeOrigin='home';
-  saveNativeDraft();if(root===true)nativeStack=[];else if(root!=='replace'&&appView==='native'&&nativeState?.data)nativeStack.push(clone(nativeState));
-  const sequence=++nativeSequence;nativeState={screen,args,data:null,values:{},step:0};setView('native');window.scrollTo(0,0);
+  let origin=nativeState?.origin||nativeOrigin;
+  if(screen==='tickets'&&args.scope!=='staff')origin='home';
+  else if(appView==='service'&&currentServiceId==='restaurant')origin='restaurant';
+  else if(appView==='native'&&nativeState?.screen==='tickets'&&nativeState.args.scope!=='staff')origin='messages';
+  else if(appView==='more'||args.scope==='staff')origin='management';
+  else if(appView!=='native')origin='home';
+  saveNativeDraft();if(root===true)nativeStack=[];else if(root!=='replace'&&appView==='native'&&nativeState?.data)rememberNative();nativeOrigin=origin;
+  const sequence=++nativeSequence;nativeState={screen,args,data:null,values:{},step:0,origin:nativeOrigin};setView('native');window.scrollTo(0,0);
   $('native-content').replaceChildren(node('p','empty-state','Загружаем…'));$('native-content').setAttribute('aria-busy','true');
   try{
     const data=await api('screen',{screen,...args});
@@ -37,9 +39,9 @@ async function openNative(screen,args={},root=false){
   }catch(error){if(sequence===nativeSequence&&appView==='native'){if(error.status===401)renderSessionRecovery($('native-content'),error);else{$('native-content').replaceChildren();heading($('native-content'),'Не удалось загрузить');message($('native-content'),error.message,'error');$('native-content').append(button('Попробовать ещё раз','primary-button',()=>openNative(screen,args,'replace')));}}}
   finally{if(sequence===nativeSequence)$('native-content').removeAttribute('aria-busy');}
 }
-function openLocalForm(kind,data={},args={}){if(appView==='native'&&nativeState)nativeStack.push(clone(nativeState));nativeState={screen:'local_form',args:{scope:'staff',...args},kind,values:{...data},data:{today:new Date().toISOString().slice(0,10)}};setView('native');renderNative();}
+function openLocalForm(kind,data={},args={}){if(appView==='native'&&nativeState)rememberNative();nativeOrigin='management';nativeState={origin:nativeOrigin,screen:'local_form',args:{scope:'staff',...args},kind,values:{...data},data:{today:new Date().toISOString().slice(0,10)}};setView('native');renderNative();}
 function renderNative(){
-  const root=$('native-content');root.replaceChildren();$('native-content').removeAttribute('aria-busy');setView('native');window.scrollTo(0,0);
+  const root=$('native-content');root.replaceChildren();root.classList.remove('request-screen');$('native-content').removeAttribute('aria-busy');setView('native');window.scrollTo(0,0);
   const s=nativeState;if(!s)return;
   if(['booking','banquet'].includes(s.screen))return renderRequest(root,s);
   if(s.screen==='dashboard')return renderDashboard(root,s);
@@ -51,7 +53,7 @@ function renderNative(){
   if(s.screen==='info')return renderInfo(root,s);
   if(['event_create','event_edit','manual','register','note','local_form','inquiry'].includes(s.screen))return renderTypedForm(root,s);
   if(s.screen==='success'){
-    const mark=node('div','success-mark');mark.append(icon('check'));root.append(mark);heading(root,s.title||'Готово');message(root,s.notice||'Изменения сохранены.');
+    const mark=node('div','success-mark');mark.append(icon('check'));root.append(mark);heading(root,s.title||'Готово');if(s.request){const v=s.request.values;root.append(node('p','success-context',[displayDate(v.date),v.time,guestCount(v.guests)].filter(Boolean).join(' · ')));message(root,(s.notice||'Менеджер подтвердит возможность бронирования.').replace(/^Заявка отправлена[.!]?\s*/,''));message(root,'Следите за ответом в переписке.');}else message(root,s.notice||'Изменения сохранены.');
     if(s.ticket)root.append(button('Открыть переписку','primary-button',()=>openChat(s.ticket,'guest')));
     root.append(button('На главную','secondary-button',()=>setView('home')));
   }
@@ -122,25 +124,37 @@ function counter(root,s,key,label,max=200){
 }
 function requestStepErrors(s){const e={},v=s.values;if(s.step===0){if(!v.date||v.date<s.data.today)e.date='Выберите сегодняшнюю или будущую дату.';if(s.screen==='booking'&&!/^\d{2}:\d{2}$/.test(v.time||''))e.time='Выберите время.';if(s.screen==='booking'&&v.date===s.data.today&&v.time){const parts=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Moscow',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date()).map(p=>[p.type,p.value]));if(v.time<=parts.hour+':'+parts.minute)e.time='Выберите время позднее текущего (МСК).';}}else{if(!/^\d+$/.test(String(v.guests))||Number(v.guests)<1||Number(v.guests)>200)e.guests='От 1 до 200 гостей.';if(!String(v.name||'').trim())e.name='Введите ваше имя.';const digits=String(v.phone||'').replace(/\D/g,'');if(!/^(?:[78][3489]\d{9}|[3489]\d{9})$/.test(digits))e.phone='Введите российский номер телефона.';if(s.screen==='banquet'&&!String(v.event||'').trim())e.event='Укажите повод или формат.';}return e;}
 function renderRequest(root,s){
-  const booking=s.screen==='booking';heading(root,booking?'Забронировать стол':'Провести банкет');root.append(node('div','native-accent'));
-  const steps=booking?['Дата и время','Гости и контакты','Проверьте заявку']:['Дата банкета','Детали и контакты','Проверьте заявку'];root.append(node('p','step-label',`${steps[s.step]} · ${s.step+1} из 3`));
-  const body=node('div','request-body');root.append(body);
+  const booking=s.screen==='booking';root.classList.add('request-screen');heading(root,booking?'Забронировать стол':'Провести банкет');
+  const steps=booking?['Дата и время','Гости и контакты','Проверьте заявку']:['Дата банкета','Детали и контакты','Проверьте заявку'];
+  const progress=node('div','request-progress');progress.append(node('p','step-label',`${steps[s.step]} · ${s.step+1} из 3`));
+  if(s.values.date||s.values.phone||s.values.event||s.values.comment||s.values.wishes){
+    const reset=button('Сбросить','draft-reset',()=>confirmAction('Очистить черновик?','Введённые данные этой заявки будут удалены.','Очистить черновик',()=>nativeCommand({command:'discard_draft'},()=>{try{localStorage.removeItem(draftKey(s.screen));}catch(_){}s.values={guests:'2',name:catalog.user?.first_name||''};s.step=0;renderNative();})));
+    reset.setAttribute('aria-label','Очистить черновик');progress.append(reset);
+  }
+  root.append(progress);const body=node('div','request-body');root.append(body);
   if(s.step===0){
-    calendar(body,s.values.date,s.data.today,date=>{s.values.date=date;saveNativeDraft();});errorSlot(body,'date');
+    const group=node('div','form-field');group.append(node('label','field-label','Дата'));
+    const date=button(s.values.date?displayDate(s.values.date,{day:'numeric',month:'long',year:'numeric'}):'Выберите дату','date-control',()=>openPicker(booking?'Дата бронирования':'Дата банкета',content=>{
+      let selected=s.values.date||'';calendar(content,selected,s.data.today,value=>selected=value);
+      content.append(button('Выбрать дату','primary-button',()=>{if(!selected){toast('Выберите дату');return;}s.values.date=selected;saveNativeDraft();date.textContent=displayDate(selected,{day:'numeric',month:'long',year:'numeric'});date.removeAttribute('aria-invalid');group.querySelector('.field-error').textContent='';closePicker();date.focus({preventScroll:true});}));
+    }));date.name='date';date.setAttribute('aria-label',booking?'Дата бронирования':'Дата банкета');date.setAttribute('aria-describedby','error-date');group.append(date);errorSlot(group,'date');body.append(group);
     if(booking){body.append(node('h2','field-label time-label','Время по Москве'));timeWheel(body,s.values.time,time=>{s.values.time=time;saveNativeDraft();});errorSlot(body,'time');}
   }else if(s.step===1){
-    counter(body,s,'guests','Сколько будет гостей?');if(!booking)field(body,s,'event');field(body,s,'name');field(body,s,'phone',formLabels.phone,'tel');field(body,s,booking?'comment':'wishes','Пожелания','textarea',true);
+    counter(body,s,'guests','Сколько будет гостей?');if(!booking)field(body,s,'event');field(body,s,'name');field(body,s,'phone',formLabels.phone,'tel');
+    const optional=node('details','request-optional');optional.open=!!s.values[booking?'comment':'wishes'];optional.append(node('summary','','Добавить пожелания'));field(optional,s,booking?'comment':'wishes','Пожелания','textarea',true);body.append(optional);
   }else{
-    const list=node('dl','review-list');for(const [key,label] of Object.entries({date:'Дата',...(booking?{time:'Время'}:{}),guests:'Гостей',...(!booking?{event:'Формат'}:{}),name:'Имя',phone:'Телефон',...(booking?{comment:'Пожелания'}:{wishes:'Пожелания'})})){
-      const row=node('div','review-row');row.append(node('dt','',label),node('dd','',key==='date'?displayDate(s.values[key],{day:'numeric',month:'long',year:'numeric'}):String(s.values[key]||'Не указаны')));const edit=button('Изменить','review-edit',()=>{s.step=['date','time'].includes(key)?0:1;renderNative();});edit.setAttribute('aria-label','Изменить: '+label);row.append(edit);list.append(row);
-    }body.append(list);
+    const groups=[['Дата и время',0,{date:'Дата',...(booking?{time:'Время'}:{})}],['Гости и контакты',1,{guests:'Гостей',...(!booking?{event:'Формат'}:{}),name:'Имя',phone:'Телефон',...(booking?{comment:'Пожелания'}:{wishes:'Пожелания'})}]];
+    for(const [title,step,fields] of groups){
+      const block=node('section','review-block'),head=node('div','review-heading');head.append(node('h2','',title));head.append(button('Изменить','review-edit',()=>{s.step=step;renderNative();}));head.lastChild.setAttribute('aria-label','Изменить: '+title);block.append(head);
+      const list=node('dl','review-list');for(const [key,label] of Object.entries(fields)){if(!s.values[key]&&['comment','wishes'].includes(key))continue;const row=node('div','review-row');row.append(node('dt','',label),node('dd','',key==='date'?displayDate(s.values[key],{day:'numeric',month:'long',year:'numeric'}):String(s.values[key]||'Не указаны')));list.append(row);}block.append(list);body.append(block);
+    }
   }
-  const footer=node('div','native-footer');message(footer,s.step===2?'Заявка отправится менеджеру. Бронирование пока не подтверждено.':'Наличие стола подтвердит менеджер');
+  const footer=node('div','native-footer');message(footer,s.step===2?'Заявку получит менеджер. Дождитесь подтверждения.':booking?'Наличие стола подтвердит менеджер':'Дату и формат банкета подтвердит менеджер');
   const next=button(s.step===2?'Отправить заявку':'Продолжить','primary-button',async()=>{
     if(s.step===0&&booking){const columns=body.querySelectorAll('.wheel-column');if(columns.length===2)s.values.time=[...columns].map(e=>String(Math.round(e.scrollTop/44)).padStart(2,'0')).join(':');}
     if(s.step<2){const errors=requestStepErrors(s);if(Object.keys(errors).length){showFields(errors);return;}s.step++;saveNativeDraft();renderNative();}
-    else await submitNative(s.screen,s.values,{},next,result=>{try{localStorage.removeItem(draftKey(s.screen));}catch(_){}nativeStack=[];nativeState={screen:'success',title:'Заявка отправлена',notice:result.notice,ticket:result.ticket};renderNative();});
-  });footer.append(next);if(s.step>0)footer.append(button('Очистить черновик','text-button',()=>confirmAction('Очистить черновик?','Введённые данные этой заявки будут удалены.','Очистить черновик',()=>nativeCommand({command:'discard_draft'},()=>{try{localStorage.removeItem(draftKey(s.screen));}catch(_){}nativeStack=[];setView('home');}))));if(!booking&&s.step===0)footer.append(button('Обсудить с менеджером','text-button',()=>openNative('inquiry',{})));root.append(footer);
+    else await submitNative(s.screen,s.values,{},next,result=>{try{localStorage.removeItem(draftKey(s.screen));}catch(_){}nativeStack=[];nativeState={screen:'success',origin:nativeOrigin,title:'Заявка отправлена',notice:result.notice,ticket:result.ticket,request:{kind:s.screen,values:clone(s.values)}};renderNative();});
+  });footer.append(next);root.append(footer);if(!booking&&s.step===0)root.append(button('Обсудить с менеджером','text-button',()=>openNative('inquiry',{})));
 }
 function closePicker(){const picker=$('picker-dialog');if(picker.open)picker.close();unlockMenuScroll();updateBackButton();}
 function openPicker(title,render){
@@ -175,7 +189,7 @@ function renderTypedForm(root,s){
 }
 async function submitNative(kind,values,args,submit,onSuccess){
   if(busy)return;busy=true;submit.disabled=true;const label=submit.textContent;submit.textContent='Сохраняем…';
-  try{const result=await api('submit_form',{kind,values,...args});if(result.notice)toast(result.notice);onSuccess(result);}
+  try{const result=await api('submit_form',{kind,values,...args});if(result.notice&&!['booking','banquet'].includes(kind))toast(result.notice);onSuccess(result);}
   catch(error){if(['booking','banquet'].includes(nativeState?.screen)&&error.fields&&Object.keys(error.fields).length){nativeState.step=Object.keys(error.fields).some(k=>['date','time'].includes(k))?0:1;renderNative();}showFields(error.fields,error.message);}
   finally{busy=false;submit.disabled=false;submit.textContent=label;}
 }
@@ -188,30 +202,25 @@ function renderDashboard(root,s){
 }
 function pagers(root,page,more,action){if(page===0&&!more)return;const row=node('div','pagination');const back=button('Назад','secondary-button',()=>action(page-1));back.disabled=page===0;const next=button('Далее','secondary-button',()=>action(page+1));next.disabled=!more;row.append(back,node('span','',String(page+1)),next);root.append(row);}
 function renderTicketList(root,s){
-  const staff=s.args.scope==='staff';heading(root,staff?'Заявки гостей':'Сообщения',staff?'История и переписка с гостями':'Заявки и переписка с командой Sunpark');
+  const staff=s.args.scope==='staff';heading(root,staff?'Заявки гостей':'Сообщения',staff?'История и переписка с гостями':'');
   if(staff){const tabs=node('div','list-tabs');for(const [label,filter] of [['Новые','waiting'],['Мои','mine'],['Коллеги','others'],['Архив','closed']]){const b=button(label,'',()=>openNative('tickets',{...s.args,filter,page:0,query:''},'replace'));b.setAttribute('aria-pressed',String(s.args.filter===filter));tabs.append(b);}root.append(tabs);
     const form=node('form','native-search'),input=node('input');input.type='search';input.placeholder='Имя, телефон или номер заявки';input.value=s.args.query||'';input.setAttribute('aria-label','Поиск заявок');const find=button('','icon-button');find.append(icon('magnifying-glass'));find.type='submit';find.setAttribute('aria-label','Найти');form.append(input,find);form.addEventListener('submit',event=>{event.preventDefault();openNative('tickets',{scope:'staff',filter:'search',query:input.value,page:0},'replace');});root.append(form);
   }
   if(!s.data.tickets.length){
     if(staff)message(root,s.args.query?'Ничего не найдено. Попробуйте другой запрос.':'В этом разделе пока нет заявок.');
     else{
-      const empty=node('section','inbox-empty');empty.append(node('h2','','Пока нет обращений'),node('p','','Забронируйте стол, обсудите банкет или задайте вопрос. Ответ менеджера появится здесь.'));root.append(empty);
+      const empty=node('section','inbox-empty');empty.append(node('h2','','Пока нет обращений'),node('p','','Начните с бронирования или вопроса менеджеру.'));root.append(empty);
       for(const [label,name,screen] of [['Забронировать стол','calendar-blank','booking'],['Провести банкет','users-three','banquet'],['Написать менеджеру','chat-circle','inquiry']])root.append(actionRow(label,name,()=>openNative(screen,{},true)));
     }
   }
   for(const t of s.data.tickets){
     const b=button('','request-row',()=>openChat(t.number,staff?'staff':'guest'));const label=t.request_type==='booking'?'Бронирование':t.request_type==='banquet'?'Банкет':'Обращение';
-    const top=node('span','request-row-top');top.append(node('strong','',staff?(t.details.name||[t.first_name,t.last_name].filter(Boolean).join(' ')||t.username||'Гость'):`${label} №${t.number}`),node('span','status-chip',statusLabel(t.status)));b.append(top);
+    const top=node('span','request-row-top');top.append(node('strong','',staff?(t.details.name||[t.first_name,t.last_name].filter(Boolean).join(' ')||t.username||'Гость'):`${label} №${t.number}`),node('span','status-chip',staff?statusLabel(t.status):guestTicketStatus(t)));b.append(top);
     const details=[staff?`${label} №${t.number}`:'',t.details.date,t.details.time,t.details.guests?`${t.details.guests} гост.`:''].filter(Boolean).join(' · ');if(details)b.append(node('span','request-meta',details));
     const last=node('span','request-last',t.preview);if(t.unread){last.append(node('strong','unread-count',String(t.unread)));}b.append(last);root.append(b);
   }
   pagers(root,s.data.page,s.data.more,page=>openNative('tickets',{...s.args,page},'replace'));
-  if(!staff){
-    const links=node('div','message-tools');links.append(button('Правила и контакты','text-button',()=>openNative('info',{})));
-    if(catalog.events_visible)links.append(button('Мероприятия','text-button',()=>openNative('events',{})));
-    if(catalog.admin)links.append(button('Управление','text-button',()=>{setView('more');window.scrollTo(0,0);}));
-    links.append(button('Закрыть приложение','text-button',closeApp));root.append(links);
-  }
+  if(!staff&&catalog.admin){const links=node('div','message-tools');links.append(button('Управление','text-button',()=>{setView('more');window.scrollTo(0,0);}));root.append(links);}
 }
 function renderEventList(root,s){
   const staff=s.args.scope==='staff';heading(root,staff?'Мероприятия':'Встречи в SUNPARK');if(staff)root.append(button('Создать мероприятие','primary-button',()=>openNative('event_create',{scope:'staff'})));
@@ -240,10 +249,14 @@ function renderManagers(root,s){
   root.append(button('Добавить менеджера','primary-button',()=>openLocalForm('manager_add')));
 }
 function renderInfo(root,s){
-  const d=s.data;heading(root,'В гостях у SUNPARK');root.append(node('h2','subsection','Адрес'),node('p','info-copy',d.address),node('h2','subsection','Часы работы'),node('p','info-copy',d.hours));
-  for(const [label,url] of [['Позвонить',`tel:${String(d.phone).replace(/[^+\d]/g,'')}`],['Показать на карте',d.map_url],['Сайт ресторана',d.website]])if(/^(https:\/\/|tel:\+)/.test(url)){const a=node('a','secondary-button',label);a.href=url;a.target='_blank';a.rel='noopener noreferrer';root.append(a);}
-  const rules=node('details','rules-details'),summary=node('summary','field-label','Правила для гостей'),copy=node('div','system-copy');copy.append(safeMarkup(d.rules));rules.append(summary,copy);root.append(rules);root.append(button('Написать менеджеру','primary-button',()=>openNative('inquiry',{},true)));
+  const d=s.data;heading(root,'Как добраться и контакты');root.append(node('p','info-copy',catalog.services?.address||d.address));
+  const map=mapLink();map.classList.add('secondary-button');map.target='_blank';map.rel='noopener noreferrer';root.append(map);
+  for(const service of catalog.services?.items||[]){const block=node('section','contact-block');block.append(node('h2','subsection',service.title),serviceLink(service.phone_label,'tel:'+service.phone,'contact-phone'),node('p','catalog-hint',service.hours));if(service.additional_phone)block.append(serviceLink('Городской · '+service.additional_phone_label,'tel:'+service.additional_phone,'service-phone'));root.append(block);}
+  const rules=node('details','rules-details'),summary=node('summary','field-label','Правила ресторана'),copy=node('div','system-copy');copy.append(safeMarkup(d.rules));rules.append(summary,copy);root.append(rules);
+  if(catalog.events_visible)root.append(button('Мероприятия','text-button',()=>openNative('events',{})));
+  root.append(button('Написать менеджеру ресторана','primary-button',()=>openNative('inquiry',{})),button('Закрыть приложение','text-button',closeApp));
 }
+function guestTicketStatus(t){return ({waiting:t.request_type==='inquiry'?'Ожидаем ответа':'Ждём подтверждения',active:'Менеджер на связи',waiting_guest:'Менеджер ответил',closed:'Завершено'})[t.status]||statusLabel(t.status);}
 async function nativeCommand(args,onSuccess){if(busy)return;busy=true;try{const result=await api('command',args);toast(result.notice||'Готово');onSuccess(result);}catch(error){toast(error.message);}finally{busy=false;}}
 async function nativeAction(callback,scope,keepChat){
   const roots={'manager:start':['inquiry',{}],'manager:write':['inquiry',{}],'booking:start':['booking',{}],'banquet:contact':['banquet',{}],'banquet:request':['banquet',{}],faq:['info',{}],info:['info',{}],'admin:panel':['dashboard',{scope:'staff'}],'admin:stats':['dashboard',{scope:'staff'}],'admin:waiting':['tickets',{scope:'staff',filter:'waiting'}],'admin:active':['tickets',{scope:'staff',filter:'mine'}],'admin:other_active':['tickets',{scope:'staff',filter:'others'}],'admin:closed':['tickets',{scope:'staff',filter:'closed'}],'admin:search':['tickets',{scope:'staff',filter:'search'}],'admin:managers':['managers',{scope:'staff'}]};
@@ -263,7 +276,7 @@ async function refreshNativeChat(before=null){
     const data=await api('chat',{ticket:number,scope,...(before?{before}:{})});if(appView!=='chat'||nativeChatKey!==key)return;chatData=data;
     const ticket=data.ticket;const ticketKey=JSON.stringify(ticket);if(ticketKey!==chatTicketKey){chatTicketKey=ticketKey;$('chat-title').textContent=scope==='staff'?ticket.guest_name:(ticket.manager_name||'Менеджер SUNPARK');$('chat-subtitle').textContent=(ticket.request_type==='booking'?'Бронирование':ticket.request_type==='banquet'?'Банкет':'Обращение')+' №'+ticket.number;
     const summary=$('chat-summary');summary.replaceChildren();const date=node('span','summary-date');date.append(icon('calendar-blank'),node('span','',[ticket.details.date?requestDate(ticket.details.date):'',ticket.details.time].filter(Boolean).join(' · ')||'Данные заявки'));
-    const people=node('span','summary-guests');people.append(icon('users-three'),node('span','',ticket.details.guests?guestCount(ticket.details.guests):''));const status=node('span','status-chip',ticket.status==='waiting'?(ticket.request_type==='inquiry'?'Ждём менеджера':'Ждём подтверждения'):scope==='guest'&&ticket.status==='waiting_guest'?'Менеджер ответил':statusLabel(ticket.status));summary.append(date);if(ticket.details.guests)summary.append(people);summary.append(status,icon('caret-right'));
+    const people=node('span','summary-guests');people.append(icon('users-three'),node('span','',ticket.details.guests?guestCount(ticket.details.guests):''));const status=node('span','status-chip',scope==='guest'?guestTicketStatus(ticket):statusLabel(ticket.status));summary.append(date);if(ticket.details.guests)summary.append(people);summary.append(status,icon('caret-right'));
     $('chat-details-body').replaceChildren();for(const [field,value] of Object.entries(ticket.details||{}))$('chat-details-body').append(node('p','',`${formLabels[field]||field}: ${value||'—'}`));if(ticket.note)$('chat-details-body').append(node('p','manager-note','Заметка: '+ticket.note));
     const actions=$('chat-actions');actions.replaceChildren();if(scope==='staff'){
       let options=[];if(ticket.status==='waiting')options=[['Взять в работу','claim:'+ticket.guest_id]];else if(['active','waiting_guest'].includes(ticket.status)&&ticket.manager_id!==catalog.user.id)options=[['Забрать себе','take:'+ticket.number]];else if(ticket.can_reply)options=[['Быстрый ответ','admin:templates:'+ticket.number],['Заметка','admin:note:'+ticket.number],['Завершить','close:'+ticket.guest_id]];

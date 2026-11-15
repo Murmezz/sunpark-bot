@@ -316,6 +316,7 @@ class MiniAppMixin(AppWorkflowsMixin):
             manager = await self.is_manager(uid, cfg)
             data.update({"user": {key: user.get(key, "") for key in ("id", "first_name", "last_name", "username")}, "info": info, "admin": manager, "events_visible": self.events_visible(manager)})
             data["services"] = service_catalog()
+            data["services"]["map_url"] = cfg.get("map_url") or data["services"]["map_url"]
             return data
         if operation == "tickets":
             clause, args = ("t.guest_id=?", [uid]) if scope == "guest" else ("t.status!='draft'", [])

@@ -1,0 +1,114 @@
+/* Scoped changes from the approved whole-app audit. */
+:root{--field-line:#858975}
+:root[data-theme=dark]{--field-line:#78866f}
+body::before{content:'';position:fixed;inset:0 0 auto;height:var(--safe-top);background:var(--paper);z-index:10;pointer-events:none}
+input,textarea,.date-control,.option-choice{border-color:var(--field-line)}
+button:focus-visible,input:focus-visible,textarea:focus-visible,a:focus-visible,summary:focus-visible{outline-color:var(--green)}
+.home-location{border-top:1px solid var(--line);margin-top:22px;padding:14px 0 0}
+.home-location p{font-size:14px;line-height:1.5;margin:0;color:var(--muted)}
+.location-actions{display:flex;gap:24px}
+.location-link{display:inline-flex;align-items:center;min-height:44px;font-size:14px;padding:8px 0;color:var(--green);text-decoration:underline;text-underline-offset:4px}
+.service-topline{display:flex;align-items:center;justify-content:space-between;gap:12px;position:sticky;top:var(--safe-top);z-index:6;background:var(--paper);min-height:48px;padding:0 0 4px}
+.service-topline .back-link{margin:0;min-height:48px}
+.service-call{display:flex;align-items:center;min-height:48px;color:var(--green);font-size:14px;white-space:nowrap;text-underline-offset:4px}
+.service-view>.page-title{margin:18px 0 10px}
+.service-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:18px 0}
+.service-facts>div{min-width:0}
+.service-facts dt{font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:4px}
+.service-facts dd{margin:0;color:var(--ink);font-size:15px;line-height:1.5}
+.service-hours{font-size:14px;line-height:1.6;color:var(--muted);margin:12px 0 18px}
+.service-note{font-size:14px;line-height:1.6;border-left:2px solid var(--accent);padding-left:12px;margin:12px 0 20px}
+.service-gallery{position:relative;margin:20px 0 24px}
+.gallery-controls{position:absolute;left:10px;right:10px;bottom:10px;margin:0;justify-content:space-between;pointer-events:none}
+.gallery-controls .icon-button{width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--paper);pointer-events:auto}
+.gallery-controls button:disabled{opacity:.65}
+.gallery-counter{background:var(--paper);border-radius:18px;padding:6px 12px;min-width:0;font-size:13px}
+.gallery-caption{font-size:13px;color:var(--muted);margin:-16px 0 24px}
+.service-about{border-bottom:1px solid var(--line);margin:22px 0;padding:0 0 12px}
+.service-about>summary{font-size:17px;min-height:48px;padding:12px 0;color:var(--green);cursor:pointer}
+.service-about .service-description{margin:10px 0}
+.restaurant-requests{border-bottom:0}
+.contact-block{padding:14px 0;border-bottom:1px solid var(--line)}
+.contact-block .subsection{margin:0 0 4px}
+.contact-phone{display:inline-flex;align-items:center;min-height:44px;font-size:17px;text-underline-offset:4px}
+.contact-block .catalog-hint{margin:4px 0}
+#menu-hub>.page-title{margin:18px 0;font-size:26px}
+#groups{margin-bottom:10px}
+#categories.category-rail{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;position:sticky;top:calc(var(--safe-top) + 48px);z-index:4;margin:0 -26px;padding:8px 26px 12px;background:var(--paper)}
+#categories.category-rail::-webkit-scrollbar{display:none}
+.category-chip{flex:none;min-height:44px;padding:10px 14px;border:1px solid var(--line);border-radius:24px;color:var(--green);font-size:14px;line-height:1.4}
+.category-chip[aria-pressed=true]{background:var(--green);color:var(--button-ink);border-color:var(--green)}
+#catalog-view{scroll-margin-top:calc(var(--safe-top) + 120px)}
+#catalog-view>.page-title{font-size:23px;margin:14px 0 6px}
+.item-row{display:grid;grid-template-columns:minmax(0,1fr) 44px;align-items:center;gap:8px;padding:12px 0;min-height:88px}
+.item-open{display:grid;grid-template-columns:minmax(0,1fr) auto 16px;align-items:center;gap:10px;width:100%;padding:0;text-align:left;min-height:64px}
+.item-copy{display:grid;gap:5px;min-width:0}
+.item-row .name{font-size:17px;line-height:1.4;overflow-wrap:anywhere}
+.item-description{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:13px;line-height:1.5;color:var(--muted)}
+.item-row .price{font-size:15px;max-width:112px;text-align:right}
+.item-add{width:44px;height:44px;border:1px solid var(--line);border-radius:12px;background:var(--soft)}
+.item-add .icon{width:22px;height:22px}
+.cart-summary{top:var(--safe-top)}
+.cart-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;padding:16px 0;text-align:left}
+.cart-product{grid-column:1/-1;display:flex;justify-content:space-between;align-items:flex-start;gap:16px;width:100%;text-align:left;min-height:44px;padding:0}
+.cart-row-name{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;font-size:16px}
+.cart-row-price{flex:none;white-space:nowrap;font-size:16px}
+.cart-stepper{display:flex;align-items:center;justify-self:start;border:1px solid var(--field-line);border-radius:10px;overflow:hidden}
+.cart-stepper .icon-button{width:44px;height:44px;border-radius:0}
+.cart-stepper .icon{width:22px;height:22px}
+.cart-stepper output{min-width:40px;text-align:center;font-variant-numeric:tabular-nums}
+.cart-line-remove{width:44px;height:44px}
+.cart-line-remove .icon{width:22px;height:22px}
+.request-screen .native-title{font-size:34px;margin-bottom:12px}
+.request-progress{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px;margin-bottom:14px}
+.request-progress .step-label{margin:0;font-size:14px}
+.draft-reset{min-height:44px;padding:8px 0 8px 8px;font-size:13px;color:var(--muted);text-decoration:underline;text-underline-offset:4px;flex:none}
+.request-body>.form-field{margin-bottom:18px}
+.request-screen .date-control{display:flex;align-items:center;justify-content:space-between;text-align:left;width:100%;min-height:52px;padding:14px 16px}
+.request-body>.time-label{margin-top:12px}
+.request-optional{margin:12px 0}
+.request-optional>summary{min-height:44px;padding:10px 0;font-size:15px;color:var(--green);cursor:pointer}
+.request-optional .form-field{margin-top:8px}
+.native-footer{position:static;padding-top:12px;margin-top:12px}
+.native-footer>.native-hint{font-size:14px;margin:0 0 12px}
+.review-block{margin:12px 0 24px}
+.review-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line)}
+.review-heading h2{font-size:16px;line-height:1.5;margin:0}
+.review-heading .review-edit{min-height:44px}
+.review-row{grid-template-columns:88px minmax(0,1fr);min-height:44px;padding:12px 0;gap:12px}
+.review-row dd{margin:0;overflow-wrap:anywhere}
+.success-context{font-size:19px;line-height:1.5;color:var(--ink);margin:16px 0}
+.picker-dialog{max-height:calc(var(--viewport-height) - var(--safe-top) - var(--safe-bottom) - 12px)}
+.calendar-day,.calendar-blank{height:44px;min-height:44px}
+.inbox-empty{padding:16px 0 8px}
+.inbox-empty p{font-size:15px}
+.chat-actions>button{min-height:44px}
+.chat-typing{--nav-height:0px}
+.chat-typing #app-nav{display:none}
+.chat-typing .chat-heading{margin-bottom:6px}
+.chat-typing .chat-heading>div>p{display:none}
+.chat-typing #chat-actions{display:none}
+.chat-typing .chat-log{min-height:0}
+.chat-typing .chat-date{margin:8px 0}
+@media(max-width:360px){
+  #categories.category-rail{margin-inline:-20px;padding-inline:20px}
+  .service-topline{gap:8px}.service-topline .back-link{font-size:14px;gap:6px}.service-call{font-size:13px}
+  .service-facts{gap:12px}.service-facts dd{font-size:14px}
+  .item-row .name{font-size:16px}.item-open{gap:6px;grid-template-columns:minmax(0,1fr) auto}.item-open>.icon{display:none}.item-row .price{font-size:14px;max-width:96px}
+  .request-screen .native-title{font-size:30px}.request-progress .step-label{font-size:13px}
+  .review-row{grid-template-columns:74px minmax(0,1fr)}
+}
+@media(max-height:720px){
+  .native-open .app-shell{padding-top:var(--safe-top)}
+  .native-open .native-view{padding-top:8px}
+  .native-open .view-back{padding:0}
+  .request-screen .native-title{font-size:30px;margin-bottom:8px}
+  .request-progress{min-height:32px;margin-bottom:8px}
+  .request-progress .step-label{font-size:13px}
+  .request-body>.form-field{margin-bottom:10px}
+  .request-body>.time-label{margin-top:8px;margin-bottom:0}
+  .request-screen .date-control{padding-block:12px}
+  .request-screen .native-footer{padding-top:4px;margin-top:4px}
+  .request-screen .native-footer>.native-hint{font-size:13px;margin-bottom:2px}
+  .request-screen .native-footer .primary-button{min-height:52px;padding-block:12px}
+}

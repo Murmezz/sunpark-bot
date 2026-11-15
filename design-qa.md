@@ -2,6 +2,24 @@
 
 final result: passed
 
+## Whole-app audit refinements — 15 November 2026
+
+final result: passed
+
+Implemented the user's approved audit of the existing application. The source is the captured running app from the 14 November audit, not a new visual direction. Opened and inspected the [booking](artifacts/audit-refinements/compare-booking.webp), [menu](artifacts/audit-refinements/compare-menu.webp) and [restaurant](artifacts/audit-refinements/compare-restaurant.webp) comparisons. Each pairs a 390 × 844 capture at density 1 with the same light theme, route and representative Telegram top insets (32/56 px); canvases are 780 × 880 including labels. Before/after content and dates reflect the actual catalogue and capture time. The structural changes are intentional audit fixes.
+
+Also opened the final [320 px booking](artifacts/audit-refinements/final-booking-light-320.png), [dark small home](artifacts/audit-refinements/final-home-dark-320.png), [inline selection controls](artifacts/audit-refinements/final-choice-light-390.png) and [reduced-height chat](artifacts/audit-refinements/final-chat-keyboard-light-390.png), plus the dark hotel screen from the service regression run. Labels and controls are readable at native capture size. No additional image crop was necessary.
+
+- **Typography:** retained Manrope and Cormorant. Dish descriptions give useful detail in the list; optional wishes and full service descriptions are collapsed. Booking review has two labeled edit groups and a single submission confirmation.
+- **Layout:** direct dishes with a sticky horizontal category rail; empty selection launcher removed; quantity and removal are in each selected line. On-demand calendar and a static form footer eliminate the field overlap. The smallest 320 × 640 form clears the bottom navigation. Restored origins fix Messages → Info → Back. Phone/back remain together while reading a direction. Focused chat uses the visible viewport and hides navigation to retain conversation space.
+- **Color and accessibility:** retained ivory/forest and forest/sage tokens; strengthened field borders and focus indicators. Main tap targets are at least 44 px. Keyboard focus is restored after date selection and inline quantity changes; errors remain distinct from empty states.
+- **Assets:** original leaf, official service photos, bundled fonts and existing Phosphor icons. Photos remain inert; arrows and swipe work. No new illustration or replacement icon family. Hotel images are generic interiors without an unverified room-category association.
+- **Copy and content:** Home now exposes address, route and contacts for all four directions. Removed the remaining restaurant website button. Kept seasonal wake caveat and actual tariff units. The selection is honestly labeled a list for the waiter. Guest ticket statuses describe response progress, not confirmed availability. Unknown operating status, hotel check-in/out, room-photo mapping and banquet capacity are still awaiting business confirmation.
+
+P1/P2 audit issues fixed: overlapping booking footer, self-referential back navigation, always-present empty cart, category detour, duplicate direction navigation and photo-control spacing, scattered contacts/site escape, duplicate editing/success copy, and reduced-height chat. No unresolved P0/P1/P2 visual issues in inspected states. New facts above remain a content limitation rather than invented UI data.
+
+Validation: 63 Python tests, JavaScript syntax and asset generation passed. Full booking/menu/list/chat/events/staff regression, four-direction services, safe-area updates, two-hour sessions/reload, real server failure/retry and absolute expiry passed at 320/390/820 px (both themes where applicable), with no console errors or horizontal overflow. The [focused results](artifacts/audit-refinements/results.json) also passed with the current production public menu: explicit price variant selection, inline totals/removal, on-demand calendar, grouped edits, submission summary, origin restoration and keyboard viewport. Captures use actual headless Chromium with isolated SQLite and Telegram SDK mocks; no production messages were sent. Physical Telegram was not retested. The user's existing authorization to publish without that check remains applicable.
+
 ## Restaurant actions and long-open sessions — 13 November 2026
 
 final result: passed

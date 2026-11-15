@@ -63,7 +63,7 @@
     try {
       localStorage.setItem(storageKey,JSON.stringify({version:1,lines:[...cart.values()].map(line=>({...line,optionLabel:lineProduct(line).option.label}))}));
       return true;
-    } catch (_) { toast('Корзина доступна до закрытия меню: сохранить её на устройстве не удалось.'); return false; }
+    } catch (_) { toast('Выбор доступен только в этом окне: сохранить список на устройстве не удалось.'); return false; }
   }
   function restoreCart() {
     try {
@@ -92,7 +92,7 @@
   function totalText(total) { return total.unknown?(total.sum?`${money(total.sum)} + уточняется`:'Сумма уточняется'):money(total.sum); }
   function renderCart() {
     const total=cartTotals();
-    const showLauncher=!cartOpen&&catalog&&(appView==='menu'||(appView==='service'&&currentServiceId==='restaurant'));
+    const showLauncher=!cartOpen&&catalog&&total.quantity>0&&(appView==='menu'||(appView==='service'&&currentServiceId==='restaurant'));
     $('cart-launcher').hidden=!showLauncher;document.body.classList.toggle('has-cart',!!showLauncher);
     $('cart-badge').textContent=total.quantity; $('cart-badge').hidden=!total.quantity;
     $('cart-launcher-total').textContent=totalText(total);
@@ -108,13 +108,15 @@
       const {item,category,option}=product;
       const title=[item.cart_name||item.name,option.label].filter(Boolean).join(' · ');
       const sum=Number.isSafeInteger(option.amount)?money(option.amount*line.quantity):'Уточнить';
-      const b=node('button','cart-row'); b.type='button';
-      b.setAttribute('aria-label',`${title}, ${line.quantity} шт., ${sum}. Изменить или удалить`);
-      b.append(node('span','cart-row-name',title),node('span','cart-row-quantity',`${line.quantity} ×`),node('span','cart-row-price',sum),arrow());
-      b.addEventListener('click',()=>showDish(item,category,key));
-      $('cart-items').append(b);
+      const row=node('div','cart-row');row.dataset.cartKey=key;row.setAttribute('role','group');row.setAttribute('aria-label',title);
+      const productButton=button('','cart-product',()=>showDish(item,category,key));productButton.setAttribute('aria-label','Состав: '+title);productButton.append(node('span','cart-row-name',title),node('span','cart-row-price',sum));
+      const controls=node('div','cart-stepper');
+      for(const delta of [-1,1]){const b=button('','icon-button',()=>adjustCartLine(key,delta));b.dataset.change=delta;b.setAttribute('aria-label',(delta<0?'Уменьшить: ':'Увеличить: ')+title);b.disabled=delta<0?line.quantity<=1:line.quantity>=99;b.append(icon(delta<0?'minus':'plus'));controls.append(b);if(delta<0){const n=node('output','',line.quantity);n.setAttribute('aria-live','polite');controls.append(n);}}
+      const remove=button('','icon-button cart-line-remove',()=>{cart.delete(key);saveCart();renderCart();$('cart-title').focus({preventScroll:true});});remove.setAttribute('aria-label','Удалить: '+title);remove.append(icon('trash'));
+      row.append(productButton,controls,remove);$('cart-items').append(row);
     }
   }
+  function adjustCartLine(key,delta){const line=cart.get(key);if(!line)return;line.quantity=Math.max(1,Math.min(99,line.quantity+delta));saveCart();renderCart();const row=[...$('cart-items').children].find(e=>e.dataset.cartKey===key);row?.querySelector(`[data-change="${delta}"]`)?.focus({preventScroll:true});}
   function openCart() {
     if(!catalog||cartOpen) return;
     closeDish(); cartScroll=window.scrollY; cartOrigin=appView; cartOpen=true;setView('cart');
@@ -124,7 +126,7 @@
   }
   function closeCart() {
     cartOpen=false; $('cart-view').hidden=true; $('menu-search').hidden=false;
-    if(query||categoryKey) renderItems(); else renderHub();
+    renderHub();
     setView(cartOrigin);renderCart(); updateBackButton(); window.scrollTo(0,cartScroll);
   }
   function updateDishAction() {
@@ -135,20 +137,24 @@
     $('quantity-minus').disabled=!line||line.quantity<=1; $('quantity-plus').disabled=!!line&&line.quantity>=99;
     const option=currentDish.item.options.find(o=>o.id===currentDish.optionId);
     $('dish-add').disabled=!option;
-    $('dish-add').textContent=editing?'Готово':option?`Добавить в корзину${Number.isSafeInteger(option.amount)?' · '+money(option.amount):''}`:'Выберите вариант';
+    $('dish-add').textContent=editing?'Готово':option?`Добавить в список${Number.isSafeInteger(option.amount)?' · '+money(option.amount):''}`:'Выберите вариант';
     if(editing) $('dish-price').textContent=[option.label,option.price,`${line.quantity} шт. — ${Number.isSafeInteger(option.amount)?money(option.amount*line.quantity):'стоимость уточняется'}`].filter(Boolean).join(' · ');
   }
   function addDish() {
     if(!currentDish) return;
     if(currentDish.editKey) { closeDish(); return; }
     const option=currentDish.item.options.find(o=>o.id===currentDish.optionId); if(!option) return;
-    const key=cartKey(currentDish.item.id,option.id), line=cart.get(key);
-    if(line?.quantity>=99) { toast('В корзине уже 99 шт. этой позиции.'); return; }
-    if(!line&&cart.size>=300) { toast('Сначала удалите ненужные позиции из корзины.'); return; }
-    cart.set(key,{itemId:currentDish.item.id,optionId:option.id,quantity:(line?.quantity||0)+1});
-    const saved=saveCart(); renderCart(); closeDish();
-    if(saved) toast(`Добавлено в корзину${option.label?' · '+option.label:''}`);
+    if(addProduct(currentDish.item,option))closeDish();
+  }
+  function addProduct(item,option){
+    const key=cartKey(item.id,option.id), line=cart.get(key);
+    if(line?.quantity>=99) { toast('В списке уже 99 шт. этой позиции.'); return; }
+    if(!line&&cart.size>=300) { toast('Сначала удалите ненужные позиции из списка.'); return; }
+    cart.set(key,{itemId:item.id,optionId:option.id,quantity:(line?.quantity||0)+1});
+    const saved=saveCart(); renderCart();
+    if(saved) toast(`Добавлено в список${option.label?' · '+option.label:''}`);
     try { tg?.HapticFeedback.notificationOccurred('success'); } catch (_) {}
+    return true;
   }
   function changeQuantity(delta) {
     const line=cart.get(currentDish?.editKey); if(!line) return;
@@ -174,7 +180,7 @@
     unlockMenuScroll(); updateBackButton();
   }
   function showHub() {
-    closeDish(); setView('menu');categoryKey = ''; query = ''; $('search').value = '';
+    closeDish(); setView('menu');query = ''; $('search').value = '';
     renderHub(); updateBackButton(); window.scrollTo(0,0);
   }
   function showDish(item, category, editKey=null) {
@@ -193,7 +199,6 @@
       label.append(input,node('span','',option.label||'Стандартный'),node('strong','',option.price));
       $('dish-option-list').append(label);
     });
-    $('back-to-menu').textContent=editing?'К корзине':'Вернуться к меню';
     updateDishAction();
     lockMenuScroll();
     try { dialog.showModal(); dialog.scrollTop=0; } catch(error) { unlockMenuScroll(); throw error; }
@@ -201,74 +206,62 @@
     try { tg?.HapticFeedback.selectionChanged(); } catch (_) {}
   }
   function renderHub() {
-    $('menu-back-label').textContent='К ресторану';
-    $('menu-hub').hidden = false; $('catalog-view').hidden = true;
-    $('status').textContent = ''; $('items').replaceChildren();
+    if(!catalog)return;
+    $('menu-back-label').textContent='К ресторану';$('menu-hub').hidden=false;$('catalog-view').hidden=false;
     $('groups').replaceChildren();
-    catalog.groups.forEach((group,i) => {
-      const b = node('button','',groupName(group.title)); b.type='button';
-      b.setAttribute('aria-pressed',String(groupIndex===i));
-      b.addEventListener('click',()=>{groupIndex=i;renderHub();});
-      $('groups').append(b);
+    const group=catalog.groups[groupIndex], keys=group?.keys||[];
+    if(!keys.includes(categoryKey))categoryKey=keys[0]||'';
+    catalog.groups.forEach((group,i)=>{
+      const b=button(groupName(group.title),'',()=>{groupIndex=i;categoryKey='';query='';$('search').value='';renderHub();window.scrollTo(0,0);});
+      b.setAttribute('aria-pressed',String(groupIndex===i));$('groups').append(b);
     });
-    $('categories').replaceChildren();
-    const keys = catalog.groups[groupIndex]?.keys || [];
-    catalog.categories.filter(c=>keys.includes(c.key)).forEach(cat=>{
-      const b = node('button','category-card'); b.type='button';
-      b.setAttribute('aria-label',`${cat.title}, ${countWord(cat.items.length)}. Открыть раздел`);
-      const bottom = node('span','category-count',countWord(cat.items.length)); bottom.append(arrow());
-      b.append(node('span','category-title',cat.title),bottom);
-      b.addEventListener('click',()=>{categoryKey=cat.key;query='';$('search').value='';renderItems();window.scrollTo(0,0);});
-      $('categories').append(b);
-    });
-    updateBackButton();
+    $('categories').replaceChildren();$('categories').hidden=!!query;
+    for(const key of keys){const cat=catalog.categories.find(c=>c.key===key);if(!cat)continue;
+      const b=button(cat.title,'category-chip',()=>{categoryKey=key;query='';$('search').value='';renderHub();$('catalog-view').scrollIntoView({block:'start'});});
+      b.dataset.category=key;b.setAttribute('aria-pressed',String(categoryKey===key));$('categories').append(b);
+    }
+    renderItems();
+    const selected=$('categories').querySelector('[aria-pressed=true]');if(appView==='menu'&&!query&&selected?.getClientRects().length)selected.scrollIntoView({block:'nearest',inline:'nearest'});
   }
   function renderItems() {
-    $('menu-back-label').textContent='К разделам меню';
-    $('menu-hub').hidden=true; $('catalog-view').hidden=false;
-    const category=catalog.categories.find(c=>c.key===categoryKey), list=[];
-    if(query) catalog.categories.forEach(cat=>cat.items.forEach(item=>{
-      if([item.name,item.description,cat.title].join(' ').toLocaleLowerCase('ru').includes(query)) list.push({item,cat});
-    }));
-    else if(category) category.items.forEach(item=>list.push({item,cat:category}));
-    $('section-title').firstElementChild.textContent=query?'Поиск по меню':category?.title||'Меню';
-    $('catalog-hint').textContent=list.length?'Нажмите на блюдо, чтобы посмотреть состав':query?'Ничего не найдено. Попробуйте другое название.':'В этом разделе пока нет блюд.';
-    $('category-footer').textContent=query?'':category?.footer||'';
-    $('status').textContent=''; $('items').replaceChildren();
-    let section='';
-    list.forEach(({item,cat})=>{
-      const next=query?cat.title:item.section;
-      if(next && next!==section) $('items').append(node('h3','subsection',next));
-      section=next;
-      const b=node('button','item-row');b.type='button';
-      b.setAttribute('aria-label',`${item.name}, ${item.price}. Посмотреть состав`);
-      const icon=arrow();icon.classList.add('arrow');
-      b.append(node('span','name',item.name),node('span','price',item.price),icon);
-      b.addEventListener('click',()=>showDish(item,cat));
-      $('items').append(b);
-    });
+    const category=catalog.categories.find(c=>c.key===categoryKey),list=[];
+    if(query)catalog.categories.forEach(cat=>cat.items.forEach(item=>{if([item.name,item.description,cat.title].join(' ').toLocaleLowerCase('ru').includes(query))list.push({item,cat});}));
+    else if(category)category.items.forEach(item=>list.push({item,cat:category}));
+    $('section-title').firstElementChild.textContent=query?'Результаты поиска':category?.title||'Меню';
+    $('catalog-hint').textContent=list.length?'':query?'Ничего не найдено. Попробуйте другое название.':'В этом разделе пока нет блюд.';
+    $('catalog-hint').hidden=!!list.length;$('category-footer').textContent=query?'':category?.footer||'';
+    $('status').textContent='';$('items').replaceChildren();let section='';
+    for(const {item,cat} of list){
+      const next=query?cat.title:item.section;if(next&&next!==section)$('items').append(node('h3','subsection',next));section=next;
+      const row=node('div','item-row');
+      const open=button('','item-open',()=>showDish(item,cat));open.setAttribute('aria-label',`${item.name}, ${item.price}. Посмотреть состав`);
+      const copy=node('span','item-copy');copy.append(node('span','name',item.name));
+      if(item.description)copy.append(node('span','item-description',item.description));
+      open.append(copy,node('span','price',item.price),arrow());
+      const add=button('','icon-button item-add',()=>{if(item.options.length===1&&Number.isSafeInteger(item.options[0].amount))addProduct(item,item.options[0]);else showDish(item,cat);});
+      add.setAttribute('aria-label',(item.options.length===1?'Добавить: ':'Выбрать вариант: ')+item.name);add.append(icon('plus'));row.append(open,add);$('items').append(row);
+    }
     updateBackButton();
   }
   $('search').addEventListener('input',e=>{
     query=e.target.value.trim().toLocaleLowerCase('ru');
     if(!catalog) return;
-    if(query || categoryKey) renderItems();else renderHub();
+    renderHub();
   });
-  $('back-to-sections').addEventListener('click',()=>{if(categoryKey||query)showHub();else openService('restaurant','home');});
+  $('back-to-sections').addEventListener('click',()=>openService('restaurant','home'));
   $('close-dialog').addEventListener('click',closeDish);
-  $('back-to-menu').addEventListener('click',closeDish);
   $('dish-add').addEventListener('click',addDish);
   $('quantity-minus').addEventListener('click',()=>changeQuantity(-1));
   $('quantity-plus').addEventListener('click',()=>changeQuantity(1));
   $('dish-remove').addEventListener('click',()=>{
     if(!currentDish?.editKey) return;
-    cart.delete(currentDish.editKey); const saved=saveCart(); renderCart(); closeDish(); if(saved) toast('Позиция удалена из корзины');
+    cart.delete(currentDish.editKey); const saved=saveCart(); renderCart(); closeDish(); if(saved) toast('Позиция удалена из списка');
   });
   $('cart-launcher').addEventListener('click',openCart);
   $('cart-back').addEventListener('click',closeCart);
   $('cart-clear').addEventListener('click',()=>{$('cart-clear-confirm').hidden=false;$('cart-clear').hidden=true;});
   $('cart-clear-no').addEventListener('click',()=>{$('cart-clear-confirm').hidden=true;$('cart-clear').hidden=false;});
-  $('cart-clear-yes').addEventListener('click',()=>{cart.clear();const saved=saveCart();renderCart();if(saved)toast('Корзина очищена');});
+  $('cart-clear-yes').addEventListener('click',()=>{cart.clear();const saved=saveCart();renderCart();if(saved)toast('Список очищен');});
   dialog.addEventListener('click',e=>{
     if(e.target===dialog){const r=dialog.getBoundingClientRect();if(e.clientY<r.top||e.clientY>r.bottom||e.clientX<r.left||e.clientX>r.right) closeDish();}
   });
@@ -323,7 +316,7 @@
       const active=button.dataset.view===(messages?'inbox':'home');
       if(active)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');
     }
-    renderCart();updateBackButton();
+    renderCart();updateBackButton();resize();
   }
   function goBack() {
     if($('picker-dialog').open)closePicker();
@@ -331,15 +324,15 @@
     else if(appView==='native')nativeBack();
     else if(appView==='service')closeService();
     else if(cartOpen)closeCart();
-    else if(appView==='menu'&&(categoryKey||query))showHub();
+    else if(appView==='menu'&&query)showHub();
     else if(appView==='menu')openService('restaurant','home');
     else if(appView==='more')openInbox('guest');
     else if(appView==='chat')openInbox(chatScope);
     else {setView('home');window.scrollTo(0,0);}
   }
-  function goMenu() {setView('menu');if(query||categoryKey)renderItems();else renderHub();window.scrollTo(0,0);}
+  function goMenu() {setView('menu');renderHub();window.scrollTo(0,0);}
   function renderHome() {
-    renderServiceLinks();
+    renderServiceLinks();renderHomeLocation();
   }
   function cleanLabel(value) {return String(value||'').replace(/^[\p{Extended_Pictographic}\p{Regional_Indicator}\uFE0F\u200D\s]+/u,'').trim();}
   function actionIcon(callback) {
@@ -492,9 +485,17 @@
   document.querySelectorAll('#inbox-scope [data-scope]').forEach(b=>b.addEventListener('click',()=>openInbox(b.dataset.scope)));
   document.querySelectorAll('#app-nav [data-view]').forEach(b=>b.addEventListener('click',()=>{const view=b.dataset.view;if(view==='inbox')openInbox('guest');else{setView(view);window.scrollTo(0,0);}}));
   setInterval(()=>{if(!authExpired&&!document.hidden&&appView==='chat'&&!busy)refreshChat();},6000);
-  const resize=()=>document.documentElement.style.setProperty('--viewport-height',`${tg?.viewportStableHeight||window.visualViewport?.height||innerHeight}px`);
-  window.visualViewport?.addEventListener('resize',resize);window.addEventListener('resize',resize);resize();
-  try {tg?.onEvent?.('viewportChanged',event=>{if(event.isStateStable)resize();});} catch (_) {}
+  function resize(){
+    const focused=appView==='chat'&&$('chat-form').contains(document.activeElement);
+    const available=window.visualViewport?.height||innerHeight;
+    const compact=appView==='chat'&&(focused||available<600);
+    document.body.classList.toggle('chat-typing',compact);
+    const height=compact?Math.min(available,tg?.viewportStableHeight||innerHeight):tg?.viewportStableHeight||available;
+    document.documentElement.style.setProperty('--viewport-height',`${height}px`);
+  }
+  window.visualViewport?.addEventListener('resize',resize);window.addEventListener('resize',resize);
+  document.addEventListener('focusin',resize);document.addEventListener('focusout',()=>setTimeout(resize,0));resize();
+  try{tg?.onEvent?.('viewportChanged',resize);}catch(_){}
   function closeApp(){try{if(tg?.close)tg.close();else window.close();}catch(_){}}
   function syncFullscreen(){document.body.classList.toggle('telegram-fullscreen',!!tg?.isFullscreen);resize();}
   try {
