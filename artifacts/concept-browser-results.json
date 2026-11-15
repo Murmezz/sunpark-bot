@@ -1,0 +1,44 @@
+[
+  {
+    "viewport": [
+      320,
+      640
+    ],
+    "themes": [
+      "light",
+      "dark"
+    ],
+    "wave_hotel_preorder_qr_inventory": "passed",
+    "client_paid_callback_ignored": true,
+    "errors": []
+  },
+  {
+    "viewport": [
+      390,
+      844
+    ],
+    "themes": [
+      "light",
+      "dark"
+    ],
+    "wave_hotel_preorder_qr_inventory": "passed",
+    "client_paid_callback_ignored": true,
+    "errors": []
+  },
+  {
+    "viewport": [
+      820,
+      1024
+    ],
+    "themes": [
+      "light",
+      "dark"
+    ],
+    "wave_hotel_preorder_qr_inventory": "passed",
+    "client_paid_callback_ignored": true,
+    "errors": []
+  },
+  {
+    "legacy_shell": "passed"
+  }
+]

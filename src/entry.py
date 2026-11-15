@@ -1823,6 +1823,9 @@ class Bot(MiniAppMixin, MenuPreviewMixin, EventsMixin, ServicesMixin, WorkerEntr
 
             menu, sections, info, cfg = await self.config()
 
+            if await self.booking_payment_update(update):
+                return Response('ok')
+
             source = update.get("message") or update.get("callback_query") or {}
             user_id = (source.get("from") or {}).get("id")
             if user_id is not None:

@@ -1,0 +1,21 @@
+-- Verified source prices, not availability. No slots, room numbers or tables are invented.
+INSERT OR IGNORE INTO miniapp_v2_rates VALUES('wave-group-30','wave','В группе · 30 минут',220000,'person',30,4,'Доска и вводный инструктаж',1);
+INSERT OR IGNORE INTO miniapp_v2_rates VALUES('wave-group-60','wave','В группе · 60 минут',220000,'person',60,8,'Доска и вводный инструктаж',1);
+INSERT OR IGNORE INTO miniapp_v2_rates VALUES('wave-private-15','wave','Индивидуально · 15 минут',265000,'session',15,1,'Доска и вводный инструктаж',1);
+INSERT OR IGNORE INTO miniapp_v2_rates VALUES('wave-private-30','wave','Индивидуально · 30 минут',530000,'session',30,2,'Доска и вводный инструктаж',1);
+INSERT OR IGNORE INTO miniapp_v2_rates VALUES('wave-coach','wave','Начинающий сёрфер · 30 минут',690000,'session',30,2,'Тренер и оборудование',1);
+INSERT OR IGNORE INTO miniapp_v2_rates VALUES('wave-company','wave','Вся волна · 1 час',2150000,'session',60,20,'Два инструктора',1);
+INSERT OR IGNORE INTO miniapp_v2_rates VALUES('wake-ring-weekday','wake','Кольцо · 1 час · будни',190000,'person',60,1,'Прокат отдельно · прайс лета 2026',1);
+INSERT OR IGNORE INTO miniapp_v2_rates VALUES('wake-ring-weekend','wake','Кольцо · 1 час · выходные',230000,'person',60,1,'Прокат отдельно · прайс лета 2026',1);
+INSERT OR IGNORE INTO miniapp_v2_rates VALUES('wake-reverse-weekday','wake','Реверс · 10 минут · будни',100000,'session',10,1,'Вводный инструктаж · прайс лета 2026',1);
+INSERT OR IGNORE INTO miniapp_v2_rates VALUES('wake-reverse-weekend','wake','Реверс · 10 минут · выходные',110000,'session',10,1,'Вводный инструктаж · прайс лета 2026',1);
+INSERT OR IGNORE INTO miniapp_v2_rates VALUES('wake-beginner','wake','Beginner · два сета с тренером',420000,'session',30,1,'Теория, два сета, тренер и оборудование · прайс лета 2026',1);
+INSERT OR IGNORE INTO miniapp_v2_rates VALUES('hotel-standard','hotel','Стандарт двухместный',500000,'night',1440,2,'Завтрак включён',1);
+INSERT OR IGNORE INTO miniapp_v2_rates VALUES('hotel-improved','hotel','Улучшенный двухместный',600000,'night',1440,2,'Завтрак включён',1);
+INSERT OR IGNORE INTO miniapp_v2_rates VALUES('hotel-triple','hotel','Стандарт трёхместный',700000,'night',1440,3,'Завтрак включён',1);
+INSERT OR IGNORE INTO miniapp_v2_rates VALUES('hotel-suite','hotel','Люкс с видом на озеро',1500000,'night',1440,2,'Завтрак включён',1);
+INSERT OR IGNORE INTO miniapp_v2_resources VALUES('wave-main','wave','Искусственная волна','installation','',1,1);
+INSERT OR IGNORE INTO miniapp_v2_resources VALUES('wake-ring','wake','Кольцевая лебёдка','installation','',1,1);
+INSERT OR IGNORE INTO miniapp_v2_resources VALUES('wake-reverse','wake','Реверсивная лебёдка','installation','',1,1);
+INSERT OR IGNORE INTO miniapp_v2_addons VALUES('wake-kit-reverse','wake','Комплект снаряжения · 10 минут',50000,0,0);
+INSERT OR IGNORE INTO miniapp_v2_addons VALUES('wake-wetsuit','wake','Гидрокостюм · 30 минут',50000,0,0);

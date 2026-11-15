@@ -58,13 +58,13 @@ function renderNative(){
     root.append(button('На главную','secondary-button',()=>setView('home')));
   }
 }
-function calendar(root,selected,today,onChange){
+function calendar(root,selected,today,onChange,options={}){
   const initial=(selected&&selected>=today?selected:today).split('-').map(Number);let year=initial[0],month=initial[1]-1;
   const wrap=node('div','calendar');root.append(wrap);
   function draw(focusDate){
     wrap.replaceChildren();const head=node('div','calendar-heading');
-    const prev=button('','icon-button',()=>{if(month===0){month=11;year--;}else month--;draw();});prev.append(icon('arrow-left'));prev.setAttribute('aria-label','Предыдущий месяц');prev.disabled=dayISO(year,month,1)<=today.slice(0,7)+'-01';
-    const next=button('','icon-button',()=>{if(month===11){month=0;year++;}else month++;draw();});next.append(icon('arrow-right'));next.setAttribute('aria-label','Следующий месяц');
+    const prev=button('','icon-button',()=>{if(month===0){month=11;year--;}else month--;changeMonth();});prev.append(icon('arrow-left'));prev.setAttribute('aria-label','Предыдущий месяц');prev.disabled=dayISO(year,month,1)<=today.slice(0,7)+'-01';
+    const next=button('','icon-button',()=>{if(month===11){month=0;year++;}else month++;changeMonth();});next.append(icon('arrow-right'));next.setAttribute('aria-label','Следующий месяц');
     const label=node('h2','calendar-month',displayDate(dayISO(year,month,1),{month:'long',year:'numeric'}).replace(/\s*г\.$/,''));label.id='calendar-month-label';head.append(prev,label,next);wrap.append(head);
     const days=node('div','calendar-weekdays');for(const name of ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'])days.append(node('span','',name));days.setAttribute('aria-hidden','true');wrap.append(days);
     const grid=node('div','calendar-days');grid.setAttribute('role','group');grid.setAttribute('aria-label',label.textContent);
@@ -72,12 +72,14 @@ function calendar(root,selected,today,onChange){
     for(let i=0;i<offset;i++){const blank=node('span','calendar-blank');blank.setAttribute('aria-hidden','true');grid.append(blank);}
     for(let day=1;day<=count;day++){
       const iso=dayISO(year,month,day),b=button(String(day),'calendar-day',()=>{selected=iso;onChange(iso);draw(iso);});
-      b.dataset.date=iso;b.disabled=iso<today;b.setAttribute('aria-label',displayDate(iso,{weekday:'long',day:'numeric',month:'long',year:'numeric'}));b.setAttribute('aria-pressed',String(iso===selected));if(iso===today)b.setAttribute('aria-current','date');
+      b.dataset.date=iso;b.disabled=iso<today||(options.available&&!options.available.has(iso));b.setAttribute('aria-label',displayDate(iso,{weekday:'long',day:'numeric',month:'long',year:'numeric'}));b.setAttribute('aria-pressed',String(iso===selected));if(iso===today)b.setAttribute('aria-current','date');
       b.tabIndex=iso===tabDate?0:-1;
       b.addEventListener('keydown',event=>{const deltas={ArrowLeft:-1,ArrowRight:1,ArrowUp:-7,ArrowDown:7};if(!(event.key in deltas))return;event.preventDefault();const date=new Date(iso+'T12:00Z');date.setUTCDate(date.getUTCDate()+deltas[event.key]);const target=date.toISOString().slice(0,10);if(target<today)return;year=date.getUTCFullYear();month=date.getUTCMonth();draw(target);});grid.append(b);
     }
     wrap.append(grid);if(focusDate)wrap.querySelector(`[data-date="${focusDate}"]`)?.focus({preventScroll:true});
   }
+  let monthSequence=0;
+  async function changeMonth(){if(!options.loadMonth){draw();return;}const sequence=++monthSequence;options.available=new Set();draw();try{const available=await options.loadMonth(dayISO(year,month,1).slice(0,7));if(sequence!==monthSequence)return;options.available=available;draw();}catch(error){toast(error.message);}}
   draw();return wrap;
 }
 function timeWheel(root,value,onChange){
@@ -141,9 +143,9 @@ function renderRequest(root,s){
     if(booking){body.append(node('h2','field-label time-label','Время по Москве'));timeWheel(body,s.values.time,time=>{s.values.time=time;saveNativeDraft();});errorSlot(body,'time');}
   }else if(s.step===1){
     counter(body,s,'guests','Сколько будет гостей?');if(!booking)field(body,s,'event');field(body,s,'name');field(body,s,'phone',formLabels.phone,'tel');
-    const optional=node('details','request-optional');optional.open=!!s.values[booking?'comment':'wishes'];optional.append(node('summary','','Добавить пожелания'));field(optional,s,booking?'comment':'wishes','Пожелания','textarea',true);body.append(optional);
+
   }else{
-    const groups=[['Дата и время',0,{date:'Дата',...(booking?{time:'Время'}:{})}],['Гости и контакты',1,{guests:'Гостей',...(!booking?{event:'Формат'}:{}),name:'Имя',phone:'Телефон',...(booking?{comment:'Пожелания'}:{wishes:'Пожелания'})}]];
+    const groups=[['Дата и время',0,{date:'Дата',...(booking?{time:'Время'}:{})}],['Гости и контакты',1,{guests:'Гостей',...(!booking?{event:'Формат'}:{}),name:'Имя',phone:'Телефон'}]];
     for(const [title,step,fields] of groups){
       const block=node('section','review-block'),head=node('div','review-heading');head.append(node('h2','',title));head.append(button('Изменить','review-edit',()=>{s.step=step;renderNative();}));head.lastChild.setAttribute('aria-label','Изменить: '+title);block.append(head);
       const list=node('dl','review-list');for(const [key,label] of Object.entries(fields)){if(!s.values[key]&&['comment','wishes'].includes(key))continue;const row=node('div','review-row');row.append(node('dt','',label),node('dd','',key==='date'?displayDate(s.values[key],{day:'numeric',month:'long',year:'numeric'}):String(s.values[key]||'Не указаны')));list.append(row);}block.append(list);body.append(block);
@@ -172,7 +174,7 @@ function datetimeField(root,s){
 }
 function renderTypedForm(root,s){
   const kind=s.kind||s.screen,event=s.data.event;
-  const titles={event_create:'Новое мероприятие',event_edit:'Настройки мероприятия',manual:'Добавить гостей',register:'Запись на мероприятие',manager_add:'Новый менеджер',manager_edit:'Имя менеджера',note:'Заметка по заявке',inquiry:'Написать менеджеру'};
+  const titles={event_create:'Новое мероприятие',event_edit:'Настройки мероприятия',manual:'Добавить гостей',register:'Запись на мероприятие',manager_add:'Новый менеджер',manager_edit:'Имя менеджера',note:'Заметка по заявке',inquiry:'Вопрос ресторану'};
   heading(root,titles[kind]||'Данные',event?.title||'');const form=node('form','typed-form');form.noValidate=true;
   if(kind.startsWith('event_')){field(form,s,'title');field(form,s,'description',formLabels.description,'textarea',true);datetimeField(form,s);field(form,s,'location');field(form,s,'price');counter(form,s,'capacity','Лимит самостоятельной записи',100000);message(form,'Гости, добавленные вручную, в этот лимит не входят.');}
   if(['manual','register'].includes(kind)){
@@ -182,7 +184,7 @@ function renderTypedForm(root,s){
   }
   if(kind==='manager_add'){field(form,s,'username');field(form,s,'name','Имя для гостей');message(form,'Новый менеджер должен сначала открыть бота и нажать /start.');}
   if(kind==='manager_edit')field(form,s,'name','Имя для гостей');
-  if(kind==='inquiry'){const input=field(form,s,'message','Ваш вопрос','textarea');input.maxLength=3500;input.rows=5;message(form,'Ответ менеджера появится в этой переписке.');}
+  if(kind==='inquiry'){const input=field(form,s,'message','Ваш вопрос','textarea');input.maxLength=3500;input.rows=5;message(form,'Ответ ресторана появится в этой переписке.');}
   if(kind==='note'){field(form,s,'note','Заметка','textarea',true);message(form,'Заметку видят только менеджеры.');}
   const submit=button(kind==='register'?'Зарегистрироваться':kind==='manual'?'Добавить в список':kind==='inquiry'?'Отправить сообщение':'Сохранить','primary-button');submit.type='submit';form.append(submit);root.append(form);
   form.addEventListener('submit',async event=>{event.preventDefault();await submitNative(kind,s.values,{...s.args,...(s.data.event?{event:s.data.event.id,version:s.data.event.version}:{})},submit,result=>{if(result.ticket){openChat(result.ticket,kind==='inquiry'?'guest':'staff');return;}if(result.event){openNative(kind==='register'?'event':'event',{event:result.event,scope:kind==='register'?'guest':'staff'},true);return;}openNative('managers',{scope:'staff'},true);});});
@@ -209,8 +211,8 @@ function renderTicketList(root,s){
   if(!s.data.tickets.length){
     if(staff)message(root,s.args.query?'Ничего не найдено. Попробуйте другой запрос.':'В этом разделе пока нет заявок.');
     else{
-      const empty=node('section','inbox-empty');empty.append(node('h2','','Пока нет обращений'),node('p','','Начните с бронирования или вопроса менеджеру.'));root.append(empty);
-      for(const [label,name,screen] of [['Забронировать стол','calendar-blank','booking'],['Провести банкет','users-three','banquet'],['Написать менеджеру','chat-circle','inquiry']])root.append(actionRow(label,name,()=>openNative(screen,{},true)));
+      const empty=node('section','inbox-empty');empty.append(node('h2','','Пока нет обращений'),node('p','','Здесь появятся обращения в ресторан и по банкетам. Брони находятся в «Моих планах». '));root.append(empty);
+      root.append(actionRow('Меню и предзаказ','fork-knife',goMenu));for(const [label,name,screen] of [['Провести банкет','users-three','banquet'],['Вопрос ресторану','chat-circle','inquiry']])root.append(actionRow(label,name,()=>openNative(screen,{},true)));
     }
   }
   for(const t of s.data.tickets){

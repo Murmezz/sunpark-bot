@@ -12,6 +12,7 @@
   const cart = new Map(), products = new Map(), mediaCache = new Map();
   // __WORKFLOWS__
   // __SERVICES__
+  // __CONCEPT__
   const money = amount => new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2}).format(amount/100) + ' ₽';
   const systemDark=window.matchMedia?.('(prefers-color-scheme: dark)'), systemLight=window.matchMedia?.('(prefers-color-scheme: light)');
   function applyTheme() {
@@ -102,6 +103,7 @@
     $('cart-clear').hidden=!cart.size; $('cart-clear-confirm').hidden=true;
     $('cart-price-note').hidden=!total.unknown;
     $('cart-price-note').textContent=`Стоимость ${total.unknown} поз. уточните у официанта. Она ещё не включена в сумму.`;
+    $('preorder-checkout').hidden=!cart.size;$('preorder-checkout').disabled=!!total.unknown;
     $('cart-items').replaceChildren();
     for(const [key,line] of cart) {
       const product=lineProduct(line); if(!product) continue;
@@ -136,7 +138,7 @@
     $('quantity-value').textContent=line?.quantity||1;
     $('quantity-minus').disabled=!line||line.quantity<=1; $('quantity-plus').disabled=!!line&&line.quantity>=99;
     const option=currentDish.item.options.find(o=>o.id===currentDish.optionId);
-    $('dish-add').disabled=!option;
+    $('dish-add').disabled=!option||currentDish.item.available===false;
     $('dish-add').textContent=editing?'Готово':option?`Добавить в список${Number.isSafeInteger(option.amount)?' · '+money(option.amount):''}`:'Выберите вариант';
     if(editing) $('dish-price').textContent=[option.label,option.price,`${line.quantity} шт. — ${Number.isSafeInteger(option.amount)?money(option.amount*line.quantity):'стоимость уточняется'}`].filter(Boolean).join(' · ');
   }
@@ -147,6 +149,7 @@
     if(addProduct(currentDish.item,option))closeDish();
   }
   function addProduct(item,option){
+    if(item.available===false){toast('Блюдо временно недоступно');return false;}
     const key=cartKey(item.id,option.id), line=cart.get(key);
     if(line?.quantity>=99) { toast('В списке уже 99 шт. этой позиции.'); return; }
     if(!line&&cart.size>=300) { toast('Сначала удалите ненужные позиции из списка.'); return; }
@@ -239,6 +242,7 @@
       if(item.description)copy.append(node('span','item-description',item.description));
       open.append(copy,node('span','price',item.price),arrow());
       const add=button('','icon-button item-add',()=>{if(item.options.length===1&&Number.isSafeInteger(item.options[0].amount))addProduct(item,item.options[0]);else showDish(item,cat);});
+      add.disabled=item.available===false;if(item.available===false)copy.append(node('span','item-description','Временно недоступно'));
       add.setAttribute('aria-label',(item.options.length===1?'Добавить: ':'Выбрать вариант: ')+item.name);add.append(icon('plus'));row.append(open,add);$('items').append(row);
     }
     updateBackButton();
@@ -287,7 +291,7 @@
   async function api(operation,args={}) {
     if(authExpired&&operation!=='bootstrap')throw expiredSession();
     const payload={...args,operation,init_data:tg?.initData||''};
-    if(!['bootstrap','tickets','chat','screen'].includes(operation))payload.request_key=requestKey();
+    if(!['bootstrap','tickets','chat','screen','booking_read'].includes(operation))payload.request_key=requestKey();
     const body=JSON.stringify(payload);
     let response;
     for(let attempt=0;attempt<2;attempt++) {
@@ -305,7 +309,7 @@
     if(view!==appView){clearTimeout(toastTimer);$('cart-toast').hidden=true;}
     if(dialog.open)closeDish();
     appView=view;
-    for(const name of ['home','menu','cart','flow','inbox','chat','more','native','service'])$(name+'-view').hidden=name!==view;
+    for(const name of ['home','menu','cart','flow','inbox','chat','more','native','service','concept'])$(name+'-view').hidden=name!==view;
     if(view!=='cart')cartOpen=false;
     $('menu-search').hidden=view!=='menu';
     document.body.classList.toggle('chat-open',view==='chat');
@@ -313,7 +317,8 @@
     $('view-back-label').textContent=view==='more'?'К сообщениям':nativeState?.step>0?'Назад':nativeOrigin==='restaurant'?'К ресторану':nativeOrigin==='messages'?'К сообщениям':nativeOrigin==='management'?'К управлению':'На главную';
     for(const button of document.querySelectorAll('#app-nav [data-view]')) {
       const messages=view==='chat'||view==='more'||(view==='native'&&(nativeState?.screen==='tickets'||['messages','management'].includes(nativeOrigin)));
-      const active=button.dataset.view===(messages?'inbox':'home');
+      const plans=view==='concept'&&['plans','order','qr','payment'].includes(conceptState?.screen);
+      const active=button.dataset.view===(plans?'plans':messages?'inbox':'home');
       if(active)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');
     }
     renderCart();updateBackButton();resize();
@@ -321,6 +326,7 @@
   function goBack() {
     if($('picker-dialog').open)closePicker();
     else if(dialog.open)closeDish();
+    else if(appView==='concept')conceptBack();
     else if(appView==='native')nativeBack();
     else if(appView==='service')closeService();
     else if(cartOpen)closeCart();
@@ -350,7 +356,9 @@
   }
   function renderMore() {
     const root=$('more-actions');root.replaceChildren();
+    if(catalog.admin||['manager','waiter'].includes(catalog.booking_features?.role))root.append(actionRow('Мои столы и QR','qr-code',()=>openConcept('staff_tables',{},true)));
     if(catalog.admin) {
+      root.append(actionRow('Календарь занятости','calendar-blank',()=>openConcept('calendar',{},true)),actionRow('Предзаказы ресторана','fork-knife',()=>openConcept('preorders',{},true)),actionRow('Услуги и ресурсы','gear-six',()=>openConcept('inventory',{},true)));
       for(const [label,callback] of [['Админ-панель','admin:panel'],['Очередь заявок','admin:waiting'],['Мои активные заявки','admin:active'],['Мероприятия и регистрации','ev:manage:0'],['Менеджеры','admin:managers'],['Поиск заявок','admin:search'],['Статистика','admin:stats']])root.append(actionRow(label,actionIcon(callback),()=>runAction(callback,'staff')));
     }
     $('inbox-scope').hidden=!catalog.admin;
@@ -483,7 +491,7 @@
   $('chat-back').addEventListener('click',()=>openInbox(chatScope));
   $('inbox-reload').addEventListener('click',()=>openInbox());
   document.querySelectorAll('#inbox-scope [data-scope]').forEach(b=>b.addEventListener('click',()=>openInbox(b.dataset.scope)));
-  document.querySelectorAll('#app-nav [data-view]').forEach(b=>b.addEventListener('click',()=>{const view=b.dataset.view;if(view==='inbox')openInbox('guest');else{setView(view);window.scrollTo(0,0);}}));
+  document.querySelectorAll('#app-nav [data-view]').forEach(b=>b.addEventListener('click',()=>{const view=b.dataset.view;if(view==='inbox')openInbox('guest');else if(view==='plans')openConcept('plans',{},true);else{setView(view);window.scrollTo(0,0);}}));
   setInterval(()=>{if(!authExpired&&!document.hidden&&appView==='chat'&&!busy)refreshChat();},6000);
   function resize(){
     const focused=appView==='chat'&&$('chat-form').contains(document.activeElement);
@@ -510,7 +518,6 @@
     if(!tg?.initData) throw new Error('Откройте Sunpark из бота: /admin → «Разработка» → «Sunpark». Доступ только администраторам.');
     const data=await api('bootstrap');
     catalog=data;
-    if(!catalog.groups.length||!catalog.categories.length)throw new Error('Меню пока пусто.');
     const food=catalog.groups.findIndex(g=>groupName(g.title)==='Еда');
     if(food>=0)groupIndex=food;
     catalog.categories.forEach(category=>category.items.forEach(item=>products.set(item.id,{item,category})));
