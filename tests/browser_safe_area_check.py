@@ -64,7 +64,7 @@ window.__setInsets(32,56);
                 await page.screenshot(path=str(ARTIFACTS / f'safe-area-home-{theme}-{width}.png'))
             await page.locator('#test-telegram-chrome').evaluate('e=>e.remove()')
             await page.locator('#home-services [data-service=restaurant]').click()
-            assert (await page.locator('#service-view > .back-link').bounding_box())['y'] >= 88
+            assert (await page.locator('.service-topline .back-link').bounding_box())['y'] >= 88
             await page.locator('#restaurant-menu').click()
             await page.evaluate('window.scrollTo(0,160)')
             assert (await page.locator('#back-to-sections').bounding_box())['y'] >= 88

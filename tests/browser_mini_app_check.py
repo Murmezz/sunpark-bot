@@ -31,6 +31,8 @@ async def set_time(page,hour,minute):
     await page.wait_for_timeout(100)
 
 async def future_date(page,days=4):
+    if await page.locator('#native-content .date-control').count() and not await page.locator('#picker-dialog').is_visible():
+        await page.locator('#native-content .date-control').click()
     today=await page.locator('.calendar-day[aria-current=date]').get_attribute('data-date')
     return (datetime.fromisoformat(today)+timedelta(days=days)).date().isoformat()
 
@@ -42,9 +44,13 @@ async def choose_day(page,iso):
     raise AssertionError('Calendar could not reach date '+iso)
 
 async def open_more(page,title):
-    await page.locator('#app-nav [data-view=inbox]').click();await native_ready(page)
     if title in ['Правила и контакты','Мероприятия']:
-        await page.locator('#native-content').get_by_role('button',name=title,exact=True).click();await native_ready(page);return
+        await page.locator('#app-nav [data-view=home]').click()
+        await page.locator('#home-location').get_by_role('button',name='Контакты',exact=True).click();await native_ready(page)
+        if title=='Мероприятия':
+            await page.get_by_role('button',name=title,exact=True).click();await native_ready(page)
+        return
+    await page.locator('#app-nav [data-view=inbox]').click();await native_ready(page)
     await page.get_by_role('button',name='Управление',exact=True).click()
     await page.locator('#more-actions').get_by_role('button',name=title,exact=True).click()
     await native_ready(page)
@@ -81,15 +87,15 @@ async def main():
             await page.locator('#home-services [data-service=restaurant]').click();await page.locator('#restaurant-booking').click();await native_ready(page)
             iso=await future_date(page)
             assert await page.locator('.calendar-day:disabled').count()>0
-            await choose_day(page,iso);await set_time(page,19,30)
+            await choose_day(page,iso);await page.get_by_role('button',name='Выбрать дату',exact=True).click();await set_time(page,19,30)
             assert await page.get_by_role('listbox',name='Минуты',exact=True).get_by_role('option',selected=True).inner_text()=='30'
-            assert await page.locator('.native-footer').evaluate('(e)=>e.getBoundingClientRect().bottom<=document.getElementById("app-nav").getBoundingClientRect().top+1')
+            assert await page.locator('.native-footer').evaluate('(e)=>e.getBoundingClientRect().bottom<=(document.getElementById("app-nav").getClientRects().length?document.getElementById("app-nav").getBoundingClientRect().top:innerHeight)+1')
             for theme in ['light','dark']:
                 await page.emulate_media(color_scheme=theme);await page.wait_for_timeout(180);await page.screenshot(path=str(ARTIFACTS/f'adapt-calendar-{theme}-{width}.png'))
             await page.emulate_media(color_scheme='light')
             await page.get_by_role('button',name='Продолжить',exact=True).click()
             await page.get_by_role('button',name='Увеличить количество гостей',exact=True).click();await page.get_by_role('button',name='Увеличить количество гостей',exact=True).click()
-            await page.locator('#native-name').fill('Иван');await page.locator('#native-phone').fill('+79001234567');await page.locator('#native-comment').fill('Столик у окна')
+            await page.locator('#native-name').fill('Иван');await page.locator('#native-phone').fill('+79001234567');await page.locator('.request-optional > summary').click();await page.locator('#native-comment').fill('Столик у окна')
             await page.get_by_role('button',name='Продолжить',exact=True).click();await page.locator('#native-back').click()
             assert await page.locator('#native-name').input_value()=='Иван'
             assert await page.locator('[name=guests]').input_value()=='4'
@@ -99,18 +105,18 @@ async def main():
             await page.locator('#chat-input').fill('Добрый вечер! Можно столик у окна?');await page.locator('#chat-send').click()
             await page.get_by_text('Добрый вечер! Можно столик у окна?',exact=True).wait_for()
             await page.set_viewport_size({'width':width,'height':500});await page.wait_for_timeout(100)
-            assert await page.locator('#chat-send').evaluate('(e)=>e.getBoundingClientRect().bottom<=document.getElementById("app-nav").getBoundingClientRect().top+1')
+            assert await page.locator('#chat-send').evaluate('(e)=>e.getBoundingClientRect().bottom<=(document.getElementById("app-nav").getClientRects().length?document.getElementById("app-nav").getBoundingClientRect().top:innerHeight)+1')
             await page.set_viewport_size({'width':width,'height':844})
             # Menu/cart regressions and deep-scrolled dish modal.
             await open_menu(page);await page.get_by_role('button',name='Бар',exact=True).click()
-            assert await page.locator('.category-title').all_text_contents()==['Пиво и сидр','Коктейльная карта','Вино','Крепкий алкоголь']
-            await page.locator('.category-card').filter(has_text='Пиво и сидр').click();await page.locator('.item-row').filter(has_text='Эль Капулько').click()
+            assert await page.locator('.category-chip').all_text_contents()==['Пиво и сидр','Коктейльная карта','Вино','Крепкий алкоголь']
+            await page.locator('.category-chip').filter(has_text='Пиво и сидр').click();await page.locator('.item-row').filter(has_text='Эль Капулько').click()
             assert await page.locator('#dish-add').is_disabled();await page.locator('.option-choice').filter(has_text='350 ₽').click();await page.locator('#dish-add').click()
             await page.locator('#cart-launcher').click();assert await page.locator('#cart-total').inner_text()=='350 ₽'
-            await page.locator('.cart-row').click();await page.locator('#quantity-plus').click();await page.locator('#dish-add').click();assert await page.locator('#cart-total').inner_text()=='700 ₽'
+            await page.locator('.cart-product').click();await page.locator('#quantity-plus').click();await page.locator('#dish-add').click();assert await page.locator('#cart-total').inner_text()=='700 ₽'
             await page.reload();await page.locator('#app-shell').wait_for(state='visible');assert await page.locator('#cart-launcher').is_hidden();await page.locator('#home-services [data-service=restaurant]').click();await page.locator('#cart-launcher').click();assert await page.locator('#cart-total').inner_text()=='700 ₽'
-            await page.locator('.cart-row').click();await page.locator('#dish-remove').click()
-            await open_menu(page);await page.get_by_role('button',name='Еда',exact=True).click();await page.locator('.category-card').filter(has_text='Закуски').click()
+            await page.locator('.cart-product').click();await page.locator('#dish-remove').click()
+            await open_menu(page);await page.get_by_role('button',name='Еда',exact=True).click();await page.locator('.category-chip').filter(has_text='Закуски').click()
             await page.locator('.item-row').last.scroll_into_view_if_needed();old_y=await page.evaluate('scrollY');await page.locator('.item-row').last.click()
             assert await page.evaluate("getComputedStyle(document.querySelector('#dish-dialog')).position")=='fixed'
             await page.evaluate('window.__backHandler()');assert abs(await page.evaluate('scrollY')-old_y)<2

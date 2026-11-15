@@ -1,0 +1,49 @@
+[
+  {
+    "width": 320,
+    "directions": 4,
+    "themes": [
+      "light",
+      "dark"
+    ],
+    "photos_inert": true,
+    "phone_and_map_only": true,
+    "empty_cart_hidden": true,
+    "forms_and_return": "passed",
+    "errors": []
+  },
+  {
+    "width": 390,
+    "directions": 4,
+    "themes": [
+      "light",
+      "dark"
+    ],
+    "photos_inert": true,
+    "phone_and_map_only": true,
+    "empty_cart_hidden": true,
+    "forms_and_return": "passed",
+    "errors": []
+  },
+  {
+    "width": 820,
+    "directions": 4,
+    "themes": [
+      "light",
+      "dark"
+    ],
+    "photos_inert": true,
+    "phone_and_map_only": true,
+    "empty_cart_hidden": true,
+    "forms_and_return": "passed",
+    "errors": []
+  },
+  {
+    "telegram_client": "old",
+    "fallback_and_close": "passed"
+  },
+  {
+    "telegram_client": "unsupported",
+    "fallback_and_close": "passed"
+  }
+]

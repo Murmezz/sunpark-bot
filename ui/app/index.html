@@ -7,24 +7,26 @@
 <section id="home-view" class="home-view">
 <div class="complex-intro"><img class="complex-leaf" src="__HERO_DATA_URL__" alt="" aria-hidden="true"><h1>Sunpark</h1><p>Четыре направления отдыха<br>на Суздальском озере</p></div>
 <section class="home-services" aria-labelledby="home-services-title"><h2 id="home-services-title">Выберите направление</h2><div id="home-services" class="direction-grid"></div></section>
+<footer id="home-location" class="home-location"></footer>
 </section>
 <section id="service-view" class="service-view" hidden></section>
 <section id="menu-view" hidden>
 <button id="back-to-sections" class="back-link menu-back" type="button"><span class="icon" data-icon="arrow-left" aria-hidden="true"></span><span id="menu-back-label">К ресторану</span></button>
+<section id="menu-hub"><h2 class="page-title">Меню ресторана</h2>
 <label id="menu-search" class="search"><span class="icon" data-icon="magnifying-glass" aria-hidden="true"></span><input id="search" type="search" placeholder="Найти блюдо или напиток" autocomplete="off" aria-label="Поиск по меню"></label>
-<section id="menu-hub"><h2 class="page-title">Меню ресторана</h2><nav id="groups" class="group-tabs" aria-label="Части меню"></nav><p class="catalog-hint">Выберите раздел</p><nav id="categories" class="category-grid" aria-label="Разделы меню"></nav></section>
-<section id="catalog-view" hidden><h2 id="section-title" class="page-title"><span>Меню</span></h2><p id="catalog-hint" class="catalog-hint">Нажмите на блюдо, чтобы посмотреть состав</p><div id="items" class="items"></div><p id="category-footer" class="category-footer"></p></section>
+<nav id="groups" class="group-tabs" aria-label="Части меню"></nav><nav id="categories" class="category-rail" aria-label="Разделы меню"></nav>
+<section id="catalog-view"><h3 id="section-title" class="page-title"><span>Меню</span></h3><p id="catalog-hint" class="catalog-hint" hidden></p><div id="items" class="items"></div><p id="category-footer" class="category-footer"></p></section></section>
 </section>
       <section id="cart-view" aria-labelledby="cart-title" hidden>
         <button id="cart-back" class="back-link" type="button"><span class="icon" data-icon="arrow-left" aria-hidden="true"></span>К меню</button>
-        <h2 id="cart-title" class="ruled-title"><span>Ваша корзина</span></h2>
+        <h2 id="cart-title" class="ruled-title" tabindex="-1"><span>Мой выбор</span></h2>
         <div id="cart-summary" class="cart-summary"><span id="cart-count"></span><strong id="cart-total"></strong></div>
-        <p id="cart-empty" class="status" hidden>Корзина пока пуста. Выберите блюдо в меню и нажмите «Добавить в корзину».</p>
-        <p id="cart-hint" class="catalog-hint">Нажмите на позицию, чтобы изменить количество или удалить её.</p>
+        <p id="cart-empty" class="status" hidden>Пока ничего не выбрано. Добавьте блюда из меню.</p>
+        <p id="cart-hint" class="catalog-hint">Список для официанта</p>
         <div id="cart-items" class="cart-items"></div>
         <p id="cart-price-note" class="catalog-hint" hidden></p>
-        <p class="catalog-hint cart-order-note">Для заказа покажите корзину официанту.</p>
-        <button id="cart-clear" class="secondary-button" type="button">Очистить корзину</button>
+        <p class="catalog-hint cart-order-note">Чтобы сделать заказ, покажите этот список официанту.</p>
+        <button id="cart-clear" class="secondary-button" type="button">Очистить список</button>
         <div id="cart-clear-confirm" class="clear-confirm" hidden>
           <p>Удалить все выбранные позиции?</p>
           <div class="confirm-actions"><button id="cart-clear-yes" class="secondary-button" type="button">Да, очистить</button><button id="cart-clear-no" class="secondary-button" type="button">Отмена</button></div>
@@ -38,7 +40,7 @@
 <section id="more-view" hidden><h2 class="page-title">Управление</h2><div id="more-actions"></div></section>
 </main>
 <nav id="app-nav" class="app-nav" aria-label="Главная навигация" hidden><button data-view="home" aria-current="page"><span class="icon" data-icon="house" aria-hidden="true"></span><span>Главная</span></button><button data-view="inbox"><span class="icon" data-icon="chat-circle" aria-hidden="true"></span><span>Сообщения</span></button></nav>
-<button id="cart-launcher" class="cart-launcher" hidden><span><span class="icon" data-icon="shopping-bag" aria-hidden="true"></span>Корзина <span id="cart-badge" class="cart-badge" hidden></span></span><strong id="cart-launcher-total">0 ₽</strong></button><div id="cart-toast" class="cart-toast" role="status" aria-live="polite" hidden></div>
+<button id="cart-launcher" class="cart-launcher" hidden><span><span class="icon" data-icon="shopping-bag" aria-hidden="true"></span>Мой выбор <span id="cart-badge" class="cart-badge" hidden></span></span><strong id="cart-launcher-total">0 ₽</strong></button><div id="cart-toast" class="cart-toast" role="status" aria-live="polite" hidden></div>
   <dialog id="picker-dialog" class="picker-dialog" aria-labelledby="picker-title"><div id="picker-content"></div></dialog>
   <dialog id="dish-dialog" aria-labelledby="dish-name">
     <button id="close-dialog" class="close-dialog" type="button" aria-label="Закрыть состав"><span class="icon" data-icon="x" aria-hidden="true"></span></button>
@@ -51,8 +53,7 @@
     <p id="dish-description" class="dish-description"></p>
     <p id="dish-footer" class="dish-footer"></p>
     <div id="dish-quantity" class="dish-quantity" hidden><span>Количество</span><div class="quantity-controls"><button id="quantity-minus" type="button" aria-label="Уменьшить количество">−</button><output id="quantity-value" aria-live="polite">1</output><button id="quantity-plus" type="button" aria-label="Увеличить количество">+</button></div></div>
-    <button id="dish-add" class="primary-button" type="button">Добавить в корзину</button>
-    <button id="dish-remove" class="secondary-button" type="button" hidden>Удалить из корзины</button>
-    <button id="back-to-menu" class="text-button" type="button">Вернуться к меню</button>
+    <button id="dish-add" class="primary-button" type="button">Добавить в список</button>
+    <button id="dish-remove" class="secondary-button" type="button" hidden>Удалить из списка</button>
   </dialog>
 </body></html>
