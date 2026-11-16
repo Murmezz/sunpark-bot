@@ -493,17 +493,35 @@
   document.querySelectorAll('#inbox-scope [data-scope]').forEach(b=>b.addEventListener('click',()=>openInbox(b.dataset.scope)));
   document.querySelectorAll('#app-nav [data-view]').forEach(b=>b.addEventListener('click',()=>{const view=b.dataset.view;if(view==='inbox')openInbox('guest');else if(view==='plans')openConcept('plans',{},true);else{setView(view);window.scrollTo(0,0);}}));
   setInterval(()=>{if(!authExpired&&!document.hidden&&appView==='chat'&&!busy)refreshChat();},6000);
+  let expandedViewport={width:innerWidth,height:innerHeight};
   function resize(){
+    const root=document.documentElement;
+    for(const [family,insets] of [['safe',tg?.safeAreaInset],['content',tg?.contentSafeAreaInset]]) {
+      for(const edge of ['top','right','bottom','left']) {
+        const value=Number(insets?.[edge]);
+        root.style.setProperty(`--sdk-${family}-${edge}`,`${Number.isFinite(value)&&value>0?value:0}px`);
+      }
+    }
     const focused=appView==='chat'&&$('chat-form').contains(document.activeElement);
-    const available=window.visualViewport?.height||innerHeight;
+    const available=Math.min(window.visualViewport?.height||innerHeight,innerHeight);
+    const editing=document.activeElement?.matches('input,textarea,select,[contenteditable=true]');
+    if(!editing||Math.abs(innerWidth-expandedViewport.width)>48)expandedViewport={width:innerWidth,height:available};
+    const keyboard=!!editing&&(window.visualViewport?.scale||1)<1.1&&expandedViewport.height-available>120;
+    document.body.classList.toggle('is-keyboard-open',keyboard);
     const compact=appView==='chat'&&(focused||available<600);
     document.body.classList.toggle('chat-typing',compact);
-    const height=compact?Math.min(available,tg?.viewportStableHeight||innerHeight):tg?.viewportStableHeight||available;
-    document.documentElement.style.setProperty('--viewport-height',`${height}px`);
+    const stable=Math.min(Number(tg?.viewportStableHeight)||innerHeight,innerHeight);
+    root.style.setProperty('--viewport-height',`${compact||keyboard?available:stable}px`);
+    const nav=$('app-nav');
+    if(!nav.hidden&&!keyboard&&!compact){
+      const height=Math.ceil(nav.getBoundingClientRect().height),value=height+'px';
+      if(height&&root.style.getPropertyValue('--nav-outer-height')!==value)root.style.setProperty('--nav-outer-height',value);
+    }
   }
   window.visualViewport?.addEventListener('resize',resize);window.addEventListener('resize',resize);
   document.addEventListener('focusin',resize);document.addEventListener('focusout',()=>setTimeout(resize,0));resize();
   try{tg?.onEvent?.('viewportChanged',resize);}catch(_){}
+  if(window.ResizeObserver)new ResizeObserver(()=>requestAnimationFrame(resize)).observe($('app-nav'));
   function closeApp(){try{if(tg?.close)tg.close();else window.close();}catch(_){}}
   function syncFullscreen(){document.body.classList.toggle('telegram-fullscreen',!!tg?.isFullscreen);resize();}
   try {

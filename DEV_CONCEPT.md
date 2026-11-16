@@ -48,3 +48,13 @@ Applied 48 additive migration statements. Verification found 15 source-price rat
 The new and legacy HTML/JS/CSS endpoints return HTTP 200 and exactly match the tested bundles. Icons return 200; unauthenticated API access returns 401. Chromium also loaded the deployed shell successfully. Python HTTP checks use the descriptive `SunPark-Development-Verification/1.0` user agent because Cloudflare rejects default urllib clients on workers.dev ([Cloudflare error 1010](https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-1xxx-errors/error-1010/)). No security setting was changed. Authenticated business flows were checked on isolated local data; the owner's physical Telegram review remains outstanding.
 
 GitHub Actions passed for the runtime commit: [Tests](https://github.com/Murmezz/sunpark-bot/actions/runs/43756666083). Source review: [draft PR #7](https://github.com/Murmezz/sunpark-bot/pull/7). Main branch remains at the backup commit.
+
+## Phone responsive fix — 16 November 2026
+
+The owner's 393×853-equivalent phone screenshot exposed overly wide fixed page gutters and the bottom bar meeting the last row of cards. The current app now uses a shared 12–18 px fluid gutter (13.75 px at 393 px), a wider fluid shell, viewport-aware home photos and a four-column layout for wide landscape phones. Forms, menu rails, cards, cart, QR and modals use the same available width.
+
+Navigation clearance is measured from the rendered bottom bar, including both native inset families. Keyboard editing temporarily hides navigation, viewport changes are clamped to the actual window, and SDK inset properties back up missing CSS variables. The calendar's top edge now respects Telegram controls in landscape; chat also reserves the native top inset. Physical page zoom remains available.
+
+Chromium and WebKit each passed 14 viewport profiles from 280 px wide phones through 1024 px tablets, both themes and twelve page/state checks per profile. A separate 393 px regression covers keyboard resize and rotation of the existing form. Results are in `artifacts/responsive/*-results.json`; fixture photos and screenshots stay outside tracked source. WebKit ran headlessly with missing Debian libraries extracted into the task user's browser cache, without changing system packages or app dependencies. This validates layout engines, not every physical phone.
+
+The 88 server tests still pass. No booking rules, database, payment configuration, access gate or frozen legacy assets change. The pre-fix source is tagged `miniapp-before-responsive-20261116`; the prior Worker version is `e4d77a2e-6820-4dc9-9a80-7760df4b641f`.
