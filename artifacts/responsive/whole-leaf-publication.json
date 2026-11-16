@@ -1,0 +1,27 @@
+{
+  "source_commit": "7f2b1d2df52b4759016df6665a6e240238e87f56",
+  "worker": "sunparkbot",
+  "version_id": "02b9db6d-db01-4dc2-8e02-7f5de92f6c44",
+  "deployment_id": "f4d6094b-fba7-4675-aa16-85563cc8414a",
+  "published_at": "2026-11-16T20:45:42.896699Z",
+  "changed_modules": [
+    "mini_app_assets.py"
+  ],
+  "backup_tag": "miniapp-before-whole-leaf-20261116",
+  "asset": "ui/app/assets/monstera-whole.webp",
+  "asset_bytes": 78346,
+  "visible_alpha_bounds": [
+    65,
+    50,
+    445,
+    483
+  ],
+  "clear_frame": true,
+  "layout_engines": [
+    "chromium",
+    "webkit"
+  ],
+  "viewport_profiles": 14,
+  "legacy_changed": false,
+  "database_changed": false
+}
