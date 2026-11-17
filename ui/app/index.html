@@ -1,12 +1,12 @@
 <!doctype html>
-<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light dark"><title>Sunpark</title><link rel="stylesheet" href="/app/style.css"><script src="https://telegram.org/js/telegram-web-app.js"></script><script src="/app/app.js" defer></script></head>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light dark"><title>Sunpark</title><link rel="stylesheet" href="/app/style.css"><script src="https://telegram.org/js/telegram-web-app.js" defer></script><script src="/app/app.js" defer></script></head>
 <body>
-<div id="status" class="status app-status" role="status" aria-live="polite">Загружаем SUNPARK…</div>
+<div id="status" class="status app-status" role="status" aria-live="polite" aria-busy="true" data-loading="boot"><div class="boot-loader"><span class="loading-brand" aria-hidden="true">sunpark</span><span class="icon loading-wave" data-icon="waves" aria-hidden="true"></span><p class="loading-label">Открываем Sunpark</p></div></div>
 <main id="app-shell" class="app-shell" hidden>
 <nav id="view-back" class="view-back" aria-label="Возврат" hidden><button id="native-back" class="back-link" type="button"><span class="icon" data-icon="arrow-left" aria-hidden="true"></span><span id="view-back-label">Назад</span></button></nav>
 <section id="home-view" class="home-view">
-<div class="complex-intro"><img class="complex-leaf" src="__HERO_DATA_URL__" alt="" aria-hidden="true"><h1>Sunpark</h1><p>Четыре направления отдыха<br>на Суздальском озере</p></div>
-<section class="home-services" aria-labelledby="home-services-title"><h2 id="home-services-title">Выберите направление</h2><div id="home-services" class="direction-grid"></div></section>
+<div class="complex-intro"><span class="complex-decoration" aria-hidden="true"><img class="complex-leaf" src="__HERO_DATA_URL__" alt=""></span><h1>sunpark</h1><p>Отдых на Суздальском озере</p></div>
+<section class="home-services" aria-labelledby="home-services-title"><h2 id="home-services-title">Выберите свой отдых</h2><div id="home-services" class="direction-grid"></div></section>
 <footer id="home-location" class="home-location"></footer>
 </section>
 <section id="service-view" class="service-view" hidden></section>
@@ -19,13 +19,14 @@
 </section>
       <section id="cart-view" aria-labelledby="cart-title" hidden>
         <button id="cart-back" class="back-link" type="button"><span class="icon" data-icon="arrow-left" aria-hidden="true"></span>К меню</button>
-        <h2 id="cart-title" class="ruled-title" tabindex="-1"><span>Мой выбор</span></h2>
+        <h2 id="cart-title" class="ruled-title" tabindex="-1"><span>Ваш предзаказ</span></h2>
         <div id="cart-summary" class="cart-summary"><span id="cart-count"></span><strong id="cart-total"></strong></div>
         <p id="cart-empty" class="status" hidden>Пока ничего не выбрано. Добавьте блюда из меню.</p>
-        <p id="cart-hint" class="catalog-hint">Список для официанта</p>
+        <p id="cart-hint" class="catalog-hint">Блюда оплачиваются при оформлении</p>
         <div id="cart-items" class="cart-items"></div>
         <p id="cart-price-note" class="catalog-hint" hidden></p>
-        <p class="catalog-hint cart-order-note">Чтобы сделать заказ, покажите этот список официанту.</p>
+        <p class="catalog-hint cart-order-note">После оплаты появится QR. Стол назначит официант при посадке.</p>
+        <button id="preorder-checkout" class="primary-button" type="button">Указать время прихода</button>
         <button id="cart-clear" class="secondary-button" type="button">Очистить список</button>
         <div id="cart-clear-confirm" class="clear-confirm" hidden>
           <p>Удалить все выбранные позиции?</p>
@@ -38,9 +39,10 @@
 <section id="inbox-view" hidden><h2 class="page-title">Сообщения</h2><div id="inbox-scope" class="group-tabs"><button data-scope="guest" aria-pressed="true">Мои обращения</button><button data-scope="staff" aria-pressed="false">Заявки гостей</button></div><div id="inbox-list"></div><button id="inbox-reload" class="secondary-button">Обновить список</button></section>
 <section id="chat-view" class="chat-view" hidden><div class="chat-heading"><button id="chat-back" class="icon-button" aria-label="К сообщениям"><span class="icon" data-icon="arrow-left" aria-hidden="true"></span></button><div><h2 id="chat-title" class="page-title"></h2><p id="chat-subtitle"></p></div></div><details id="chat-details"><summary id="chat-summary"></summary><div id="chat-details-body"></div></details><p id="chat-status" hidden></p><div id="chat-actions" class="chat-actions"></div><div id="chat-log" class="chat-log" role="log" aria-label="История переписки" aria-live="polite"></div><button id="chat-new" class="chat-new" type="button" hidden>Новые сообщения</button><p id="chat-readonly" class="catalog-hint" hidden></p><form id="chat-form" class="chat-form"><div id="chat-attachment" class="attachment-chip" hidden></div><div class="chat-compose"><button id="attach-button" class="icon-button" type="button" aria-label="Прикрепить фото или PDF"><span class="icon" data-icon="paperclip" aria-hidden="true"></span></button><textarea id="chat-input" placeholder="Сообщение…" rows="1" maxlength="3500" aria-label="Текст сообщения"></textarea><button id="chat-send" class="icon-button" type="submit" aria-label="Отправить сообщение"><span class="icon" data-icon="paper-plane-tilt" aria-hidden="true"></span></button></div><input id="chat-file" type="file" accept="image/jpeg,image/png,application/pdf" hidden></form></section>
 <section id="more-view" hidden><h2 class="page-title">Управление</h2><div id="more-actions"></div></section>
+<section id="concept-view" class="concept-view" hidden><button id="concept-back" class="back-link" type="button"><span class="icon" data-icon="arrow-left" aria-hidden="true"></span>Назад</button><div id="concept-content" aria-live="polite"></div></section>
 </main>
-<nav id="app-nav" class="app-nav" aria-label="Главная навигация" hidden><button data-view="home" aria-current="page"><span class="icon" data-icon="house" aria-hidden="true"></span><span>Главная</span></button><button data-view="inbox"><span class="icon" data-icon="chat-circle" aria-hidden="true"></span><span>Сообщения</span></button></nav>
-<button id="cart-launcher" class="cart-launcher" hidden><span><span class="icon" data-icon="shopping-bag" aria-hidden="true"></span>Мой выбор <span id="cart-badge" class="cart-badge" hidden></span></span><strong id="cart-launcher-total">0 ₽</strong></button><div id="cart-toast" class="cart-toast" role="status" aria-live="polite" hidden></div>
+<nav id="app-nav" class="app-nav" aria-label="Главная навигация" hidden><button data-view="home" aria-current="page"><span class="icon" data-icon="house" aria-hidden="true"></span><span>Главная</span></button><button data-view="plans"><span class="icon" data-icon="calendar-blank" aria-hidden="true"></span><span>Мои планы</span></button><button data-view="inbox"><span class="icon" data-icon="chat-circle" aria-hidden="true"></span><span>Сообщения</span></button></nav>
+<button id="cart-launcher" class="cart-launcher" hidden><span><span class="icon" data-icon="shopping-bag" aria-hidden="true"></span>Корзина <span id="cart-badge" class="cart-badge" hidden></span></span><strong id="cart-launcher-total">0 ₽</strong></button><div id="cart-toast" class="cart-toast" role="status" aria-live="polite" hidden></div>
   <dialog id="picker-dialog" class="picker-dialog" aria-labelledby="picker-title"><div id="picker-content"></div></dialog>
   <dialog id="dish-dialog" aria-labelledby="dish-name">
     <button id="close-dialog" class="close-dialog" type="button" aria-label="Закрыть состав"><span class="icon" data-icon="x" aria-hidden="true"></span></button>

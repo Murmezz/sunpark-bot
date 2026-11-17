@@ -1,0 +1,20 @@
+{
+  "source_commit": "e6b6722fc2313c38f787c8f6553b7dd9e8ed339e",
+  "worker": "sunparkbot",
+  "version_id": "193d81c4-f95e-4ea1-831a-c25742cfb34e",
+  "deployment_id": "c0ca9968-ff8e-4e4a-89ad-5d6e69ceb930",
+  "published_at": "2026-11-17T05:53:30.22221Z",
+  "changed_modules": [
+    "mini_app_assets.py"
+  ],
+  "backup_tag": "miniapp-before-loaders-20261117",
+  "original_asset": "ui/app/assets/monstera.webp",
+  "original_asset_sha256": "30c842e7e317b73f24f1efdfacf9c5346fe3e518d21710172b9ce8164d527865",
+  "database_changed": false,
+  "legacy_changed": false,
+  "loading_checks": [
+    "chromium",
+    "webkit"
+  ],
+  "ci": "https://github.com/Murmezz/sunpark-bot/actions/runs/44027124986"
+}

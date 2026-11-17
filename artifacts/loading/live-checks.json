@@ -1,0 +1,36 @@
+[
+  {
+    "path": "/app",
+    "status": 200,
+    "matches_source": true
+  },
+  {
+    "path": "/app/style.css",
+    "status": 200,
+    "matches_source": true
+  },
+  {
+    "path": "/app/app.js",
+    "status": 200,
+    "matches_source": true
+  },
+  {
+    "path": "/app/legacy",
+    "status": 200,
+    "matches_source": true
+  },
+  {
+    "path": "/app/legacy/style.css",
+    "status": 200,
+    "matches_source": true
+  },
+  {
+    "path": "/app/legacy/app.js",
+    "status": 200,
+    "matches_source": true
+  },
+  {
+    "path": "/api/app",
+    "no_auth": 401
+  }
+]

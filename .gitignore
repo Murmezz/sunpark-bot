@@ -1,3 +1,6 @@
 __pycache__/
 *.py[cod]
 artifacts/*.png
+artifacts/responsive/*.png
+artifacts/loading/*.png
+artifacts/loading/*.webm

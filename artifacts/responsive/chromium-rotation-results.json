@@ -1,0 +1,33 @@
+[
+  {
+    "viewport": [
+      393,
+      853
+    ],
+    "safe": [
+      32,
+      56,
+      16,
+      0
+    ],
+    "gutter": 13.75,
+    "states": [
+      "home-light",
+      "home-dark",
+      "wave",
+      "time",
+      "calendar",
+      "contacts",
+      "keyboard",
+      "rotated-contacts",
+      "portrait-again",
+      "hotel-dates",
+      "menu",
+      "cart",
+      "arrival",
+      "qr",
+      "chat"
+    ],
+    "errors": []
+  }
+]

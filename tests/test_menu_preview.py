@@ -106,10 +106,12 @@ class PreviewTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn('banquet',[c['key'] for c in catalog['categories']])
         self.assertEqual(before,json.dumps(MENU))
 
-    def test_development_has_only_current_mini_app(self):
+    def test_development_has_current_mini_app_and_frozen_backup(self):
         text,kb=self.bot.menu_preview_chooser()
         self.assertEqual(kb['inline_keyboard'],[
             [{'text':'Sunpark','web_app':{'url':'https://sunparkbot.lovison1979.workers.dev/app'}}],
+            [{'text':'Клод тест','web_app':{'url':'https://sunparkbot.lovison1979.workers.dev/app-claude'}}],
+            [{'text':'Sunpark · прежняя версия','web_app':{'url':'https://sunparkbot.lovison1979.workers.dev/app/legacy'}}],
             [{'text':'◀️ В админ-панель','callback_data':'admin:panel'}],
         ])
         self.assertIn('Разработка',text)

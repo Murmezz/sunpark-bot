@@ -1,0 +1,58 @@
+[
+  {
+    "viewport": [
+      280,
+      653
+    ],
+    "theme": "dark",
+    "motion": "no-preference",
+    "boot_and_sections": "passed",
+    "navigation_race": "passed",
+    "failed_write_restores_button": true,
+    "native_retry": true,
+    "background_chat_keeps_content": true,
+    "errors": []
+  },
+  {
+    "viewport": [
+      393,
+      853
+    ],
+    "theme": "dark",
+    "motion": "no-preference",
+    "boot_and_sections": "passed",
+    "navigation_race": "passed",
+    "failed_write_restores_button": true,
+    "native_retry": true,
+    "background_chat_keeps_content": true,
+    "errors": []
+  },
+  {
+    "viewport": [
+      393,
+      853
+    ],
+    "theme": "light",
+    "motion": "reduce",
+    "boot_and_sections": "passed",
+    "navigation_race": "passed",
+    "failed_write_restores_button": true,
+    "native_retry": true,
+    "background_chat_keeps_content": true,
+    "errors": []
+  },
+  {
+    "viewport": [
+      844,
+      390
+    ],
+    "theme": "dark",
+    "motion": "no-preference",
+    "boot_and_sections": "passed",
+    "navigation_race": "passed",
+    "failed_write_restores_button": true,
+    "native_retry": true,
+    "background_chat_keeps_content": true,
+    "errors": []
+  }
+]

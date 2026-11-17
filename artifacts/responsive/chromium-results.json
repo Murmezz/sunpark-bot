@@ -1,0 +1,413 @@
+[
+  {
+    "viewport": [
+      280,
+      653
+    ],
+    "safe": [
+      24,
+      48,
+      0,
+      0
+    ],
+    "gutter": 12,
+    "leaf_cut_edge": 290.0,
+    "states": [
+      "home-light",
+      "home-dark",
+      "wave",
+      "time",
+      "calendar",
+      "contacts",
+      "hotel-dates",
+      "menu",
+      "cart",
+      "arrival",
+      "qr",
+      "chat"
+    ],
+    "errors": []
+  },
+  {
+    "viewport": [
+      320,
+      568
+    ],
+    "safe": [
+      20,
+      48,
+      0,
+      0
+    ],
+    "gutter": 12,
+    "leaf_cut_edge": 330.0,
+    "states": [
+      "home-light",
+      "home-dark",
+      "wave",
+      "time",
+      "calendar",
+      "contacts",
+      "keyboard",
+      "hotel-dates",
+      "menu",
+      "cart",
+      "arrival",
+      "qr",
+      "chat"
+    ],
+    "errors": []
+  },
+  {
+    "viewport": [
+      360,
+      800
+    ],
+    "safe": [
+      24,
+      56,
+      24,
+      0
+    ],
+    "gutter": 12.59,
+    "leaf_cut_edge": 370.0,
+    "states": [
+      "home-light",
+      "home-dark",
+      "wave",
+      "time",
+      "calendar",
+      "contacts",
+      "hotel-dates",
+      "menu",
+      "cart",
+      "arrival",
+      "qr",
+      "chat"
+    ],
+    "errors": []
+  },
+  {
+    "viewport": [
+      375,
+      667
+    ],
+    "safe": [
+      20,
+      48,
+      0,
+      0
+    ],
+    "gutter": 13.12,
+    "leaf_cut_edge": 385.0,
+    "states": [
+      "home-light",
+      "home-dark",
+      "wave",
+      "time",
+      "calendar",
+      "contacts",
+      "hotel-dates",
+      "menu",
+      "cart",
+      "arrival",
+      "qr",
+      "chat"
+    ],
+    "errors": []
+  },
+  {
+    "viewport": [
+      390,
+      844
+    ],
+    "safe": [
+      47,
+      56,
+      34,
+      0
+    ],
+    "gutter": 13.64,
+    "leaf_cut_edge": 400.0,
+    "states": [
+      "home-light",
+      "home-dark",
+      "wave",
+      "time",
+      "calendar",
+      "contacts",
+      "hotel-dates",
+      "menu",
+      "cart",
+      "arrival",
+      "qr",
+      "chat"
+    ],
+    "errors": []
+  },
+  {
+    "viewport": [
+      393,
+      853
+    ],
+    "safe": [
+      32,
+      56,
+      16,
+      0
+    ],
+    "gutter": 13.75,
+    "leaf_cut_edge": 403.0,
+    "states": [
+      "home-light",
+      "home-dark",
+      "wave",
+      "time",
+      "calendar",
+      "contacts",
+      "keyboard",
+      "rotated-contacts",
+      "portrait-again",
+      "hotel-dates",
+      "menu",
+      "cart",
+      "arrival",
+      "qr",
+      "chat"
+    ],
+    "errors": []
+  },
+  {
+    "viewport": [
+      412,
+      915
+    ],
+    "safe": [
+      32,
+      56,
+      24,
+      0
+    ],
+    "gutter": 14.41,
+    "leaf_cut_edge": 422.0,
+    "states": [
+      "home-light",
+      "home-dark",
+      "wave",
+      "time",
+      "calendar",
+      "contacts",
+      "hotel-dates",
+      "menu",
+      "cart",
+      "arrival",
+      "qr",
+      "chat"
+    ],
+    "errors": []
+  },
+  {
+    "viewport": [
+      430,
+      932
+    ],
+    "safe": [
+      59,
+      56,
+      34,
+      0
+    ],
+    "gutter": 15.05,
+    "leaf_cut_edge": 440.0,
+    "states": [
+      "home-light",
+      "home-dark",
+      "wave",
+      "time",
+      "calendar",
+      "contacts",
+      "keyboard",
+      "hotel-dates",
+      "menu",
+      "cart",
+      "arrival",
+      "qr",
+      "chat"
+    ],
+    "errors": []
+  },
+  {
+    "viewport": [
+      540,
+      720
+    ],
+    "safe": [
+      24,
+      56,
+      24,
+      0
+    ],
+    "gutter": 18,
+    "leaf_cut_edge": 550.0,
+    "states": [
+      "home-light",
+      "home-dark",
+      "wave",
+      "time",
+      "calendar",
+      "contacts",
+      "hotel-dates",
+      "menu",
+      "cart",
+      "arrival",
+      "qr",
+      "chat"
+    ],
+    "errors": []
+  },
+  {
+    "viewport": [
+      568,
+      320
+    ],
+    "safe": [
+      0,
+      48,
+      0,
+      0
+    ],
+    "gutter": 18,
+    "leaf_cut_edge": 578.0,
+    "states": [
+      "home-light",
+      "home-dark",
+      "wave",
+      "time",
+      "calendar",
+      "contacts",
+      "hotel-dates",
+      "menu",
+      "cart",
+      "arrival",
+      "qr",
+      "chat"
+    ],
+    "errors": []
+  },
+  {
+    "viewport": [
+      844,
+      390
+    ],
+    "safe": [
+      0,
+      48,
+      21,
+      47
+    ],
+    "gutter": 18,
+    "leaf_cut_edge": 854,
+    "states": [
+      "home-light",
+      "home-dark",
+      "wave",
+      "time",
+      "calendar",
+      "contacts",
+      "hotel-dates",
+      "menu",
+      "cart",
+      "arrival",
+      "qr",
+      "chat"
+    ],
+    "errors": []
+  },
+  {
+    "viewport": [
+      768,
+      1024
+    ],
+    "safe": [
+      24,
+      56,
+      20,
+      0
+    ],
+    "gutter": 18,
+    "leaf_cut_edge": 778.0,
+    "states": [
+      "home-light",
+      "home-dark",
+      "wave",
+      "time",
+      "calendar",
+      "contacts",
+      "hotel-dates",
+      "menu",
+      "cart",
+      "arrival",
+      "qr",
+      "chat"
+    ],
+    "errors": []
+  },
+  {
+    "viewport": [
+      820,
+      1180
+    ],
+    "safe": [
+      24,
+      56,
+      20,
+      0
+    ],
+    "gutter": 18,
+    "leaf_cut_edge": 830.0,
+    "states": [
+      "home-light",
+      "home-dark",
+      "wave",
+      "time",
+      "calendar",
+      "contacts",
+      "hotel-dates",
+      "menu",
+      "cart",
+      "arrival",
+      "qr",
+      "chat"
+    ],
+    "errors": []
+  },
+  {
+    "viewport": [
+      1024,
+      768
+    ],
+    "safe": [
+      24,
+      56,
+      20,
+      0
+    ],
+    "gutter": 50,
+    "leaf_cut_edge": 1034.0,
+    "states": [
+      "home-light",
+      "home-dark",
+      "wave",
+      "time",
+      "calendar",
+      "contacts",
+      "hotel-dates",
+      "menu",
+      "cart",
+      "arrival",
+      "qr",
+      "chat"
+    ],
+    "errors": []
+  }
+]

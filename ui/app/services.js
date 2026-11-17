@@ -6,7 +6,7 @@ function serviceLink(label,href,className='service-link') {
   return a;
 }
 function serviceImage(url,alt,thumbnail=false) {
-  const image=node('img');image.src=url;image.alt=alt;image.loading='lazy';image.decoding='async';
+  const image=node('img');image.classList.add('is-image-loading');image.addEventListener('load',()=>image.classList.remove('is-image-loading'));image.src=url;image.alt=alt;image.loading='lazy';image.decoding='async';
   const variant=size=>url.replace(/\.(jpe?g|png)$/,`-${size}x${size}.$1`);
   // Full JPEGs are already small and retain the original composition. Use the
   // site's reduced PNGs for rooms, whose originals exceed 2 MB each.
@@ -14,15 +14,15 @@ function serviceImage(url,alt,thumbnail=false) {
     image.srcset=`${variant(400)} 400w, ${variant(800)} 800w`;
     image.sizes=thumbnail?'84px':'(max-width: 640px) calc(100vw - 52px), 588px';
   }
-  image.addEventListener('error',()=>{image.hidden=true;image.parentElement.classList.add('image-missing');});
+  image.addEventListener('error',()=>{if(image.hasAttribute('srcset')){image.removeAttribute('srcset');image.removeAttribute('sizes');image.src=url;return;}image.classList.remove('is-image-loading');image.hidden=true;image.parentElement?.classList.add('image-missing');});
   return image;
 }
 function renderServiceLinks() {
   const root=$('home-services');root.replaceChildren();
-  for(const service of catalog.services?.items||[]) {
+  for(const service of [...(catalog.services?.items||[])].sort((a,b)=>['wave','wake','hotel','restaurant'].indexOf(a.id)-['wave','wake','hotel','restaurant'].indexOf(b.id))) {
     const b=node('button','service-card');b.type='button';b.dataset.service=service.id;
     const image=node('span','service-thumbnail');image.append(serviceImage(service.photos[0],'',true));
-    const copy=node('span','service-card-copy');copy.append(node('strong','',service.title),node('span','',service.subtitle));
+    const copy=node('span','service-card-copy');copy.append(node('strong','',service.title),node('span','',({hotel:'Номера с завтраком',restaurant:'Меню и предзаказ'})[service.id]||service.subtitle));
     b.append(image,copy);b.addEventListener('click',()=>openService(service.id,'home'));root.append(b);
   }
 }
@@ -37,6 +37,7 @@ function renderHomeLocation(){
 function closeService(){setView(serviceOrigin);window.scrollTo(0,serviceScroll);}
 function openService(id,origin=serviceOrigin){
   const service=catalog.services?.items.find(s=>s.id===id);if(!service)return;
+  if(id!=='restaurant'&&catalog.booking_features?.ready){openConcept('landing',{service:id},true);return;}
   currentServiceId=id;if(appView!=='service'){serviceScroll=window.scrollY;serviceOrigin=origin;}
   const root=$('service-view');root.replaceChildren();
   const top=node('div','service-topline'),back=button('','back-link',closeService);back.append(icon('arrow-left'),node('span','','Главная'));back.setAttribute('aria-label','На главную');
@@ -47,9 +48,9 @@ function openService(id,origin=serviceOrigin){
   if(service.notice&&id!=='restaurant')root.append(node('p','service-note',service.notice));
   if(id==='restaurant'){
     const actions=node('div','restaurant-actions');actions.setAttribute('role','group');actions.setAttribute('aria-label','Действия ресторана');
-    const menu=button('','restaurant-menu-link',goMenu),copy=node('span','restaurant-menu-copy');menu.id='restaurant-menu';copy.append(node('strong','','Меню ресторана'),node('span','','Еда, напитки и бар'));menu.append(icon('fork-knife'),copy,icon('arrow-right'));actions.append(menu);
+    const menu=button('','restaurant-menu-link',goMenu),copy=node('span','restaurant-menu-copy');menu.id='restaurant-menu';copy.append(node('strong','','Меню и предзаказ'),node('span','','Полная оплата · QR при посадке'));menu.append(icon('fork-knife'),copy,icon('arrow-right'));actions.append(menu);
     const requests=node('div','restaurant-requests');
-    for(const [label,name,callback,buttonId] of [['Забронировать стол','calendar-blank','booking:start','restaurant-booking'],['Провести банкет','users-three','banquet:contact','restaurant-banquet']]){const b=button('','restaurant-request',()=>runAction(callback,'guest'));b.id=buttonId;b.append(icon(name),node('span','',label));requests.append(b);}
+    for(const [label,name,screen,buttonId] of [['Провести банкет','users-three','banquet','restaurant-banquet']]){const b=button('','restaurant-request',()=>openNative(screen,{},true));b.id=buttonId;b.append(icon(name),node('span','',label));requests.append(b);}
     actions.append(requests);root.append(actions);
   }
   const gallery=node('div','service-gallery'),track=node('div','service-photos');track.setAttribute('aria-label',`Фотографии: ${service.title}`);

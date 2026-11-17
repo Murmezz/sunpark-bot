@@ -11,8 +11,11 @@ from urllib.parse import parse_qsl, urlparse
 from menu_preview import preview_catalog, read_preview_body
 from mini_app_auth import authenticate_app
 from mini_app_assets import APP_HTML, APP_CSS, APP_JS, APP_LOGO, APP_ICONS
+from mini_app_claude import CLAUDE_HTML, CLAUDE_STYLE
 from app_workflows import AppWorkflowsMixin, WorkflowError
 from services import service_catalog
+from app_bookings import BookingsMixin
+from mini_app_legacy_assets import APP_HTML as LEGACY_HTML, APP_CSS as LEGACY_CSS, APP_JS as LEGACY_JS, APP_LOGO as LEGACY_LOGO, APP_ICONS as LEGACY_ICONS
 
 MINIAPP_ADMIN_ONLY = True
 MAX_UPLOAD = 5 * 1024 * 1024
@@ -91,7 +94,7 @@ class AppBridge:
         return None
 
 
-class MiniAppMixin(AppWorkflowsMixin):
+class MiniAppMixin(AppWorkflowsMixin, BookingsMixin):
     async def sync_app_name(self):
         """Apply the requested Telegram display name once, without sending messages."""
         saved = await self.db_first("SELECT value FROM config WHERE key='telegram_app_name_v1'")
@@ -302,6 +305,10 @@ class MiniAppMixin(AppWorkflowsMixin):
     async def app_dispatch(self, user, payload, menu, sections, info, cfg):
         bridge = AppBridge(self, user)
         uid, operation, scope = bridge.uid, payload.get("operation"), payload.get("scope", "guest")
+        if operation == 'booking_read':
+            return await self.booking_read(user, payload, menu, sections, cfg)
+        if operation == 'booking_write':
+            return await self.booking_write(user, payload, menu, sections, cfg)
         if scope not in ("guest", "staff"):
             raise AppError("Неизвестный режим.")
         if operation == "screen":
@@ -316,6 +323,14 @@ class MiniAppMixin(AppWorkflowsMixin):
             manager = await self.is_manager(uid, cfg)
             data.update({"user": {key: user.get(key, "") for key in ("id", "first_name", "last_name", "username")}, "info": info, "admin": manager, "events_visible": self.events_visible(manager)})
             data["services"] = service_catalog()
+            data['booking_features'] = await self.booking_capabilities()
+            data['booking_features']['role'] = await self.booking_role(uid, cfg) if data['booking_features']['ready'] else ('manager' if manager else 'guest')
+            if data['booking_features']['ready']:
+                stopped = await self.db_all('SELECT item_id FROM miniapp_v2_menu_status WHERE available=0')
+                stopped_ids = {str(row.item_id) for row in stopped.results}
+                for category in data['categories']:
+                    for item in category['items']:
+                        item['available'] = item['id'] not in stopped_ids
             data["services"]["map_url"] = cfg.get("map_url") or data["services"]["map_url"]
             return data
         if operation == "tickets":
@@ -361,7 +376,7 @@ class MiniAppMixin(AppWorkflowsMixin):
         from workers import Response
         parsed = urlparse(str(request.url))
         path = parsed.path.rstrip("/")
-        if path != "/app" and not path.startswith(("/app/", "/api/app")):
+        if path not in ("/app", "/app-claude") and not path.startswith(("/app/", "/app-claude/", "/api/app")):
             return None
         headers = {"cache-control": "no-store", "x-content-type-options": "nosniff", "referrer-policy": "no-referrer"}
         def respond(data, status=200):
@@ -370,6 +385,17 @@ class MiniAppMixin(AppWorkflowsMixin):
             if str(request.method) != "GET":
                 return respond({"error": "Method not allowed"}, 405)
             assets = {"/app": (APP_HTML, "text/html; charset=utf-8"), "/app/style.css": (APP_CSS, "text/css; charset=utf-8"), "/app/app.js": (APP_JS, "application/javascript; charset=utf-8"), "/app/logo.svg": (APP_LOGO, "image/svg+xml; charset=utf-8")}
+            assets.update({"/app-claude": (CLAUDE_HTML, "text/html; charset=utf-8"), "/app-claude/style.css": (CLAUDE_STYLE, "text/css; charset=utf-8")})
+            assets.update({
+                '/app/legacy': (LEGACY_HTML.replace('/app/', '/app/legacy/'), 'text/html; charset=utf-8'),
+                '/app/legacy/style.css': (LEGACY_CSS, 'text/css; charset=utf-8'),
+                '/app/legacy/app.js': (LEGACY_JS.replace('/app/icons/', '/app/legacy/icons/'), 'application/javascript; charset=utf-8'),
+                '/app/legacy/logo.svg': (LEGACY_LOGO, 'image/svg+xml; charset=utf-8'),
+            })
+            if path.startswith('/app/legacy/icons/'):
+                name = path.rsplit('/', 1)[-1].removesuffix('.svg')
+                if name in LEGACY_ICONS:
+                    assets[path] = (LEGACY_ICONS[name], 'image/svg+xml; charset=utf-8')
             if path.startswith("/app/icons/"):
                 name = path.rsplit("/", 1)[-1].removesuffix(".svg")
                 if name in APP_ICONS:
@@ -403,7 +429,7 @@ class MiniAppMixin(AppWorkflowsMixin):
             if path == "/api/app/media":
                 return await self.app_media(uid, payload, headers)
             operation = payload.get("operation")
-            if operation in ("bootstrap", "tickets", "chat", "screen"):
+            if operation in ("bootstrap", "tickets", "chat", "screen", "booking_read"):
                 result = await self.app_dispatch(user, payload, menu, sections, info, cfg)
                 if operation == "bootstrap":
                     result["session"] = session
