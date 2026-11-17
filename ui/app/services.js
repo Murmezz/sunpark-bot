@@ -6,7 +6,7 @@ function serviceLink(label,href,className='service-link') {
   return a;
 }
 function serviceImage(url,alt,thumbnail=false) {
-  const image=node('img');image.src=url;image.alt=alt;image.loading='lazy';image.decoding='async';
+  const image=node('img');image.classList.add('is-image-loading');image.addEventListener('load',()=>image.classList.remove('is-image-loading'));image.src=url;image.alt=alt;image.loading='lazy';image.decoding='async';
   const variant=size=>url.replace(/\.(jpe?g|png)$/,`-${size}x${size}.$1`);
   // Full JPEGs are already small and retain the original composition. Use the
   // site's reduced PNGs for rooms, whose originals exceed 2 MB each.
@@ -14,7 +14,7 @@ function serviceImage(url,alt,thumbnail=false) {
     image.srcset=`${variant(400)} 400w, ${variant(800)} 800w`;
     image.sizes=thumbnail?'84px':'(max-width: 640px) calc(100vw - 52px), 588px';
   }
-  image.addEventListener('error',()=>{if(image.hasAttribute('srcset')){image.removeAttribute('srcset');image.removeAttribute('sizes');image.src=url;return;}image.hidden=true;image.parentElement?.classList.add('image-missing');});
+  image.addEventListener('error',()=>{if(image.hasAttribute('srcset')){image.removeAttribute('srcset');image.removeAttribute('sizes');image.src=url;return;}image.classList.remove('is-image-loading');image.hidden=true;image.parentElement?.classList.add('image-missing');});
   return image;
 }
 function renderServiceLinks() {

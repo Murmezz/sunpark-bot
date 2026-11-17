@@ -15,7 +15,7 @@ function message(root,text,kind='hint'){const p=node('p','native-'+kind,text);if
 function draftKey(kind){return `sunpark:request-draft:v2:${catalog?.user?.id}:${kind}`;}
 function saveNativeDraft(){if(!nativeState||!['booking','banquet'].includes(nativeState.screen))return;try{localStorage.setItem(draftKey(nativeState.screen),JSON.stringify(nativeState.values));}catch(_){}}
 function getNativeDraft(kind){try{const value=JSON.parse(localStorage.getItem(draftKey(kind))||'null');return value&&typeof value==='object'&&!Array.isArray(value)?value:{};}catch(_){return {};}}
-function nativeBack(){nativeSequence++;saveNativeDraft();if(nativeState&&['booking','banquet'].includes(nativeState.screen)&&nativeState.step>0){nativeState.step--;renderNative();return;}if(nativeStack.length){nativeState=nativeStack.pop();nativeOrigin=nativeState.origin||'home';setView('native');renderNative();}else{const current=nativeState?.screen;if(['event','event_edit','manual','register','event_guests'].includes(current)){openNative(current==='event'?'events':'event',{...nativeState.args},true);return;}if(nativeOrigin==='restaurant'){openService('restaurant','home');return;}if(nativeOrigin==='messages'){openInbox('guest');return;}setView(nativeOrigin==='management'?'more':'home');window.scrollTo(0,0);}}
+function nativeBack(){nativeSequence++;clearLoading($('native-content'));saveNativeDraft();if(nativeState&&['booking','banquet'].includes(nativeState.screen)&&nativeState.step>0){nativeState.step--;renderNative();return;}if(nativeStack.length){nativeState=nativeStack.pop();nativeOrigin=nativeState.origin||'home';setView('native');renderNative();}else{const current=nativeState?.screen;if(['event','event_edit','manual','register','event_guests'].includes(current)){openNative(current==='event'?'events':'event',{...nativeState.args},true);return;}if(nativeOrigin==='restaurant'){openService('restaurant','home');return;}if(nativeOrigin==='messages'){openInbox('guest');return;}setView(nativeOrigin==='management'?'more':'home');window.scrollTo(0,0);}}
 $('native-back').addEventListener('click',()=>appView==='more'?openInbox('guest'):nativeBack());
 function rememberNative(){if(nativeState){const saved=clone(nativeState);saved.origin=nativeState.origin||nativeOrigin;nativeStack.push(saved);}}
 async function openNative(screen,args={},root=false){
@@ -27,7 +27,7 @@ async function openNative(screen,args={},root=false){
   else if(appView!=='native')origin='home';
   saveNativeDraft();if(root===true)nativeStack=[];else if(root!=='replace'&&appView==='native'&&nativeState?.data)rememberNative();nativeOrigin=origin;
   const sequence=++nativeSequence;nativeState={screen,args,data:null,values:{},step:0,origin:nativeOrigin};setView('native');window.scrollTo(0,0);
-  $('native-content').replaceChildren(node('p','empty-state','Загружаем…'));$('native-content').setAttribute('aria-busy','true');
+  const finish=beginLoading($('native-content'),nativeLoadingLabels[screen]||'Открываем раздел');
   try{
     const data=await api('screen',{screen,...args});
     if(sequence!==nativeSequence||appView!=='native')return;
@@ -37,11 +37,11 @@ async function openNative(screen,args={},root=false){
     if(['booking','banquet'].includes(screen))nativeState.values={guests:'2',name:data.profile_name||'',...nativeState.values,...getNativeDraft(screen)};
     renderNative();
   }catch(error){if(sequence===nativeSequence&&appView==='native'){if(error.status===401)renderSessionRecovery($('native-content'),error);else{$('native-content').replaceChildren();heading($('native-content'),'Не удалось загрузить');message($('native-content'),error.message,'error');$('native-content').append(button('Попробовать ещё раз','primary-button',()=>openNative(screen,args,'replace')));}}}
-  finally{if(sequence===nativeSequence)$('native-content').removeAttribute('aria-busy');}
+  finally{finish();if(sequence===nativeSequence&&appView==='native')revealContent($('native-content'));}
 }
 function openLocalForm(kind,data={},args={}){if(appView==='native'&&nativeState)rememberNative();nativeOrigin='management';nativeState={origin:nativeOrigin,screen:'local_form',args:{scope:'staff',...args},kind,values:{...data},data:{today:new Date().toISOString().slice(0,10)}};setView('native');renderNative();}
 function renderNative(){
-  const root=$('native-content');root.replaceChildren();root.classList.remove('request-screen');$('native-content').removeAttribute('aria-busy');setView('native');window.scrollTo(0,0);
+  const root=$('native-content');root.replaceChildren();root.classList.remove('request-screen');$('native-content').removeAttribute('aria-busy');setView('native');revealContent(root);window.scrollTo(0,0);
   const s=nativeState;if(!s)return;
   if(['booking','banquet'].includes(s.screen))return renderRequest(root,s);
   if(s.screen==='dashboard')return renderDashboard(root,s);
@@ -79,7 +79,7 @@ function calendar(root,selected,today,onChange,options={}){
     wrap.append(grid);if(focusDate)wrap.querySelector(`[data-date="${focusDate}"]`)?.focus({preventScroll:true});
   }
   let monthSequence=0;
-  async function changeMonth(){if(!options.loadMonth){draw();return;}const sequence=++monthSequence;options.available=new Set();draw();try{const available=await options.loadMonth(dayISO(year,month,1).slice(0,7));if(sequence!==monthSequence)return;options.available=available;draw();}catch(error){toast(error.message);}}
+  async function changeMonth(){if(!options.loadMonth){draw();return;}const sequence=++monthSequence;options.available=new Set();draw();wrap.classList.add('calendar-loading');wrap.setAttribute('aria-busy','true');try{const available=await options.loadMonth(dayISO(year,month,1).slice(0,7));if(sequence!==monthSequence)return;options.available=available;draw();}catch(error){toast(error.message);}finally{if(sequence===monthSequence){wrap.classList.remove('calendar-loading');wrap.removeAttribute('aria-busy');}}}
   draw();return wrap;
 }
 function timeWheel(root,value,onChange){
@@ -190,10 +190,10 @@ function renderTypedForm(root,s){
   form.addEventListener('submit',async event=>{event.preventDefault();await submitNative(kind,s.values,{...s.args,...(s.data.event?{event:s.data.event.id,version:s.data.event.version}:{})},submit,result=>{if(result.ticket){openChat(result.ticket,kind==='inquiry'?'guest':'staff');return;}if(result.event){openNative(kind==='register'?'event':'event',{event:result.event,scope:kind==='register'?'guest':'staff'},true);return;}openNative('managers',{scope:'staff'},true);});});
 }
 async function submitNative(kind,values,args,submit,onSuccess){
-  if(busy)return;busy=true;submit.disabled=true;const label=submit.textContent;submit.textContent='Сохраняем…';
+  if(busy)return;busy=true;const restore=buttonLoading(submit,'Сохраняем…');
   try{const result=await api('submit_form',{kind,values,...args});if(result.notice&&!['booking','banquet'].includes(kind))toast(result.notice);onSuccess(result);}
   catch(error){if(['booking','banquet'].includes(nativeState?.screen)&&error.fields&&Object.keys(error.fields).length){nativeState.step=Object.keys(error.fields).some(k=>['date','time'].includes(k))?0:1;renderNative();}showFields(error.fields,error.message);}
-  finally{busy=false;submit.disabled=false;submit.textContent=label;}
+  finally{busy=false;restore();}
 }
 function renderDashboard(root,s){
   heading(root,'Рабочий стол','Заявки, мероприятия и команда');const stats=node('div','dashboard-stats');
@@ -259,7 +259,7 @@ function renderInfo(root,s){
   root.append(button('Написать менеджеру ресторана','primary-button',()=>openNative('inquiry',{})),button('Закрыть приложение','text-button',closeApp));
 }
 function guestTicketStatus(t){return ({waiting:t.request_type==='inquiry'?'Ожидаем ответа':'Ждём подтверждения',active:'Менеджер на связи',waiting_guest:'Менеджер ответил',closed:'Завершено'})[t.status]||statusLabel(t.status);}
-async function nativeCommand(args,onSuccess){if(busy)return;busy=true;try{const result=await api('command',args);toast(result.notice||'Готово');onSuccess(result);}catch(error){toast(error.message);}finally{busy=false;}}
+async function nativeCommand(args,onSuccess){if(busy)return;busy=true;const restore=buttonLoading(document.activeElement?.closest('button'),'Сохраняем…');try{const result=await api('command',args);toast(result.notice||'Готово');onSuccess(result);}catch(error){toast(error.message);}finally{busy=false;restore();}}
 async function nativeAction(callback,scope,keepChat){
   const roots={'manager:start':['inquiry',{}],'manager:write':['inquiry',{}],'booking:start':['booking',{}],'banquet:contact':['banquet',{}],'banquet:request':['banquet',{}],faq:['info',{}],info:['info',{}],'admin:panel':['dashboard',{scope:'staff'}],'admin:stats':['dashboard',{scope:'staff'}],'admin:waiting':['tickets',{scope:'staff',filter:'waiting'}],'admin:active':['tickets',{scope:'staff',filter:'mine'}],'admin:other_active':['tickets',{scope:'staff',filter:'others'}],'admin:closed':['tickets',{scope:'staff',filter:'closed'}],'admin:search':['tickets',{scope:'staff',filter:'search'}],'admin:managers':['managers',{scope:'staff'}]};
   if(roots[callback]){await openNative(...roots[callback],true);return true;}
@@ -268,13 +268,17 @@ async function nativeAction(callback,scope,keepChat){
   if((m=/^ev:(admin|view|settings|manual|join|guests):(\d+)/.exec(callback))){const screens={admin:'event',view:'event',settings:'event_edit',manual:'manual',join:'register',guests:'event_guests'};await openNative(screens[m[1]],{event:Number(m[2]),scope:['view','join'].includes(m[1])?'guest':'staff'});return true;}
   if((m=/^admin:note:(\d+)$/.exec(callback))){await openNative('note',{ticket:Number(m[1]),scope:'staff'});return true;}
   if((m=/^admin:(open|archive|other):(\d+)$/.exec(callback))){await openChat(Number(m[2]),'staff');return true;}
-  if((m=/^admin:templates:(\d+)$/.exec(callback))){const data=await api('screen',{screen:'templates',ticket:Number(m[1]),scope:'staff'});openPicker('Быстрый ответ',root=>{message(root,'Нажатие сразу отправит ответ гостю.');for(const item of data.choices)root.append(button(item.text,'template-choice',async()=>{closePicker();await runAction(item.callback,'staff',true);}));});return true;}
+  if((m=/^admin:templates:(\d+)$/.exec(callback))){
+    let holder,finish;openPicker('Быстрый ответ',root=>{holder=node('div');root.append(holder);finish=beginLoading(holder,'Загружаем быстрые ответы',true);});
+    try{const data=await api('screen',{screen:'templates',ticket:Number(m[1]),scope:'staff'});if(!finish()||!holder.isConnected||!$('picker-dialog').open)return true;holder.replaceChildren();message(holder,'Нажатие сразу отправит ответ гостю.');for(const item of data.choices)holder.append(button(item.text,'template-choice',async()=>{closePicker();await runAction(item.callback,'staff',true);}));revealContent(holder);}
+    catch(error){finish();if(holder.isConnected&&$('picker-dialog').open){holder.replaceChildren();message(holder,error.message,'error');holder.append(button('Попробовать снова','secondary-button',()=>nativeAction(callback,scope,keepChat)));}}return true;
+  }
   if(callback.startsWith('close:')){confirmAction('Завершить заявку?','Переписка сохранится в архиве. Отправлять новые сообщения в эту заявку будет нельзя.','Завершить заявку',async()=>{if(busy)return;busy=true;try{await api('action',{callback,scope:'staff'});await refreshChat();toast('Заявка завершена');}catch(error){toast(error.message);}finally{busy=false;}});return true;}
   return false;
 }
-function resetNativeChat(number,scope){const key=number+':'+scope;if(nativeChatKey!==key){if(nativeChatKey)chatDrafts.set(nativeChatKey,$('chat-input').value);$('chat-input').value=chatDrafts.get(key)||'';$('chat-input').readOnly=false;nativeChatKey=key;chatMessages=new Map();chatRenderKey='';chatTicketKey='';chatOlder=false;chatData=null;$('chat-log').replaceChildren(node('p','empty-state','Загружаем переписку…'));$('chat-title').textContent='Загружаем…';$('chat-subtitle').textContent='';$('chat-summary').replaceChildren();$('chat-actions').replaceChildren();$('chat-form').hidden=true;if(pendingUpload?.preview)URL.revokeObjectURL(pendingUpload.preview);pendingUpload=null;}}
+function resetNativeChat(number,scope){const key=number+':'+scope;if(nativeChatKey!==key){if(nativeChatKey)chatDrafts.set(nativeChatKey,$('chat-input').value);$('chat-input').value=chatDrafts.get(key)||'';$('chat-input').readOnly=false;nativeChatKey=key;chatMessages=new Map();chatRenderKey='';chatTicketKey='';chatOlder=false;chatData=null;beginLoading($('chat-log'),'Загружаем переписку',true);$('chat-title').textContent='Сообщения';$('chat-subtitle').textContent='';$('chat-summary').replaceChildren();$('chat-actions').replaceChildren();$('chat-form').hidden=true;if(pendingUpload?.preview)URL.revokeObjectURL(pendingUpload.preview);pendingUpload=null;}}
 async function refreshNativeChat(before=null){
-  if(!chatNumber)return;const number=chatNumber,scope=chatScope,key=number+':'+scope;if(chatRequest?.key===key)return;const request={key};chatRequest=request;try{
+  if(!chatNumber)return;const number=chatNumber,scope=chatScope,key=number+':'+scope;if(chatRequest?.key===key)return;const request={key};chatRequest=request;if(!chatData&&!loadingJobs.has($('chat-log')))beginLoading($('chat-log'),'Загружаем переписку',true);try{
     const data=await api('chat',{ticket:number,scope,...(before?{before}:{})});if(appView!=='chat'||nativeChatKey!==key)return;chatData=data;
     const ticket=data.ticket;const ticketKey=JSON.stringify(ticket);if(ticketKey!==chatTicketKey){chatTicketKey=ticketKey;$('chat-title').textContent=scope==='staff'?ticket.guest_name:(ticket.manager_name||'Менеджер SUNPARK');$('chat-subtitle').textContent=(ticket.request_type==='booking'?'Бронирование':ticket.request_type==='banquet'?'Банкет':'Обращение')+' №'+ticket.number;
     const summary=$('chat-summary');summary.replaceChildren();const date=node('span','summary-date');date.append(icon('calendar-blank'),node('span','',[ticket.details.date?requestDate(ticket.details.date):'',ticket.details.time].filter(Boolean).join(' · ')||'Данные заявки'));
@@ -288,8 +292,8 @@ async function refreshNativeChat(before=null){
     $('chat-form').hidden=!ticket.can_reply;$('chat-readonly').hidden=ticket.can_reply;$('chat-readonly').textContent=ticket.status==='closed'?'Заявка завершена. Переписка сохранена.':'Чтобы ответить, возьмите заявку в работу.';}
     const previousFirst=chatMessages.size?Math.min(...chatMessages.keys()):null;for(const item of data.messages)chatMessages.set(item.id,item);if(before||previousFirst===null)chatOlder=!!data.has_more;
     const ordered=[...chatMessages.values()].sort((a,b)=>a.id-b.id),renderKey=key+JSON.stringify(ordered);if(renderKey!==chatRenderKey){
-      const log=$('chat-log'),atBottom=log.scrollHeight-log.scrollTop-log.clientHeight<60,oldTop=log.scrollTop,oldHeight=log.scrollHeight,initial=!chatRenderKey;chatRenderKey=renderKey;log.replaceChildren();
-      if(chatOlder){const earlier=button('Ранние сообщения','older-messages',async()=>{earlier.disabled=true;await refreshNativeChat(Math.min(...chatMessages.keys()));});log.append(earlier);}
+      const log=$('chat-log'),atBottom=log.scrollHeight-log.scrollTop-log.clientHeight<60,oldTop=log.scrollTop,oldHeight=log.scrollHeight,initial=!chatRenderKey;chatRenderKey=renderKey;clearLoading(log);log.replaceChildren();if(initial)revealContent(log);
+      if(chatOlder){const earlier=button('Ранние сообщения','older-messages',async()=>{const restore=buttonLoading(earlier,'Загружаем…');try{await refreshNativeChat(Math.min(...chatMessages.keys()));}finally{restore();}});log.append(earlier);}
       if(!ordered.length)log.append(node('p','empty-state','Здесь начнётся переписка с менеджером.'));
       let day='';for(const item of ordered){const stamp=parseStamp(item.created_at),next=Number.isNaN(stamp.getTime())?'':stamp.toLocaleDateString('ru-RU',{day:'numeric',month:'long',...(stamp.getFullYear()!==new Date().getFullYear()?{year:'numeric'}:{})});if(next&&next!==day){log.append(node('p','chat-date',next));day=next;}
         const mine=scope==='staff'?item.sender_role==='manager':item.sender_role==='guest';const bubble=node('article','chat-bubble'+(mine?' mine':''));bubble.dataset.messageId=item.id;
@@ -300,7 +304,7 @@ async function refreshNativeChat(before=null){
       if(before)log.scrollTop=oldTop+(log.scrollHeight-oldHeight);else if(atBottom||initial){log.scrollTop=log.scrollHeight;$('chat-new').hidden=true;}else{log.scrollTop=oldTop;$('chat-new').hidden=false;}
     }
     renderAttachment();
-  }catch(error){if(appView==='chat'&&nativeChatKey===key)toast(error.message);}finally{if(chatRequest===request)chatRequest=null;}
+  }catch(error){if(appView==='chat'&&nativeChatKey===key){if(!chatData){const log=$('chat-log');clearLoading(log);if(error.status===401)renderSessionRecovery(log,error);else{log.replaceChildren();message(log,error.message,'error');log.append(button('Попробовать снова','secondary-button',()=>refreshNativeChat()));}}else toast(error.message);}}finally{if(appView==='chat'&&nativeChatKey===key)clearLoading($('chat-log'));if(chatRequest===request)chatRequest=null;}
 }
 $('chat-new').addEventListener('click',()=>{$('chat-log').scrollTop=$('chat-log').scrollHeight;$('chat-new').hidden=true;});
 $('chat-log').addEventListener('scroll',()=>{const log=$('chat-log');if(log.scrollHeight-log.scrollTop-log.clientHeight<60)$('chat-new').hidden=true;},{passive:true});

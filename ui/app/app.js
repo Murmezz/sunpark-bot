@@ -10,6 +10,7 @@
   let cartOpen = false, cartScroll = 0, currentDish = null, storageKey = null, toastTimer, menuScroll = null;
   let appView='home', cartOrigin='menu', flowScope='guest', flowInput=null, inboxScope='guest', chatNumber=0, chatScope='guest', pendingUpload=null, busy=false, chatData=null;
   const cart = new Map(), products = new Map(), mediaCache = new Map();
+  // __LOADING__
   // __WORKFLOWS__
   // __SERVICES__
   // __CONCEPT__
@@ -215,12 +216,12 @@
     const group=catalog.groups[groupIndex], keys=group?.keys||[];
     if(!keys.includes(categoryKey))categoryKey=keys[0]||'';
     catalog.groups.forEach((group,i)=>{
-      const b=button(groupName(group.title),'',()=>{groupIndex=i;categoryKey='';query='';$('search').value='';renderHub();window.scrollTo(0,0);});
+      const b=button(groupName(group.title),'',()=>{groupIndex=i;categoryKey='';query='';$('search').value='';renderHub();revealContent($('items'));window.scrollTo(0,0);});
       b.setAttribute('aria-pressed',String(groupIndex===i));$('groups').append(b);
     });
     $('categories').replaceChildren();$('categories').hidden=!!query;
     for(const key of keys){const cat=catalog.categories.find(c=>c.key===key);if(!cat)continue;
-      const b=button(cat.title,'category-chip',()=>{categoryKey=key;query='';$('search').value='';renderHub();$('catalog-view').scrollIntoView({block:'start'});});
+      const b=button(cat.title,'category-chip',()=>{categoryKey=key;query='';$('search').value='';renderHub();revealContent($('items'));$('catalog-view').scrollIntoView({block:'start'});});
       b.dataset.category=key;b.setAttribute('aria-pressed',String(categoryKey===key));$('categories').append(b);
     }
     renderItems();
@@ -287,7 +288,7 @@
     appSession='';authExpired=true;try{sessionStorage.removeItem('sunpark:session:v1');}catch(_){}
     const error=new Error(message||'Закройте приложение и откройте Sunpark заново в боте.');error.status=401;return error;
   }
-  function renderSessionRecovery(root,error){root.replaceChildren(node('h1','native-title','Сеанс завершён'),node('p','native-hint',error.message),button('Закрыть приложение','primary-button',closeApp));}
+  function renderSessionRecovery(root,error){clearLoading(root);root.replaceChildren(node('h1','native-title','Сеанс завершён'),node('p','native-hint',error.message),button('Закрыть приложение','primary-button',closeApp));}
   async function api(operation,args={}) {
     if(authExpired&&operation!=='bootstrap')throw expiredSession();
     const payload={...args,operation,init_data:tg?.initData||''};
@@ -305,6 +306,12 @@
     return data;
   }
   function setView(view) {
+    const previous=appView;
+    if(previous!==view){
+      if(previous==='concept')clearLoading($('concept-content'));
+      if(previous==='native')clearLoading($('native-content'));
+      if(previous==='chat')clearLoading($('chat-log'));
+    }
     if(view!=='native')nativeSequence++;
     if(view!==appView){clearTimeout(toastTimer);$('cart-toast').hidden=true;}
     if(dialog.open)closeDish();
@@ -322,6 +329,7 @@
       if(active)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');
     }
     renderCart();updateBackButton();resize();
+    if(view!==previous&&!['native','concept','chat'].includes(view))revealContent($(view+'-view'));
   }
   function goBack() {
     if($('picker-dialog').open)closePicker();
@@ -385,14 +393,14 @@
     try{if(await nativeAction(callback,scope,keepChat))return;}catch(error){toast(error.message);return;}
     if(callback==='back'||callback==='admin:guest'){setView('home');return;}
     if(callback==='home:menu'){goMenu();return;}
-    busy=true;document.body.classList.add('busy');
+    busy=true;document.body.classList.add('busy');const restore=buttonLoading(document.activeElement?.closest('button'),'Загружаем…');
     try {
       const data=await api('action',{callback,scope});
       for(const message of data.toasts||[])toast(cleanLabel(message.text));
       if(keepChat){await refreshChat();return;}
       if(data.input?.kind==='chat'){await openChat(data.input.ticket,'staff');return;}
       flowScope=scope;renderFlow(data);
-    } catch(error){toast(error.message);}finally{busy=false;document.body.classList.remove('busy');}
+    } catch(error){toast(error.message);}finally{busy=false;restore();document.body.classList.remove('busy');}
   }
   function renderFlow(data) {
     flowInput=data.input||null;
@@ -438,12 +446,12 @@
   }
   async function sendFlowText(text) {
     if(busy)return;
-    busy=true;$('flow-submit').disabled=true;
+    busy=true;const restore=buttonLoading($('flow-submit'),'Отправляем…');
     try {
       const data=await api('message',{text,scope:flowScope});
       for(const message of data.toasts||[])toast(cleanLabel(message.text));
       if(data.input?.kind==='chat')await openChat(data.input.ticket,'staff');else renderFlow(data);
-    }catch(error){toast(error.message);}finally{busy=false;$('flow-submit').disabled=false;}
+    }catch(error){toast(error.message);}finally{busy=false;restore();}
   }
   $('flow-form').addEventListener('submit',e=>{
     e.preventDefault();let value=$('flow-textarea').hidden?$('flow-input').value:$('flow-textarea').value;
@@ -539,7 +547,16 @@
     const food=catalog.groups.findIndex(g=>groupName(g.title)==='Еда');
     if(food>=0)groupIndex=food;
     catalog.categories.forEach(category=>category.items.forEach(item=>products.set(item.id,{item,category})));
-    restoreCart();renderHub();renderHome();renderMore();$('app-shell').hidden=false;$('app-nav').hidden=false;$('status').textContent='';setView('home');
+    restoreCart();renderHub();renderHome();renderMore();$('app-shell').hidden=false;$('app-nav').hidden=false;setView('home');revealContent($('home-view'));finishBoot();
   }
-  load().catch(error=>{$('app-shell').hidden=true;$('app-nav').hidden=true;$('cart-launcher').hidden=true;if(error.status===401)renderSessionRecovery($('status'),error);else $('status').textContent=error.message;});
+  async function startApp(){
+    showBoot();
+    try{await load();}
+    catch(error){
+      $('app-shell').hidden=true;$('app-nav').hidden=true;$('cart-launcher').hidden=true;clearLoading($('status'));
+      if(error.status===401)renderSessionRecovery($('status'),error);
+      else{$('status').replaceChildren(node('h1','native-title','Не удалось открыть Sunpark'),node('p','native-hint',error.message),button('Попробовать снова','primary-button',startApp));}
+    }
+  }
+  startApp();
 })();

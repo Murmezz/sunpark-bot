@@ -1,0 +1,58 @@
+/* SunPark motion uses the existing wordmark, palette and Phosphor wave icon. */
+.app-status[data-loading=boot] {
+  position: fixed; inset: 0; z-index: 30; max-width: none; margin: 0;
+  display: grid; place-items: center;
+  padding: calc(24px + var(--safe-top)) calc(24px + var(--safe-right)) calc(24px + var(--safe-bottom)) calc(24px + var(--safe-left));
+  background: var(--paper); pointer-events: none;
+}
+.boot-loader { text-align: center; max-width: 100%; padding-bottom: 32px; }
+.loading-brand {
+  display: block; color: var(--ink); font: 400 clamp(52px, 16vw, 68px)/1 'Cormorant Garamond',Georgia,serif;
+  letter-spacing: -1.4px; margin-bottom: 30px; animation: sunpark-brand-in .5s ease-out both;
+}
+.boot-loader .loading-wave { width: 48px; height: 48px; color: var(--green); mask-image: url(/app/icons/waves.svg); -webkit-mask-image: url(/app/icons/waves.svg); }
+.boot-loader .loading-label { margin-top: 22px; }
+.loading-wave { animation: sunpark-wave 1.6s ease-in-out infinite; transform-origin: center; }
+.loading-label { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
+.app-loading { width: 100%; min-width: 0; }
+.loading-section { min-height: 280px; padding: 20px 0 28px; animation: sunpark-loader-in .2s ease-out both; }
+.loading-heading { display: flex; align-items: center; gap: 13px; min-height: 52px; }
+.loading-heading .loading-wave { width: 32px; height: 32px; color: var(--green); flex: none; }
+.loading-skeleton { display: grid; gap: 16px; margin-top: 26px; }
+.loading-line {
+  display: block; width: 100%; height: 18px; border-radius: 8px; background: var(--soft);
+  animation: sunpark-soft-pulse 1.6s ease-in-out infinite;
+}
+.loading-line:nth-child(2) { width: 74%; animation-delay: .12s; }
+.loading-line:nth-child(3) { height: 106px; margin: 4px 0; animation-delay: .24s; }
+.loading-line:nth-child(4) { width: 56%; animation-delay: .36s; }
+.loading-compact { padding: 12px 0; }
+.loading-compact .loading-skeleton { margin-top: 16px; gap: 12px; }
+.loading-compact .loading-line { width: 78%; height: 42px; }
+.loading-compact .loading-line:nth-child(2) { width: 60%; justify-self: end; }
+.button-loading { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.button-loading:disabled { opacity: 1; cursor: progress; }
+.button-loading .loading-wave { width: 22px; height: 22px; flex: none; }
+.button-loading > span:last-child { min-width: 0; }
+.boot-complete { animation: sunpark-boot-out .2s ease-out both; }
+.calendar-loading .calendar-month { animation: sunpark-soft-pulse 1.6s ease-in-out infinite; }
+@keyframes sunpark-wave { 0%,100% { transform: translateY(2px); opacity: .5; } 50% { transform: translateY(-2px); opacity: 1; } }
+@keyframes sunpark-soft-pulse { 0%,100% { opacity: .4; } 50% { opacity: .9; } }
+@keyframes sunpark-brand-in { from { opacity: .65; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes sunpark-loader-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sunpark-boot-out { from { opacity: 1; } to { opacity: 0; } }
+.service-thumbnail { position: relative; }
+img.is-image-loading { opacity: 0; }
+.service-thumbnail:has(>img.is-image-loading)::after,
+.service-photo:has(>img.is-image-loading)::after,
+.concept-photo:has(>img.is-image-loading)::after {
+  content: ''; position: absolute; top: 50%; left: 50%; width: 36px; height: 36px;
+  transform: translate(-50%,-50%); background: var(--green); pointer-events: none;
+  mask: url(/app/icons/waves.svg) center/contain no-repeat;
+  -webkit-mask: url(/app/icons/waves.svg) center/contain no-repeat;
+  animation: sunpark-soft-pulse 1.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .loading-wave,.loading-line,.loading-brand,.loading-section,.boot-complete,.calendar-loading .calendar-month { animation: none; transform: none; opacity: 1; }
+  .service-thumbnail::after,.service-photo::after,.concept-photo::after { animation: none!important; }
+}
