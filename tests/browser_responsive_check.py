@@ -62,7 +62,7 @@ async def main():
                 metrics=await page.evaluate('''()=>{
                   const modal=document.querySelector('dialog[open]'),root=modal||document.querySelector('#app-shell');
                   const bad=[...root.querySelectorAll('*')].filter(e=>{
-                    if(e.closest('.category-rail,.service-photos')||e.closest('[hidden]'))return false;
+                    if(e.matches('.complex-leaf')||e.closest('.category-rail,.service-photos')||e.closest('[hidden]'))return false;
                     const r=e.getBoundingClientRect();return r.width&&r.height&&r.bottom>0&&r.top<innerHeight&&(r.left<-.5||r.right>innerWidth+.5);
                   }).slice(0,8).map(e=>({tag:e.tagName,id:e.id,cls:e.className,rect:e.getBoundingClientRect().toJSON()}));
                   return {width:innerWidth,scroll:document.documentElement.scrollWidth,bad};
@@ -83,7 +83,14 @@ async def main():
             leaf=await page.locator('.complex-leaf').bounding_box()
             subtitle=await page.locator('.complex-intro p').bounding_box()
             assert leaf['x']>=max(heading['x']+heading['width'],subtitle['x']+subtitle['width'])+7,(width,heading,subtitle,leaf)
-            assert leaf['x']+leaf['width']<=width-side and leaf['y']>=device+content,(width,leaf)
+            # The original asset's straight right edge must be offscreen, with
+            # its natural portrait ratio and no contained-image letterboxing.
+            assert width+9<=leaf['x']+leaf['width']<=width+11 and leaf['y']>=device+content,(width,leaf)
+            assert abs(leaf['width']/leaf['height']-2/3)<.01,(width,leaf)
+            decoration=await page.locator('.complex-decoration').bounding_box()
+            assert abs(decoration['x'])<1 and abs(decoration['width']-width)<1,(width,decoration)
+            assert await page.locator('.complex-decoration').evaluate("e=>getComputedStyle(e).overflowX==='hidden'"),(width,'decoration clipping')
+            assert await page.locator('body').evaluate("e=>getComputedStyle(e).overflowX==='hidden'"),(width,'viewport clipping')
             await page.evaluate('window.scrollTo(0,document.body.scrollHeight)')
             footer=await page.locator('#home-location').bounding_box();nav=await page.locator('#app-nav').bounding_box()
             assert footer['y']+footer['height']<=nav['y']+1,(width,height,footer,nav)
@@ -126,7 +133,7 @@ async def main():
             assert chat['y']>=device+content,(width,height,chat)
             assert await page.locator('#chat-send').evaluate("e=>e.getBoundingClientRect().bottom<=(document.getElementById('app-nav').getClientRects().length?document.getElementById('app-nav').getBoundingClientRect().top:innerHeight)+1")
             assert not errors,(width,height,errors)
-            results.append({'viewport':[width,height],'safe':[device,content,bottom,side],'gutter':round(gutter,2),'states':states,'errors':errors})
+            results.append({'viewport':[width,height],'safe':[device,content,bottom,side],'gutter':round(gutter,2),'leaf_cut_edge':round(leaf['x']+leaf['width'],2),'states':states,'errors':errors})
             print(json.dumps({'engine':engine,'viewport':[width,height],'states':len(states),'passed':True}),flush=True)
             await context.close()
         await browser.close()

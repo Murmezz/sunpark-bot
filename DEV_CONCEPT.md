@@ -76,3 +76,10 @@ A shared branded bootstrap screen, foreground request loaders, skeleton placehol
 Product Design guidance was used for the existing selected UI and state consistency. Its saved-context preflight found no saved profile. The plugin's shared browser surface is not exposed in this chat; verification uses this repository's existing Chromium/WebKit headless runners, not a claim of a separate Product Design prototype/browser handoff. Canva assets are unnecessary for this code-level motion change.
 
 Restored art and loading states were published on 2026-11-17 at 05:53 UTC from `e6b6722fc2313c38f787c8f6553b7dd9e8ed339e`, Worker version `193d81c4-f95e-4ea1-831a-c25742cfb34e`. Only `mini_app_assets.py` changed in the preserved 47-module runtime. Live current and legacy HTML/CSS/JS return 200 and match source; unauthenticated API returns 401. [CI passed](https://github.com/Murmezz/sunpark-bot/actions/runs/44027124986). No database or deployment binding was changed.
+
+
+## Decorative edge placement — 17 November 2026
+
+The original portrait decoration has an intrinsic straight crop at its right edge. Its natural proportions are retained, and that source edge now sits 10 CSS px beyond the viewport. A dedicated viewport-wide transparent wrapper clips only the decoration; it accounts for page gutters, Telegram side insets and a centered tablet shell. The app shell lets that wrapper reach the viewport. Header text keeps its own reserved column. This replaces the prior contained-picture placement requested to be corrected in the owner's phone review.
+
+Responsive checks now assert the source edge is offscreen, the clipping wrapper ends exactly at the viewport, the image keeps its 2:3 aspect ratio, text stays clear and the document has no horizontal overflow. Existing page, modal, keyboard and rotation checks remain. Original picture bytes, JavaScript/loading behavior and frozen legacy assets are unchanged. The prior version is preserved under `miniapp-before-leaf-edge-20261117`; deployment and browser results are recorded with this change.

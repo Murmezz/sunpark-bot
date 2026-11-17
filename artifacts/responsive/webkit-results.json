@@ -11,6 +11,7 @@
       0
     ],
     "gutter": 12,
+    "leaf_cut_edge": 290.0,
     "states": [
       "home-light",
       "home-dark",
@@ -39,6 +40,7 @@
       0
     ],
     "gutter": 12,
+    "leaf_cut_edge": 330.0,
     "states": [
       "home-light",
       "home-dark",
@@ -68,6 +70,7 @@
       0
     ],
     "gutter": 12.59,
+    "leaf_cut_edge": 370.0,
     "states": [
       "home-light",
       "home-dark",
@@ -96,6 +99,7 @@
       0
     ],
     "gutter": 13.12,
+    "leaf_cut_edge": 385.0,
     "states": [
       "home-light",
       "home-dark",
@@ -124,6 +128,7 @@
       0
     ],
     "gutter": 13.64,
+    "leaf_cut_edge": 400.0,
     "states": [
       "home-light",
       "home-dark",
@@ -152,6 +157,7 @@
       0
     ],
     "gutter": 13.75,
+    "leaf_cut_edge": 403.0,
     "states": [
       "home-light",
       "home-dark",
@@ -183,6 +189,7 @@
       0
     ],
     "gutter": 14.41,
+    "leaf_cut_edge": 422.0,
     "states": [
       "home-light",
       "home-dark",
@@ -211,6 +218,7 @@
       0
     ],
     "gutter": 15.05,
+    "leaf_cut_edge": 440.0,
     "states": [
       "home-light",
       "home-dark",
@@ -240,6 +248,7 @@
       0
     ],
     "gutter": 18,
+    "leaf_cut_edge": 550.0,
     "states": [
       "home-light",
       "home-dark",
@@ -268,6 +277,7 @@
       0
     ],
     "gutter": 18,
+    "leaf_cut_edge": 578.0,
     "states": [
       "home-light",
       "home-dark",
@@ -296,6 +306,7 @@
       47
     ],
     "gutter": 18,
+    "leaf_cut_edge": 854,
     "states": [
       "home-light",
       "home-dark",
@@ -324,6 +335,7 @@
       0
     ],
     "gutter": 18,
+    "leaf_cut_edge": 778.0,
     "states": [
       "home-light",
       "home-dark",
@@ -352,6 +364,7 @@
       0
     ],
     "gutter": 18,
+    "leaf_cut_edge": 830.0,
     "states": [
       "home-light",
       "home-dark",
@@ -380,6 +393,7 @@
       0
     ],
     "gutter": 50,
+    "leaf_cut_edge": 1033.98,
     "states": [
       "home-light",
       "home-dark",
