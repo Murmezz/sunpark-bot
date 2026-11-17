@@ -110,6 +110,7 @@ class PreviewTests(unittest.IsolatedAsyncioTestCase):
         text,kb=self.bot.menu_preview_chooser()
         self.assertEqual(kb['inline_keyboard'],[
             [{'text':'Sunpark','web_app':{'url':'https://sunparkbot.lovison1979.workers.dev/app'}}],
+            [{'text':'Клод тест','web_app':{'url':'https://sunparkbot.lovison1979.workers.dev/app-claude'}}],
             [{'text':'Sunpark · прежняя версия','web_app':{'url':'https://sunparkbot.lovison1979.workers.dev/app/legacy'}}],
             [{'text':'◀️ В админ-панель','callback_data':'admin:panel'}],
         ])
