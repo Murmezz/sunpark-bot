@@ -89,6 +89,7 @@ async def main():
             assert abs(leaf['width']/leaf['height']-2/3)<.01,(width,leaf)
             decoration=await page.locator('.complex-decoration').bounding_box()
             assert abs(decoration['x'])<1 and abs(decoration['width']-width)<1,(width,decoration)
+            assert leaf['y']>=decoration['y']-.5 and leaf['y']+leaf['height']<=decoration['y']+decoration['height']+.5,(width,leaf,decoration)
             assert await page.locator('.complex-decoration').evaluate("e=>getComputedStyle(e).overflowX==='hidden'"),(width,'decoration clipping')
             assert await page.locator('body').evaluate("e=>getComputedStyle(e).overflowX==='hidden'"),(width,'viewport clipping')
             await page.evaluate('window.scrollTo(0,document.body.scrollHeight)')

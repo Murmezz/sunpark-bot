@@ -41,7 +41,8 @@ body { min-height: var(--viewport-height); padding-bottom: calc(var(--nav-cleara
 .complex-decoration {
   /* The original portrait has a cut right edge. Keep that edge beyond the
      viewport, including gutters, safe insets and a centered tablet shell. */
-  position: absolute; inset-block: 0;
+  position: absolute; inset-block: -8px auto;
+  height: max(calc(100% + 8px), calc(var(--leaf-height) * 1.12));
   left: calc(-1 * (var(--page-gutter) + var(--safe-left) + max(0px, (100vw - var(--content-width)) / 2)));
   right: calc(-1 * (var(--page-gutter) + var(--safe-right) + max(0px, (100vw - var(--content-width)) / 2)));
   overflow: hidden; pointer-events: none;
@@ -49,7 +50,7 @@ body { min-height: var(--viewport-height); padding-bottom: calc(var(--nav-cleara
 .complex-leaf {
   position: absolute; inset: auto; top: 0; z-index: 0;
   right: -10px;
-  width: auto; height: var(--leaf-height); max-width: none; aspect-ratio: auto; object-fit: contain;
+  width: auto; height: calc(var(--leaf-height) * 1.12); max-width: none; aspect-ratio: auto; object-fit: contain;
 }
 .home-services h2 { font-size: clamp(21px, 6vw, 25px); line-height: 1.25; margin-bottom: 14px; }
 .direction-grid { gap: 10px; }
