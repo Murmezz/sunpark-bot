@@ -1,0 +1,25 @@
+{
+  "success": true,
+  "source_commit": "752cc9ee00451c0cb863b59532965f2c82869b61",
+  "changed_modules": [
+    "mini_app_assets.py"
+  ],
+  "version_id": "88d91e89-3385-4713-899c-30e42c61151c",
+  "deployment_id": "5b1dbc69-3ede-4a99-b8dd-c08bc3e9b95a",
+  "published_at": "2026-11-17T07:51:42.530647Z",
+  "leaf_scale": 1.12,
+  "previous_version_id": "b5a8807b-1ec1-4b61-b6c3-2acc07c3d7f3",
+  "verified_widths": [
+    280,
+    320,
+    393,
+    844,
+    1024
+  ],
+  "engines": [
+    "chromium",
+    "webkit"
+  ],
+  "static_source_checks_passed": true,
+  "ci": "https://github.com/Murmezz/sunpark-bot/actions/runs/44041883638"
+}
