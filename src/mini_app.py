@@ -11,6 +11,7 @@ from urllib.parse import parse_qsl, urlparse
 from menu_preview import preview_catalog, read_preview_body
 from mini_app_auth import authenticate_app
 from mini_app_assets import APP_HTML, APP_CSS, APP_JS, APP_LOGO, APP_ICONS
+from mini_app_claude import CLAUDE_HTML, CLAUDE_STYLE
 from app_workflows import AppWorkflowsMixin, WorkflowError
 from services import service_catalog
 
@@ -361,7 +362,7 @@ class MiniAppMixin(AppWorkflowsMixin):
         from workers import Response
         parsed = urlparse(str(request.url))
         path = parsed.path.rstrip("/")
-        if path != "/app" and not path.startswith(("/app/", "/api/app")):
+        if path not in ("/app", "/app-claude") and not path.startswith(("/app/", "/app-claude/", "/api/app")):
             return None
         headers = {"cache-control": "no-store", "x-content-type-options": "nosniff", "referrer-policy": "no-referrer"}
         def respond(data, status=200):
@@ -370,6 +371,7 @@ class MiniAppMixin(AppWorkflowsMixin):
             if str(request.method) != "GET":
                 return respond({"error": "Method not allowed"}, 405)
             assets = {"/app": (APP_HTML, "text/html; charset=utf-8"), "/app/style.css": (APP_CSS, "text/css; charset=utf-8"), "/app/app.js": (APP_JS, "application/javascript; charset=utf-8"), "/app/logo.svg": (APP_LOGO, "image/svg+xml; charset=utf-8")}
+            assets.update({"/app-claude": (CLAUDE_HTML, "text/html; charset=utf-8"), "/app-claude/style.css": (CLAUDE_STYLE, "text/css; charset=utf-8")})
             if path.startswith("/app/icons/"):
                 name = path.rsplit("/", 1)[-1].removesuffix(".svg")
                 if name in APP_ICONS:

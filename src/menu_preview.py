@@ -146,6 +146,7 @@ class MenuPreviewMixin:
     def menu_preview_chooser(self):
         rows = [
             [{"text": "Sunpark", "web_app": {"url": f"{PREVIEW_ORIGIN}/app"}}],
+            [{"text": "Клод тест", "web_app": {"url": f"{PREVIEW_ORIGIN}/app-claude"}}],
             [button("◀️ В админ-панель", "admin:panel")],
         ]
         text = "🛠 <b>Разработка</b>\n\nSUNPARK: меню и корзина, бронирование, мероприятия, сообщения и админ-панель. Тема меняется автоматически.\n\nДоступ только администраторам."
