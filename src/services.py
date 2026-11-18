@@ -1,4 +1,4 @@
-"""Public SUNPARK service content, checked against sunparkspb.ru on 2026-11-12.
+"""Public SunPark service content, checked against sunparkspb.ru on 2026-11-12.
 
 Amounts are in roubles, unlike the restaurant menu's kopeck amounts.
 Keep the seasonal price label: wakeprice is explicitly the summer 2026 tariff.
@@ -52,7 +52,7 @@ SERVICES = [
     },
     {
         "id": "restaurant", "title": "Ресторан", "subtitle": "Кухня и бар у озера",
-        "description": "SUNPARK Grill Bar — два светлых зала с панорамными окнами и открытые террасы у самой воды. За обедом или ужином можно наблюдать за катающимися вейкбордистами. Здесь проводят встречи с друзьями, дни рождения, корпоративы и свадьбы. Праздник можно совместить с катанием на вейке или искусственной волне.",
+        "description": "SunPark Grill Bar — два светлых зала с панорамными окнами и открытые террасы у самой воды. За обедом или ужином можно наблюдать за катающимися вейкбордистами. Здесь проводят встречи с друзьями, дни рождения, корпоративы и свадьбы. Праздник можно совместить с катанием на вейке или искусственной волне.",
         "price_label": "Меню ресторана", "teaser": "Кухня, бар и террасы у воды", "notice": "Наличие стола на выбранное время подтвердит менеджер.",
         "phone": "+79117144012", "phone_label": "+7 (911) 714-40-12",
         "hours": "Пн–пт 12:00–23:00, сб–вс и праздники 11:00–23:00. Кухня работает до 22:30.",
@@ -62,7 +62,7 @@ SERVICES = [
     },
     {
         "id": "hotel", "title": "Отель", "subtitle": "Проснуться у озера",
-        "description": "SUNPARK HOTEL — 19 номеров на берегу Среднего Суздальского озера, в 15 минутах пешком от метро Озерки. Завтрак включён в стоимость проживания.",
+        "description": "SunPark HOTEL — 19 номеров на берегу Среднего Суздальского озера, в 15 минутах пешком от метро Озерки. Завтрак включён в стоимость проживания.",
         "price_label": "За номер в сутки · с завтраком", "teaser": "С завтраком · от 5 000 ₽ / сутки",
         "notice": "Стоимость и наличие номера на нужные даты проверьте при бронировании.",
         "phone": "+79119262650", "phone_label": "+7 (911) 926-26-50",
@@ -92,7 +92,7 @@ def roubles(amount):
 
 def service_text(service, full=False):
     esc = html.escape
-    lines = [f"<b>{esc(service['title'])} · SUNPARK</b>", esc(service["description"]), ""]
+    lines = [f"<b>{esc(service['title'])} · SunPark</b>", esc(service["description"]), ""]
     groups = service["groups"] if full else service["groups"][:2 if service["id"] == "wake" else 1]
     if groups:
         lines.append(f"<b>{esc(service['price_label'])}</b>")
@@ -133,7 +133,7 @@ class ServicesMixin:
                 return True
             if not 0 <= index < len(service["photos"]):
                 return True
-            caption = f"{service['title']} · SUNPARK\nФото {index + 1} из {len(service['photos'])}\n{ADDRESS}"
+            caption = f"{service['title']} · SunPark\nФото {index + 1} из {len(service['photos'])}\n{ADDRESS}"
             controls = []
             if index:
                 controls.append({"text": "Предыдущее фото", "callback_data": f"service:{service['id']}:photo:{index-1}"})

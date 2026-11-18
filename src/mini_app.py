@@ -96,15 +96,15 @@ class MiniAppMixin(AppWorkflowsMixin):
     async def sync_app_name(self):
         """Apply the requested Telegram display name once, without sending messages."""
         saved = await self.db_first("SELECT value FROM config WHERE key='telegram_app_name_v1'")
-        if saved and str(saved.value) == "Sunpark":
+        if saved and str(saved.value) == "SunPark":
             return True
         try:
             for language in ("", "ru"):
-                await self.tg("setMyName", {"name": "Sunpark", "language_code": language})
+                await self.tg("setMyName", {"name": "SunPark", "language_code": language})
             me = await self.tg("getMe", {})
-            if not isinstance(me, dict) or me.get("first_name") != "Sunpark":
+            if not isinstance(me, dict) or me.get("first_name") != "SunPark":
                 return False
-            await self.db_run("INSERT INTO config(key,value) VALUES('telegram_app_name_v1','Sunpark') ON CONFLICT(key) DO UPDATE SET value=excluded.value")
+            await self.db_run("INSERT INTO config(key,value) VALUES('telegram_app_name_v1','SunPark') ON CONFLICT(key) DO UPDATE SET value=excluded.value")
             return True
         except Exception as error:
             print("SUNPARK APP NAME SYNC", type(error).__name__)
@@ -160,7 +160,7 @@ class MiniAppMixin(AppWorkflowsMixin):
             data["note"] = str(note.note) if note else ""
         data["can_reply"] = can_reply
         names = await self.manager_names(cfg if cfg is not None else (await self.config())[3])
-        data["manager_name"] = names.get(str(row.manager_id), "Менеджер SUNPARK")
+        data["manager_name"] = names.get(str(row.manager_id), "Менеджер SunPark")
         data["guest_name"] = str(data["details"].get("name") or " ".join(str(getattr(row, key, "") or "") for key in ("first_name", "last_name")).strip() or "Гость")
         args = [number]
         clause = ""
@@ -394,7 +394,7 @@ class MiniAppMixin(AppWorkflowsMixin):
             if user.get("id") != uid:
                 raise ValueError()
         except (ValueError, TypeError, KeyError, AttributeError):
-            return respond({"error": "Сеанс завершён. Закройте приложение и откройте Sunpark заново в боте.", "code": "AUTH_REQUIRED"}, 401)
+            return respond({"error": "Сеанс завершён. Закройте приложение и откройте SunPark заново в боте.", "code": "AUTH_REQUIRED"}, 401)
         try:
             menu, sections, info, cfg = await self.config()
             manager = await self.is_manager(uid, cfg)

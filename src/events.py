@@ -1,4 +1,4 @@
-"""Event registration for the existing SUNPARK Cloudflare Python Worker.
+"""Event registration for the existing SunPark Cloudflare Python Worker.
 
 Persistent FSM and registrations use the Worker's SQLite-compatible D1 binding.
 No Telegram token or administrator IDs are stored in this module.
@@ -233,7 +233,7 @@ class EventsMixin:
         if command == "/events":
             await self.event_clear_session(uid)
             await self.clear_action(uid)
-            await self.send(uid, "🎟 Мероприятия SUNPARK", self.persistent(mgr))
+            await self.send(uid, "🎟 Мероприятия SunPark", self.persistent(mgr))
             await self.event_list(uid)
             return True
         if not session:

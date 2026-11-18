@@ -17,7 +17,7 @@ class ClaudeVariantTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_variant_changes_only_stylesheet_and_page_title(self):
         expected = APP_HTML.replace('/app/style.css', '/app-claude/style.css').replace(
-            '<title>Sunpark</title>', '<title>Sunpark · Клод тест</title>')
+            '<title>SunPark</title>', '<title>SunPark · Клод тест</title>')
         response = await self.request('/app-claude')
         self.assertEqual((response.status, response.body), (200, expected))
         self.assertEqual(response.body, CLAUDE_HTML)

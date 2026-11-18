@@ -14,8 +14,8 @@ VARIANTS = {
     1: ("Навигатор", "Короткие списки и кнопки с ценами"),
     2: ("Меню на листе", "Таблица с кнопками прямо в тексте"),
     3: ("Раскрывающийся состав", "Название и цена; состав по нажатию"),
-    4: ("Фирменный SUNPARK", "Mini App · оформление печатного меню"),
-    5: ("Вечерний SUNPARK", "Mini App · тёмный стиль кухни и бара"),
+    4: ("Фирменный SunPark", "Mini App · оформление печатного меню"),
+    5: ("Вечерний SunPark", "Mini App · тёмный стиль кухни и бара"),
 }
 
 
@@ -145,15 +145,15 @@ async def read_preview_body(request, limit=20000):
 class MenuPreviewMixin:
     def menu_preview_chooser(self):
         rows = [
-            [{"text": "Sunpark", "web_app": {"url": f"{PREVIEW_ORIGIN}/app"}}],
+            [{"text": "SunPark", "web_app": {"url": f"{PREVIEW_ORIGIN}/app"}}],
             [{"text": "Клод тест", "web_app": {"url": f"{PREVIEW_ORIGIN}/app-claude"}}],
             [button("◀️ В админ-панель", "admin:panel")],
         ]
-        text = "🛠 <b>Разработка</b>\n\nSUNPARK: меню и корзина, бронирование, мероприятия, сообщения и админ-панель. Тема меняется автоматически.\n\nДоступ только администраторам."
+        text = "🛠 <b>Разработка</b>\n\nSunPark: меню и корзина, бронирование, мероприятия, сообщения и админ-панель. Тема меняется автоматически.\n\nДоступ только администраторам."
         return text, keyboard(rows)
 
     def menu_preview_root(self, variant, catalog):
-        rows, lines = [], [f"🌿 <b>SUNPARK · {esc(VARIANTS[variant][0])}</b>", "<i>Кухня, напитки и бар</i>\n"]
+        rows, lines = [], [f"🌿 <b>SunPark · {esc(VARIANTS[variant][0])}</b>", "<i>Кухня, напитки и бар</i>\n"]
         for group in catalog["groups"]:
             lines.append(f"<b>{esc(group['title'])}</b> · {len(group['keys'])} разделов")
             group_cats = [c for c in catalog["categories"] if c["key"] in group["keys"]]

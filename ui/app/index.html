@@ -1,11 +1,11 @@
 <!doctype html>
-<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light dark"><title>Sunpark</title><link rel="stylesheet" href="/app/style.css"><script src="https://telegram.org/js/telegram-web-app.js"></script><script src="/app/app.js" defer></script></head>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light dark"><title>SunPark</title><link rel="icon" href="/app/logo.svg" type="image/svg+xml"><link rel="stylesheet" href="/app/style.css"><script src="https://telegram.org/js/telegram-web-app.js"></script><script src="/app/app.js" defer></script></head>
 <body>
-<div id="status" class="status app-status" role="status" aria-live="polite">Загружаем SUNPARK…</div>
+<div id="status" class="status app-status" role="status" aria-live="polite"><span class="loading-brand" aria-label="SunPark"><span class="brand-wordmark" aria-hidden="true"></span></span>Загружаем SunPark…</div>
 <main id="app-shell" class="app-shell" hidden>
 <nav id="view-back" class="view-back" aria-label="Возврат" hidden><button id="native-back" class="back-link" type="button"><span class="icon" data-icon="arrow-left" aria-hidden="true"></span><span id="view-back-label">Назад</span></button></nav>
 <section id="home-view" class="home-view">
-<div class="complex-intro"><img class="complex-leaf" src="__HERO_DATA_URL__" alt="" aria-hidden="true"><h1>Sunpark</h1><p>Четыре направления отдыха<br>на Суздальском озере</p></div>
+<div class="complex-intro"><img class="complex-leaf" src="__HERO_DATA_URL__" alt="" aria-hidden="true"><h1 aria-label="SunPark"><span class="brand-wordmark" aria-hidden="true"></span></h1><p>Четыре направления отдыха<br>на Суздальском озере</p></div>
 <section class="home-services" aria-labelledby="home-services-title"><h2 id="home-services-title">Выберите направление</h2><div id="home-services" class="direction-grid"></div></section>
 <footer id="home-location" class="home-location"></footer>
 </section>
@@ -52,8 +52,8 @@
     <h3>Состав и подача</h3>
     <p id="dish-description" class="dish-description"></p>
     <p id="dish-footer" class="dish-footer"></p>
-    <div id="dish-quantity" class="dish-quantity" hidden><span>Количество</span><div class="quantity-controls"><button id="quantity-minus" type="button" aria-label="Уменьшить количество">−</button><output id="quantity-value" aria-live="polite">1</output><button id="quantity-plus" type="button" aria-label="Увеличить количество">+</button></div></div>
-    <button id="dish-add" class="primary-button" type="button">Добавить в список</button>
-    <button id="dish-remove" class="secondary-button" type="button" hidden>Удалить из списка</button>
+    <div id="dish-quantity" class="dish-quantity" hidden><span>В корзине</span><div class="quantity-controls"><button id="quantity-minus" type="button" aria-label="Уменьшить количество">−</button><output id="quantity-value" aria-live="polite">1</output><button id="quantity-plus" type="button" aria-label="Увеличить количество">+</button></div></div>
+    <button id="dish-add" class="primary-button" type="button">Добавить в корзину</button>
+    <button id="dish-remove" class="secondary-button" type="button" hidden>Удалить из корзины</button>
   </dialog>
 </body></html>

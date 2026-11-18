@@ -53,7 +53,7 @@ function openService(id,origin=serviceOrigin){
     actions.append(requests);root.append(actions);
   }
   const gallery=node('div','service-gallery'),track=node('div','service-photos');track.setAttribute('aria-label',`Фотографии: ${service.title}`);
-  service.photos.forEach((url,i)=>{const slide=node('div','service-photo');slide.append(serviceImage(url,`${id==='hotel'?'Интерьер отеля':'SUNPARK · '+service.title}, фото ${i+1}`),node('span','photo-fallback','Фото временно недоступно'));track.append(slide);});
+  service.photos.forEach((url,i)=>{const slide=node('div','service-photo');slide.append(serviceImage(url,`${id==='hotel'?'Интерьер отеля':'SunPark · '+service.title}, фото ${i+1}`),node('span','photo-fallback','Фото временно недоступно'));track.append(slide);});
   const controls=node('div','gallery-controls'),previous=button('','icon-button'),next=button('','icon-button'),counter=node('span','gallery-counter',`1 / ${service.photos.length}`);
   previous.setAttribute('aria-label','Предыдущее фото');next.setAttribute('aria-label','Следующее фото');previous.append(icon('arrow-left'));next.append(icon('arrow-right'));previous.disabled=true;counter.setAttribute('aria-live','polite');let photoIndex=0;
   function move(delta){track.scrollTo({left:(photoIndex+delta)*track.clientWidth,behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});}

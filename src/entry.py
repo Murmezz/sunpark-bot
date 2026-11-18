@@ -327,7 +327,7 @@ class Bot(MiniAppMixin, MenuPreviewMixin, EventsMixin, ServicesMixin, WorkerEntr
         if data == "noop":
             await self.answer(cb.get("id"))
             return
-        text = "🍽 <b>Основное меню SUNPARK</b>\n\nВыберите раздел:"
+        text = "🍽 <b>Основное меню SunPark</b>\n\nВыберите раздел:"
         markup = self.menu_only_main(menu, sections)
         if data.startswith("cat:"):
             key = data[4:]
@@ -349,7 +349,7 @@ class Bot(MiniAppMixin, MenuPreviewMixin, EventsMixin, ServicesMixin, WorkerEntr
         await self.answer(cb.get("id"))
 
     def home_text(self):
-        return "<b>Добро пожаловать в SUNPARK!</b>\n\nВейк, искусственная волна, ресторан и отель на берегу Суздальского озера.\n\nВыберите направление:"
+        return "<b>Добро пожаловать в SunPark!</b>\n\nВейк, искусственная волна, ресторан и отель на берегу Суздальского озера.\n\nВыберите направление:"
 
     def home_keyboard(self, manager):
         rows = [
@@ -479,7 +479,7 @@ class Bot(MiniAppMixin, MenuPreviewMixin, EventsMixin, ServicesMixin, WorkerEntr
             "SELECT SUM(status='active') a,SUM(status='waiting_guest') g,SUM(status='waiting') w,SUM(status='closed') c FROM tickets"
         )
         a, g, w, c = int(r.a or 0), int(r.g or 0), int(r.w or 0), int(r.c or 0)
-        return f"⚙️ <b>Админ-панель SUNPARK</b>\n\n🆕 Новых: <b>{w}</b>\n🟡 В работе: <b>{a}</b>\n⏳ Ждут гостя: <b>{g}</b>\n✅ Закрытых: <b>{c}</b>\n\nВыберите нужный раздел:"
+        return f"⚙️ <b>Админ-панель SunPark</b>\n\n🆕 Новых: <b>{w}</b>\n🟡 В работе: <b>{a}</b>\n⏳ Ждут гостя: <b>{g}</b>\n✅ Закрытых: <b>{c}</b>\n\nВыберите нужный раздел:"
 
     def admin_keyboard(self):
         return ikb([
@@ -1083,8 +1083,8 @@ class Bot(MiniAppMixin, MenuPreviewMixin, EventsMixin, ServicesMixin, WorkerEntr
             chat = msg.get("chat") or {}
             if chat.get("type") == "private" and chat.get("id"):
                 uid = int(chat["id"])
-                await self.send(uid, "🌿 <b>SUNPARK</b>", self.persistent(False))
-                await self.send(uid, "🍽 <b>Основное меню SUNPARK</b>\n\nВыберите раздел:", self.menu_only_main(menu, sections))
+                await self.send(uid, "🌿 <b>SunPark</b>", self.persistent(False))
+                await self.send(uid, "🍽 <b>Основное меню SunPark</b>\n\nВыберите раздел:", self.menu_only_main(menu, sections))
             return
         if await self.event_message(msg, cfg):
             return
@@ -1349,7 +1349,7 @@ class Bot(MiniAppMixin, MenuPreviewMixin, EventsMixin, ServicesMixin, WorkerEntr
                 print("SUNPARK GUEST DELIVERY ERROR:", repr(e))
         await self.db_run("UPDATE tickets SET status='waiting' WHERE number=?", own.number)
         if first_album_item:
-            confirmation = "📨 Фото добавлены к заявке и отправлены менеджерам одним альбомом. Ответ придёт в этот чат." if media_group_id else "📨 Сообщение добавлено к заявке и отправлено менеджерам SUNPARK. Ответ придёт в этот чат."
+            confirmation = "📨 Фото добавлены к заявке и отправлены менеджерам одним альбомом. Ответ придёт в этот чат." if media_group_id else "📨 Сообщение добавлено к заявке и отправлено менеджерам SunPark. Ответ придёт в этот чат."
             await self.send(uid, confirmation, await self.guest_persistent(uid))
 
     async def callback(self, cb, menu, sections, info, cfg):
@@ -1378,7 +1378,7 @@ class Bot(MiniAppMixin, MenuPreviewMixin, EventsMixin, ServicesMixin, WorkerEntr
         if data == "back":
             await self.edit(msg, self.home_text(), self.home_keyboard(mgr)); await self.answer(cb.get("id")); return
         if data == "home:menu":
-            await self.edit(msg, "🍽 <b>Основное меню SUNPARK</b>\n\nВыберите раздел:", self.main_keyboard(menu, sections)); await self.answer(cb.get("id")); return
+            await self.edit(msg, "🍽 <b>Основное меню SunPark</b>\n\nВыберите раздел:", self.main_keyboard(menu, sections)); await self.answer(cb.get("id")); return
         if data.startswith("cart:"):
             await self.menu_only_callback(cb, menu, sections)
             return
@@ -1389,7 +1389,7 @@ class Bot(MiniAppMixin, MenuPreviewMixin, EventsMixin, ServicesMixin, WorkerEntr
         if data in ("banquet:contact", "home:banquet", "banquet:list"):
             phone = cfg.get("phone") or getattr(self.env, "MANAGER_PHONE", None) or "+7 (911) 714-40-12"
             text = (
-                "🥂 <b>Хотите провести банкет в SUNPARK?</b>\n\n"
+                "🥂 <b>Хотите провести банкет в SunPark?</b>\n\n"
                 f"Позвоните по телефону: <b>{esc(phone)}</b>\n"
                 "Или оставьте заявку — менеджеры свяжутся с вами и обсудят детали."
             )
@@ -1472,7 +1472,7 @@ class Bot(MiniAppMixin, MenuPreviewMixin, EventsMixin, ServicesMixin, WorkerEntr
                         await self.send(uid, "Анкета уже отменена или отправлена. Откройте главное меню, чтобы начать новую заявку.", await self.guest_persistent(uid, mgr))
             await self.answer(cb.get("id")); return
         if data == "banquet:list":
-            await self.edit(msg, "🎉 <b>Банкетное меню SUNPARK</b>\n\nВыберите раздел. В карточке блюда указаны состав и цена.", self.banquet_keyboard(menu)); await self.answer(cb.get("id")); return
+            await self.edit(msg, "🎉 <b>Банкетное меню SunPark</b>\n\nВыберите раздел. В карточке блюда указаны состав и цена.", self.banquet_keyboard(menu)); await self.answer(cb.get("id")); return
         if data.startswith("banquet:section:"):
             await self.answer(cb.get("id"), "Банкетное меню временно скрыто. Чтобы обсудить банкет, нажмите кнопку на главной.", True); return
         if data.startswith("item:"):
@@ -1556,7 +1556,7 @@ class Bot(MiniAppMixin, MenuPreviewMixin, EventsMixin, ServicesMixin, WorkerEntr
             except Exception:
                 phone = None
             if phone and row:
-                guest_name = " ".join(x for x in [row.first_name,row.last_name] if x) or "Гость SUNPARK"
+                guest_name = " ".join(x for x in [row.first_name,row.last_name] if x) or "Гость SunPark"
                 await self.tg("sendContact", {"chat_id": uid, "phone_number": str(phone), "first_name": guest_name[:64]})
                 await self.send(uid, f"📞 Контакт гостя по заявке #{ticket_number}: <code>{esc(phone)}</code>")
                 await self.answer(cb.get("id"), "Отправил контакт для быстрого звонка.")
@@ -1575,7 +1575,7 @@ class Bot(MiniAppMixin, MenuPreviewMixin, EventsMixin, ServicesMixin, WorkerEntr
                 await self.answer(cb.get("id"), "Заявку уже забрали или она закрыта.", True); return
             ticket = await self.db_first("SELECT guest_id FROM tickets WHERE number=?", ticket_number)
             names = await self.manager_names(cfg)
-            manager_name = names.get(str(uid)) or ((cb.get("from") or {}).get("first_name")) or "менеджер SUNPARK"
+            manager_name = names.get(str(uid)) or ((cb.get("from") or {}).get("first_name")) or "менеджер SunPark"
             await self.send(int(ticket.guest_id), f"👨‍💼 <b>К вашей заявке подключился менеджер {esc(manager_name)}.</b>\n\nЧтобы ответить, нажмите «💬 Ответить менеджеру» внизу чата.", await self.guest_persistent(int(ticket.guest_id)))
             await self.set_action(uid, "reply:" + str(ticket_number))
             await self.mark_ticket_read(ticket_number, uid)
@@ -1604,7 +1604,7 @@ class Bot(MiniAppMixin, MenuPreviewMixin, EventsMixin, ServicesMixin, WorkerEntr
             await self.tg("editMessageReplyMarkup", {"chat_id": msg.get("chat", {}).get("id"), "message_id": msg.get("message_id"), "reply_markup": ikb([[btn(f"📜 История / ответить #{t.number}", f"admin:chat:{guest_id}"), btn(f"✅ Закрыть #{t.number}",f"close:{guest_id}")]])})
             await self.send(msg.get("chat", {}).get("id"), f"✅ <b>Заявка #{t.number} закреплена за вами.</b>\n\nОтветьте гостю обычным сообщением. Закрыть заявку можно кнопкой «✅ Закрыть заявку #{t.number}» здесь или в разделе активных заявок админ-панели.")
             names = await self.manager_names(cfg)
-            manager_name = names.get(str(uid)) or ((cb.get("from") or {}).get("first_name")) or "менеджер SUNPARK"
+            manager_name = names.get(str(uid)) or ((cb.get("from") or {}).get("first_name")) or "менеджер SunPark"
             await self.send(guest_id, f"👨‍💼 <b>Менеджер {esc(manager_name)} взял заявку в работу.</b>\n\nЧтобы ответить, нажмите «💬 Ответить менеджеру» внизу чата.", await self.guest_persistent(guest_id))
             await self.answer(cb.get("id"), "Обращение закреплено за вами."); return
         if data.startswith("close:"):
@@ -1798,7 +1798,7 @@ class Bot(MiniAppMixin, MenuPreviewMixin, EventsMixin, ServicesMixin, WorkerEntr
                         tg_status = "ERROR:" + repr(e)
 
                 return Response(
-                    "SUNPARK | DB=" + ("OK" if has_db else "MISSING") +
+                    "SunPark | DB=" + ("OK" if has_db else "MISSING") +
                     " | DB_TEST=" + db_status +
                     " | BOT_TOKEN=" + ("OK" if has_token else "MISSING") +
                     " | TG_TEST=" + tg_status +
@@ -1806,7 +1806,7 @@ class Bot(MiniAppMixin, MenuPreviewMixin, EventsMixin, ServicesMixin, WorkerEntr
                 )
             except Exception as e:
                 print("SUNPARK HEALTH ERROR:", repr(e))
-                return Response("SUNPARK health error: " + repr(e), status=500)
+                return Response("SunPark health error: " + repr(e), status=500)
 
         expected_secret = getattr(self.env, "WEBHOOK_SECRET", None)
         if expected_secret:

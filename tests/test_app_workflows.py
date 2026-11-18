@@ -43,14 +43,17 @@ class WorkflowTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(data['tickets'][0]['created_at'],'2026-11-11 12:00:00')
 
     async def test_app_name_sync_is_idempotent_and_sends_no_messages(self):
+        await self.bot.db_run("INSERT INTO config(key,value) VALUES('telegram_app_name_v1','Sunpark')")
         calls=[]
         async def metadata(method,params):
             calls.append((method,params))
-            return {'first_name':'Sunpark'} if method=='getMe' else True
+            return {'first_name':'SunPark'} if method=='getMe' else True
         self.bot.tg=metadata
         self.assertTrue(await self.bot.sync_app_name())
         self.assertTrue(await self.bot.sync_app_name())
         self.assertEqual([method for method,_ in calls],['setMyName','setMyName','getMe'])
+        self.assertTrue(all(params['name']=='SunPark' for method,params in calls if method=='setMyName'))
+        self.assertEqual((await self.bot.db_first("SELECT value FROM config WHERE key='telegram_app_name_v1'")).value,'SunPark')
         self.assertEqual(self.bot.notifications,[])
 
     async def test_whole_booking_and_duplicate_retry(self):
