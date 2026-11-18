@@ -105,7 +105,7 @@ class AppWorkflowsMixin:
                 data = {"first_name": user.get("first_name") or "", "last_name": user.get("last_name") or "", "party_size": 1}
             return {**common, "event": event, "data": data}
         if name == "event_create":
-            return {**common, "data": {"capacity": 50, "location": "SUNPARK"}}
+            return {**common, "data": {"capacity": 50, "location": "SunPark"}}
         raise WorkflowError("Экран не найден.", 404)
 
     async def workflow_event(self, uid, event_id, staff):

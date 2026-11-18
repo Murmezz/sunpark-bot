@@ -159,7 +159,7 @@ async def main():
             await route.continue_()
         await page.route('https://telegram.org/js/telegram-web-app.js',lambda r:r.fulfill(content_type='text/javascript',body=telegram_mock()))
         await page.route('https://sunparkspb.ru/**',photos);await page.route('**/api/app',fail_boot_once)
-        await page.goto(origin+'/app');await page.get_by_role('heading',name='Не удалось открыть Sunpark',exact=True).wait_for()
+        await page.goto(origin+'/app');await page.get_by_role('heading',name='Не удалось открыть SunPark',exact=True).wait_for()
         assert await page.locator('.boot-loader').count()==0
         await page.get_by_role('button',name='Попробовать снова',exact=True).click();await page.locator('#app-shell').wait_for(state='visible')
         assert boot_attempts==2;await context.close();await browser.close()

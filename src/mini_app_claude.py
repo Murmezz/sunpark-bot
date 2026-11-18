@@ -137,5 +137,5 @@ dialog h2{font-family:'Cormorant Garamond',Georgia,serif;font-size:32px;line-hei
 
 CLAUDE_STYLE = APP_CSS + "\n" + CLAUDE_EXTRA_CSS
 CLAUDE_HTML = APP_HTML.replace("/app/style.css", "/app-claude/style.css").replace(
-    "<title>Sunpark</title>", "<title>Sunpark · Клод тест</title>"
+    "<title>SunPark</title>", "<title>SunPark · Клод тест</title>"
 )

@@ -11,3 +11,5 @@ Fonts and raster imagery are bundled locally; runtime requests do not depend on 
 The light and dark complex logos are the original SUNPARK website assets, used for this SUNPARK bot at the owner's request:
 https://sunparkspb.ru/wp-content/uploads/2018/09/Logo2-500x136.png
 https://sunparkspb.ru/wp-content/uploads/2018/09/Logo1-500x136.png
+
+SunPark wordmark: owner-supplied logo, cleaned with Image Gen on 18 November 2026. The SVG embeds the transparent generated mark and uses its alpha silhouette for theme ink. No SURF WAKE tagline or photographic background is included.

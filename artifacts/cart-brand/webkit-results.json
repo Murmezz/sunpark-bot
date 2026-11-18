@@ -1,0 +1,66 @@
+[
+  {
+    "width": 280,
+    "route": "/app",
+    "theme": "light",
+    "single_and_multiple_options": true,
+    "reload_and_limits": true,
+    "errors": []
+  },
+  {
+    "width": 280,
+    "route": "/app",
+    "theme": "dark",
+    "single_and_multiple_options": true,
+    "reload_and_limits": true,
+    "errors": []
+  },
+  {
+    "width": 280,
+    "route": "/app-claude",
+    "theme": "light",
+    "single_and_multiple_options": true,
+    "reload_and_limits": true,
+    "errors": []
+  },
+  {
+    "width": 280,
+    "route": "/app-claude",
+    "theme": "dark",
+    "single_and_multiple_options": true,
+    "reload_and_limits": true,
+    "errors": []
+  },
+  {
+    "width": 393,
+    "route": "/app",
+    "theme": "light",
+    "single_and_multiple_options": true,
+    "reload_and_limits": true,
+    "errors": []
+  },
+  {
+    "width": 393,
+    "route": "/app",
+    "theme": "dark",
+    "single_and_multiple_options": true,
+    "reload_and_limits": true,
+    "errors": []
+  },
+  {
+    "width": 393,
+    "route": "/app-claude",
+    "theme": "light",
+    "single_and_multiple_options": true,
+    "reload_and_limits": true,
+    "errors": []
+  },
+  {
+    "width": 393,
+    "route": "/app-claude",
+    "theme": "dark",
+    "single_and_multiple_options": true,
+    "reload_and_limits": true,
+    "errors": []
+  }
+]

@@ -25,7 +25,7 @@ async def main():
     await route.fulfill(body=(PHOTOS/name).read_bytes(),content_type='image/png' if name.endswith('png') else 'image/jpeg')
    await page.route('https://sunparkspb.ru/**',photos)
    await page.goto(origin+'/app-claude');await page.locator('#app-shell').wait_for(state='visible');await page.evaluate('document.fonts.ready')
-   assert await page.title()=='Sunpark · Клод тест'
+   assert await page.title()=='SunPark · Клод тест'
    await page.locator('[id^=tg-mock]').evaluate_all("xs=>xs.forEach(e=>e.style.display='none')")
    for theme in ['light','dark']:
     await page.emulate_media(color_scheme=theme);await page.wait_for_timeout(160)
