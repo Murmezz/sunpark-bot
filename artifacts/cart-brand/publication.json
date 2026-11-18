@@ -1,0 +1,47 @@
+{
+  "success": true,
+  "source_commit": "b86715f9f0c705a17954f79fda5e935ba100a950",
+  "changed_modules": [
+    "app_workflows.py",
+    "entry.py",
+    "events.py",
+    "menu_preview.py",
+    "mini_app.py",
+    "mini_app_assets.py",
+    "mini_app_claude.py",
+    "services.py"
+  ],
+  "module_count": 48,
+  "version_id": "d9a93cc5-75d3-4747-bc5d-529ce187d8c3",
+  "deployment_id": "be1d3bd4-ec27-4f7f-beb5-8b2e8b1fcbf1",
+  "published_at": "2026-11-18T05:47:35.202033Z",
+  "legacy_hash": "55a38f18942ab78fc87eefd32544c628fd9b46273f01ec1fc913ff54e8d03da5",
+  "main_commit": "51d4f08dd7ccea958d68bd2796f622adacf27161",
+  "previous_version_id": "509a8bf2-2437-42eb-90f1-4825b0ff1511",
+  "backup_tag": "miniapp-before-cart-brand-20261118",
+  "main_ci": "https://github.com/Murmezz/sunpark-bot/actions/runs/44246825907",
+  "runtime_ci": "https://github.com/Murmezz/sunpark-bot/actions/runs/44246525480",
+  "main_unit_tests": 66,
+  "runtime_unit_tests": 91,
+  "browser_engines": [
+    "chromium",
+    "webkit"
+  ],
+  "cart_cases_per_engine": 8,
+  "cart_widths": [
+    280,
+    393
+  ],
+  "responsive_widths": [
+    280,
+    393,
+    844
+  ],
+  "guarded_main_build": "1bc6743a-f24d-4ff5-a06f-939b777f5837",
+  "original_build_commands_restored": true,
+  "legacy_changed": false,
+  "protocols_and_storage_keys_changed": false,
+  "database_schema_changed": false,
+  "wordmark_source": "/workspace/generated_images/exec-888ac9fd-aac5-400e-b65b-d1b0d6776ac4.png",
+  "bot_display_name": "SunPark"
+}
