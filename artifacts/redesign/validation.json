@@ -1,0 +1,25 @@
+{
+  "date_moscow": "2026-11-20",
+  "unit_tests": 91,
+  "main_unit_tests": 66,
+  "full_journey": "320x640, 390x844, 820x1024; both themes; booking, hotel, prepaid restaurant, QR, seating, inventory; server-only paid status",
+  "responsive_chromium_profiles": 14,
+  "responsive_webkit_profiles": [
+    280,
+    320,
+    393,
+    844,
+    1024
+  ],
+  "checks": [
+    "no horizontal overflow",
+    "original leaf right edge 10px offscreen",
+    "visible unoccluded primary dock actions",
+    "stable card height and relative price position after add",
+    "Golos Text Cyrillic font loaded",
+    "safe insets, keyboard and rotation",
+    "actual dock price 2200→4400→2200 for guest count",
+    "cart quantities/options/totals/persistence on Chromium and WebKit"
+  ],
+  "limits": "Loopback fixture APIs and browser emulation; no live payment, physical device or complete WCAG audit"
+}

@@ -1,0 +1,60 @@
+[
+  {
+    "viewport": [
+      568,
+      320
+    ],
+    "safe": [
+      0,
+      48,
+      0,
+      0
+    ],
+    "gutter": 18,
+    "leaf_cut_edge": 578.0,
+    "states": [
+      "home-light",
+      "home-dark",
+      "wave",
+      "time",
+      "calendar",
+      "contacts",
+      "hotel-dates",
+      "menu",
+      "cart",
+      "arrival",
+      "qr",
+      "chat"
+    ],
+    "errors": []
+  },
+  {
+    "viewport": [
+      844,
+      390
+    ],
+    "safe": [
+      0,
+      48,
+      21,
+      47
+    ],
+    "gutter": 18,
+    "leaf_cut_edge": 854.0,
+    "states": [
+      "home-light",
+      "home-dark",
+      "wave",
+      "time",
+      "calendar",
+      "contacts",
+      "hotel-dates",
+      "menu",
+      "cart",
+      "arrival",
+      "qr",
+      "chat"
+    ],
+    "errors": []
+  }
+]

@@ -46,7 +46,7 @@ async def main():
             mock=telegram_mock()+"\nsdk.openInvoice=(url,callback)=>{window.__invoice=url;callback('paid');};"
             await page.route('https://telegram.org/js/telegram-web-app.js',lambda r:r.fulfill(content_type='text/javascript',body=mock))
             await page.route('https://sunparkspb.ru/**',photo)
-            await page.goto(origin+'/app');await page.locator('#app-shell').wait_for(state='visible')
+            await page.goto(origin+os.environ.get('SUNPARK_ENTRY','/app'));await page.locator('#app-shell').wait_for(state='visible')
             assert await page.locator('#app-nav button').all_text_contents()==['Главная','Мои планы','Сообщения']
             assert await page.locator('#home-services .service-card').count()==4
             for theme in ['light','dark']:
@@ -70,6 +70,15 @@ async def main():
             await screenshot(page,f'concept-time-dark-{width}')
             selected=await page.locator('.concept-wheel .selected').first.evaluate("e=>({font:getComputedStyle(e).fontSize,transform:getComputedStyle(e).transform,stretch:getComputedStyle(e).fontStretch})")
             assert selected['font']=='40px' and selected['transform']=='none',selected
+            if os.environ.get('SUNPARK_ENTRY')=='/app-claude':
+                # The visible booking price must change with the guest count,
+                # using the seeded tariff (2,200 RUB per person).
+                price=page.locator('.refined-dock-total strong')
+                await page.get_by_role('button',name='Увеличить: Участники',exact=True).click()
+                await page.wait_for_function("()=>document.querySelector('.refined-dock-total strong')?.textContent.replace(/\\D/g,'')==='4400'")
+                assert await price.is_visible()
+                await page.get_by_role('button',name='Уменьшить: Участники',exact=True).click()
+                await page.wait_for_function("()=>document.querySelector('.refined-dock-total strong')?.textContent.replace(/\\D/g,'')==='2200'")
             await page.get_by_role('button',name='Далее · контакты',exact=True).click()
             await page.get_by_role('heading',name='Ваши контакты',exact=True).wait_for()
             await page.get_by_label('Имя',exact=True).fill('Иван')

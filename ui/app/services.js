@@ -12,7 +12,7 @@ function serviceImage(url,alt,thumbnail=false) {
   // site's reduced PNGs for rooms, whose originals exceed 2 MB each.
   if(thumbnail||url.endsWith('.png')) {
     image.srcset=`${variant(400)} 400w, ${variant(800)} 800w`;
-    image.sizes=thumbnail?'84px':'(max-width: 640px) calc(100vw - 52px), 588px';
+    image.sizes=thumbnail?(refinedDesign?'(min-width: 700px) and (max-height: 560px) calc((100vw - 80px) / 4), (max-width: 960px) calc((100vw - 48px) / 2), 456px':'84px'):'(max-width: 640px) calc(100vw - 52px), 588px';
   }
   image.addEventListener('error',()=>{if(image.hasAttribute('srcset')){image.removeAttribute('srcset');image.removeAttribute('sizes');image.src=url;return;}image.classList.remove('is-image-loading');image.hidden=true;image.parentElement?.classList.add('image-missing');});
   return image;

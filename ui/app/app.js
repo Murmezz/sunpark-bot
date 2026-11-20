@@ -2,6 +2,7 @@
 (() => {
   const $ = id => document.getElementById(id);
   const tg = window.Telegram?.WebApp;
+  const refinedDesign=document.body.dataset.design==='refresh-20261120';
   const sessionLaunch=new URLSearchParams(tg?.initData||'').get('hash')||'';
   let appSession='',authExpired=false;
   try{const saved=JSON.parse(sessionStorage.getItem('sunpark:session:v1')||'null');if(saved?.launch===sessionLaunch&&typeof saved.token==='string')appSession=saved.token;}catch(_){}
@@ -10,6 +11,7 @@
   let cartOpen = false, cartScroll = 0, currentDish = null, storageKey = null, toastTimer, menuScroll = null;
   let appView='home', cartOrigin='menu', flowScope='guest', flowInput=null, inboxScope='guest', chatNumber=0, chatScope='guest', pendingUpload=null, busy=false, chatData=null;
   const cart = new Map(), products = new Map(), mediaCache = new Map();
+  // __REDESIGN__
   // __LOADING__
   // __WORKFLOWS__
   // __SERVICES__
@@ -19,7 +21,7 @@
   function applyTheme() {
     const dark=systemDark?.matches?true:systemLight?.matches?false:tg?.colorScheme==='dark';
     document.documentElement.dataset.theme=dark?'dark':'light';
-    const background=dark?'#101c18':'#f8f5eb';
+    const background=refinedDesign?(dark?'#102119':'#f5f7f0'):(dark?'#101c18':'#f8f5eb');
     try {tg?.setHeaderColor(background);tg?.setBackgroundColor(background);tg?.setBottomBarColor?.(background);} catch (_) {}
   }
   applyTheme();
@@ -117,6 +119,7 @@
     $('cart-total').textContent=totalText(total);
     $('cart-empty').hidden=cart.size>0; $('cart-hint').hidden=!cart.size;
     $('cart-clear').hidden=!cart.size; $('cart-clear-confirm').hidden=true;
+    if(refinedDesign)$('refined-cart-actions').hidden=!cart.size;
     $('cart-price-note').hidden=!total.unknown;
     $('cart-price-note').textContent=`Стоимость ${total.unknown} поз. уточните у официанта. Она ещё не включена в сумму.`;
     $('preorder-checkout').hidden=!cart.size;$('preorder-checkout').disabled=!!total.unknown;
@@ -175,7 +178,7 @@
     if(!line&&cart.size>=300) { toast('Сначала удалите ненужные позиции из корзины.'); return; }
     cart.set(key,{itemId:item.id,optionId:option.id,quantity:(line?.quantity||0)+1});
     const saved=saveCart(); renderCart();
-    if(saved) toast(`Добавлено в корзину${option.label?' · '+option.label:''}`);
+    if(saved&&!refinedDesign) toast(`Добавлено в корзину${option.label?' · '+option.label:''}`);
     try { tg?.HapticFeedback.notificationOccurred('success'); } catch (_) {}
     return true;
   }
@@ -255,6 +258,7 @@
     $('section-title').firstElementChild.textContent=query?'Результаты поиска':category?.title||'Меню';
     $('catalog-hint').textContent=list.length?'':query?'Ничего не найдено. Попробуйте другое название.':'В этом разделе пока нет блюд.';
     $('catalog-hint').hidden=!!list.length;$('category-footer').textContent=query?'':category?.footer||'';
+    $('catalog-view').classList.toggle('is-searching',!!query);
     $('status').textContent='';$('items').replaceChildren();let section='';
     for(const {item,cat} of list){
       const next=query?cat.title:item.section;if(next&&next!==section)$('items').append(node('h3','subsection',next));section=next;
@@ -262,13 +266,14 @@
       const open=button('','item-open',()=>showDish(item,cat));open.setAttribute('aria-label',`${item.name}, ${item.price}. Посмотреть состав`);
       const copy=node('span','item-copy');copy.append(node('span','name',item.name));
       if(item.description)copy.append(node('span','item-description',item.description));
-      open.append(copy,node('span','price',item.price),arrow());
+      const price=node('span','price',item.price);
+      if(refinedDesign)open.append(copy);else open.append(copy,price,arrow());
       const add=button('','icon-button item-add',()=>{if(item.options.length===1&&Number.isSafeInteger(item.options[0].amount))addProduct(item,item.options[0]);else showDish(item,cat);});
       const minus=button('','icon-button item-minus',()=>{const lines=itemCartLines(item.id);if(lines.length===1)changeCartLine(lines[0][0],-1);else if(lines.length)showDish(item,cat);});minus.append(icon('minus'));
       const quantity=node('output','item-quantity','0');quantity.setAttribute('aria-live','polite');quantity.setAttribute('aria-label','В корзине: '+item.name);
       const actions=node('div','item-actions');actions.setAttribute('role','group');actions.setAttribute('aria-label','Количество в корзине: '+item.name);actions.append(minus,quantity,add);
       add.disabled=item.available===false;if(item.available===false)copy.append(node('span','item-description','Временно недоступно'));
-      add.append(icon('plus'));row.append(open,actions);$('items').append(row);
+      add.append(icon('plus'));if(refinedDesign)row.append(open,price,actions);else row.append(open,actions);$('items').append(row);
     }
     updateMenuQuantities();updateBackButton();
   }

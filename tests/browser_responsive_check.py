@@ -53,7 +53,10 @@ async def main():
                 mock+="\nfor(const [family,values] of [['safe',insets.device],['content-safe',insets.content]])for(const [edge,value] of Object.entries(values))document.documentElement.style.setProperty('--tg-'+family+'-area-inset-'+edge,value+'px');"
             await page.route('https://telegram.org/js/telegram-web-app.js',lambda route:route.fulfill(content_type='text/javascript',body=mock))
             await page.route('https://sunparkspb.ru/**',photos)
-            await page.goto(origin+'/app');await page.locator('#app-shell').wait_for(state='visible');await page.evaluate('document.fonts.ready')
+            entry=os.environ.get('SUNPARK_ENTRY','/app')
+            await page.goto(origin+entry);await page.locator('#app-shell').wait_for(state='visible');await page.evaluate('document.fonts.ready')
+            refined=entry=='/app-claude'
+            if refined:assert await page.evaluate("document.fonts.check('600 16px \"Golos Text\"','Бронирование')")
             await page.locator('[id^=tg-mock]').evaluate_all("xs=>xs.forEach(e=>e.style.display='none')")
             states=[]
 
@@ -68,6 +71,13 @@ async def main():
                   return {width:innerWidth,scroll:document.documentElement.scrollWidth,bad};
                 }''')
                 assert metrics['scroll']<=metrics['width'] and not metrics['bad'],(engine,width,height,name,metrics)
+                if refined and not await page.locator('dialog[open]').count() and not await page.locator('body').evaluate("e=>e.classList.contains('is-keyboard-open')"):
+                    docks=page.locator('#concept-view:not([hidden]) .refined-dock,#cart-view:not([hidden]) .cart-actions:not([hidden])')
+                    if await docks.count():
+                        dock=await docks.first.bounding_box();nav=await page.locator('#app-nav').bounding_box()
+                        assert dock['y']>=device+content-1 and dock['y']+dock['height']<=nav['y']+1,(width,height,name,dock,nav)
+                        action=docks.first.locator('.primary-button').first
+                        assert await action.evaluate("e=>{const r=e.getBoundingClientRect();return r.height>=44&&document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.closest('button')===e;}"),(width,height,name,'primary action obscured')
                 states.append(name)
                 if screenshot:
                     await page.screenshot(path=str(OUT/f'{engine}-{name}-{width}x{height}.png'))
@@ -119,10 +129,15 @@ async def main():
             await page.locator('#app-nav [data-view=home]').click();await page.locator('[data-service=hotel]').click();await page.get_by_role('heading',name='Отель',exact=True).wait_for()
             await page.get_by_role('button',name='Выбрать даты',exact=True).click();await page.get_by_role('heading',name='Даты и гости',exact=True).wait_for();await check('hotel-dates')
             await page.locator('#app-nav [data-view=home]').click();await page.locator('[data-service=restaurant]').click();await page.locator('#restaurant-menu').click();await check('menu')
+            initial_price=await page.locator('.item-row > .price').first.bounding_box() if refined else None
+            initial_row=await page.locator('.item-row').first.bounding_box()
             await page.locator('.item-add').first.click()
             if await page.locator('#dish-dialog').is_visible():
                 if await page.locator('#dish-add').is_disabled():await page.locator('#dish-option-list input').first.check()
                 await page.locator('#dish-add').click()
+            if refined:
+                price=await page.locator('.item-row > .price').first.bounding_box();row=await page.locator('.item-row').first.bounding_box()
+                assert abs((price['x']-row['x'])-(initial_price['x']-initial_row['x']))<1 and abs((price['y']-row['y'])-(initial_price['y']-initial_row['y']))<1 and abs(row['height']-initial_row['height'])<1,(width,height,'menu moved after add',initial_price,price,initial_row,row)
             launcher=await page.locator('#cart-launcher').bounding_box();nav=await page.locator('#app-nav').bounding_box()
             assert launcher['y']+launcher['height']<=nav['y'],(width,height,launcher,nav)
             await page.locator('#cart-launcher').click();await check('cart')
@@ -138,7 +153,7 @@ async def main():
             print(json.dumps({'engine':engine,'viewport':[width,height],'states':len(states),'passed':True}),flush=True)
             await context.close()
         await browser.close()
-    server.shutdown();(OUT/(engine+('-rotation' if os.environ.get('SUNPARK_WIDTHS') else '')+'-results.json')).write_text(json.dumps(results,ensure_ascii=False,indent=2))
+    server.shutdown();(OUT/(engine+('-refresh' if os.environ.get('SUNPARK_ENTRY')=='/app-claude' else '')+('-rotation' if os.environ.get('SUNPARK_WIDTHS') else '')+'-results.json')).write_text(json.dumps(results,ensure_ascii=False,indent=2))
 
 
 if __name__=='__main__':asyncio.run(main())

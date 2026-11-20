@@ -15,9 +15,9 @@ class ClaudeVariantTests(unittest.IsolatedAsyncioTestCase):
         with patch.dict(sys.modules, {'workers': NS(Response=FakeResponse)}):
             return await AppHarness().mini_app_http(app_request(path=path, method=method))
 
-    async def test_variant_changes_only_stylesheet_and_page_title(self):
+    async def test_variant_shares_logic_and_opts_into_refined_presentation(self):
         expected = APP_HTML.replace('/app/style.css', '/app-claude/style.css').replace(
-            '<title>SunPark</title>', '<title>SunPark · Клод тест</title>')
+            '<title>SunPark</title>', '<title>SunPark · Клод тест</title>').replace('<body>', '<body data-design="refresh-20261120">', 1)
         response = await self.request('/app-claude')
         self.assertEqual((response.status, response.body), (200, expected))
         self.assertEqual(response.body, CLAUDE_HTML)
