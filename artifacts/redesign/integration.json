@@ -1,0 +1,18 @@
+{
+  "date_moscow": "2026-11-20",
+  "scope": "Common opt-in visual layer for /app-claude, including menu/card/quantity/forms/navigation; main retains its own existing booking and bootstrap code",
+  "active_development_source": "918f8f5",
+  "active_development_branch": "dev/miniapp-full-concept-20261115",
+  "reason": "The live development tree already contains the owner-approved booking/payment/QR flows absent from this older main tree. Do not deploy main over that runtime. Publish only the tested two-module presentation delta over the current live modules.",
+  "tests": {
+    "unit": 66,
+    "chromium": "320/390/820 px; both themes; home, restaurant, menu, dish, hotel, inbox"
+  },
+  "sources": [
+    "https://news.airbnb.com/airbnb-2025-summer-release/",
+    "https://apps.apple.com/app/id367003839",
+    "https://apps.apple.com/app/id1058959277",
+    "https://developer.apple.com/design/tips/"
+  ],
+  "full_review": "artifacts/redesign/audit.json on active development branch; local self-contained PDF has 34 before/after pairs"
+}
