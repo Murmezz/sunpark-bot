@@ -1,0 +1,60 @@
+[
+  {
+    "path": "/app/logo.svg",
+    "status": 200,
+    "source_matches": true,
+    "cache_control": "no-store"
+  },
+  {
+    "path": "/app-claude",
+    "status": 200,
+    "source_matches": true,
+    "cache_control": "no-store"
+  },
+  {
+    "path": "/app-claude/style.css",
+    "status": 200,
+    "source_matches": true,
+    "cache_control": "no-store"
+  },
+  {
+    "path": "/app",
+    "status": 200,
+    "source_matches": true,
+    "cache_control": "no-store"
+  },
+  {
+    "path": "/app/style.css",
+    "status": 200,
+    "source_matches": true,
+    "cache_control": "no-store"
+  },
+  {
+    "path": "/app/app.js",
+    "status": 200,
+    "source_matches": true,
+    "cache_control": "no-store"
+  },
+  {
+    "path": "/app/legacy",
+    "status": 200,
+    "source_matches": true,
+    "cache_control": "no-store"
+  },
+  {
+    "path": "/app/legacy/style.css",
+    "status": 200,
+    "source_matches": true,
+    "cache_control": "no-store"
+  },
+  {
+    "path": "/app/legacy/app.js",
+    "status": 200,
+    "source_matches": true,
+    "cache_control": "no-store"
+  },
+  {
+    "path": "/api/app",
+    "unauthenticated_status": 401
+  }
+]

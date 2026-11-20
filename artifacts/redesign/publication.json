@@ -1,0 +1,28 @@
+{
+  "previous_version": "d9a93cc5-75d3-4747-bc5d-529ce187d8c3",
+  "version": "02ebdc49-2244-42a2-b8d5-e8a755b61d58",
+  "deployment": "5e01436e-74ec-42df-b280-8a21061d19c6",
+  "published_at": "2026-11-20T09:16:19.386269Z",
+  "source_commit": "918f8f50bb1233208faecd03eef726ad076c6eb7",
+  "changed_modules": [
+    {
+      "path": "mini_app_assets.py",
+      "sha256": "cd3c9403783636d7f63c1e634be9ddca7e9e056c8cc5b579cb66cc420d51d748"
+    },
+    {
+      "path": "mini_app_claude.py",
+      "sha256": "19151f62b1b35b972e2b2cde58f4daedc9012645fb6da7df7cabebebb706cd31"
+    }
+  ],
+  "module_count": 48,
+  "main_commit": "68b871f81f4209e1c49169fd8038096dd25f3d03",
+  "ci": {
+    "development": "https://github.com/Murmezz/sunpark-bot/actions/runs/44709143691",
+    "main": "https://github.com/Murmezz/sunpark-bot/actions/runs/44709391180"
+  },
+  "pre_refresh_source_tag": "miniapp-before-design-refresh-20261120",
+  "main_guard_build": "b36b0afe-3a9c-45df-8a99-030ccda00492",
+  "main_guard_build_outcome": "success",
+  "build_commands_restored": true,
+  "live_verified_after_main_push": "02ebdc49-2244-42a2-b8d5-e8a755b61d58"
+}
