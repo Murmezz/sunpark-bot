@@ -1,0 +1,58 @@
+{
+  "previous_version": "02ebdc49-2244-42a2-b8d5-e8a755b61d58",
+  "version": "690a31e9-a1f6-43ce-aa55-b804c772880d",
+  "deployment": "87ea9718-c4af-4e35-b297-fa76ead336be",
+  "published_at": "2026-11-20T09:26:11.686734Z",
+  "source_commit": "dd50200203043eb98c3d86f36966a7bcb22416e2",
+  "changed_modules": [
+    {
+      "path": "menu_preview.py",
+      "sha256": "08572a456d5e292e0d782fd4f83083c29d0d35e79952a6cffa5dcbb2b4271975"
+    }
+  ],
+  "module_count": 48,
+  "preserved_versions": {
+    "mini_app_assets.py": "cd3c9403783636d7f63c1e634be9ddca7e9e056c8cc5b579cb66cc420d51d748",
+    "mini_app_claude.py": "19151f62b1b35b972e2b2cde58f4daedc9012645fb6da7df7cabebebb706cd31",
+    "mini_app_legacy_assets.py": "55a38f18942ab78fc87eefd32544c628fd9b46273f01ec1fc913ff54e8d03da5"
+  },
+  "button": {
+    "text": "Разработка",
+    "url": "https://sunparkbot.lovison1979.workers.dev/app-claude"
+  },
+  "main_commit": "ebdfc8c4e1ce7168bc051dfcb03155aa47d8cdbf",
+  "build_uuid": "19c5c14e-083f-4e28-98d0-f687e44628ac",
+  "build_outcome": "success",
+  "build_commands_restored": true,
+  "backup_tag": "development-menu-before-single-button-20261120",
+  "preserved_routes": [
+    "/app",
+    "/app/legacy"
+  ],
+  "tests": {
+    "development_unit_tests": 91,
+    "main_unit_tests": 66,
+    "development_ci": [
+      {
+        "name": "Tests",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/Murmezz/sunpark-bot/actions/runs/44710601385"
+      }
+    ],
+    "main_ci": [
+      {
+        "name": "Tests",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/Murmezz/sunpark-bot/actions/runs/44710759330"
+      }
+    ]
+  },
+  "live_verification": {
+    "menu_source_sha256_verified": true,
+    "visible_mini_app_buttons": 1,
+    "static_endpoints_source_match": true,
+    "unauthenticated_api_status": 401
+  }
+}
