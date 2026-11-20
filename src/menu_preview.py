@@ -145,9 +145,7 @@ async def read_preview_body(request, limit=20000):
 class MenuPreviewMixin:
     def menu_preview_chooser(self):
         rows = [
-            [{"text": "SunPark", "web_app": {"url": f"{PREVIEW_ORIGIN}/app"}}],
-            [{"text": "Клод тест", "web_app": {"url": f"{PREVIEW_ORIGIN}/app-claude"}}],
-            [{"text": "SunPark · прежняя версия", "web_app": {"url": f"{PREVIEW_ORIGIN}/app/legacy"}}],
+            [{"text": "Разработка", "web_app": {"url": f"{PREVIEW_ORIGIN}/app-claude"}}],
             [button("◀️ В админ-панель", "admin:panel")],
         ]
         text = "🛠 <b>Разработка</b>\n\nSunPark: меню и корзина, бронирование, мероприятия, сообщения и админ-панель. Тема меняется автоматически.\n\nДоступ только администраторам."
