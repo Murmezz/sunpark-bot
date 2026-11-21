@@ -176,7 +176,8 @@ input[aria-invalid=true] { border-color: var(--danger); }
 #groups.group-tabs button[aria-pressed=true], #concept-content .group-tabs button[aria-pressed=true], .group-tabs button[aria-pressed=true] {
   border: 0; background: var(--soft); color: var(--ink);
 }
-#categories.category-rail { padding-top: 8px; padding-bottom: 12px; margin-bottom: 8px; border: 0; }
+.menu-back { min-height: 48px; }
+#categories.category-rail { top: calc(var(--safe-top) + var(--menu-back-height, 48px)); padding-top: 8px; padding-bottom: 12px; margin-bottom: 8px; border: 0; background: var(--paper); }
 .category-chip { min-height: 44px; padding: 10px 15px; border-radius: 999px; font-size: 14px; font-weight: 500; background: var(--surface); border: 1px solid var(--line); color: var(--ink); }
 .category-chip[aria-pressed=true] { background: var(--green); border-color: var(--green); color: var(--button-ink); }
 #catalog-view:not(.is-searching) > #section-title { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
@@ -193,6 +194,16 @@ input[aria-invalid=true] { border-color: var(--danger); }
 .items .item-row > .price, .items .item-row.has-quantity > .price { grid-column: 1; grid-row: 2; justify-self: start; text-align: left; max-width: none; font-size: 16px; font-weight: 650; color: var(--ink); }
 .items .item-actions { grid-column: 2; grid-row: 2; }
 .items .item-actions .icon-button { min-height: 44px; height: 44px; width: 44px; }
+/* Touch browsers retain :hover after a tap. Reserve hover paint for a mouse. */
+.item-actions .icon-button, .cart-stepper .icon-button, .number-stepper .icon-button, .quantity-controls button {
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+}
+.item-actions .icon-button:hover, .cart-stepper .icon-button:hover, .number-stepper .icon-button:hover, .quantity-controls button:hover { background: transparent; }
+@media (hover: hover) and (pointer: fine) {
+  .item-actions .icon-button:not(:disabled):hover, .cart-stepper .icon-button:not(:disabled):hover, .number-stepper .icon-button:not(:disabled):hover, .quantity-controls button:not(:disabled):hover {
+    background: color-mix(in srgb, currentColor 12%, transparent);
+  }
+}
 .cart-launcher { min-height: 58px; border: 0; border-radius: 17px; padding: 14px 16px; font-size: 16px; box-shadow: 0 6px 18px #00000018; }
 .cart-badge { min-width: 24px; font-size: 13px; font-weight: 650; }
 .cart-summary { display: flex; justify-content: space-between; gap: 16px; padding: 18px; margin: 20px 0; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: none; }
@@ -261,7 +272,8 @@ dialog h3 { font-size: 16px; font-weight: 600; }
 .chat-status { font-size: 12px; }
 .chat-form textarea, .chat-compose textarea { min-height: 48px; border-radius: 16px; }
 #chat-send { border-radius: 15px; background: var(--green); color: var(--button-ink); }
-.app-nav { background: var(--paper); border-top: 1px solid var(--line); }
+html, body { overscroll-behavior-y: none; }
+.app-nav { position: fixed; left: 0; right: 0; bottom: 0; background: var(--paper); border-top: 1px solid var(--line); touch-action: none; }
 .app-nav button { min-height: 54px; padding: 7px 4px; border-radius: 14px; color: var(--muted); font-size: 12px; font-weight: 500; line-height: 1.4; }
 .app-nav button[aria-current=page] { background: var(--soft); color: var(--ink); font-weight: 600; }
 .app-nav .icon { width: 24px; height: 24px; }

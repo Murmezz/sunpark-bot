@@ -1,0 +1,758 @@
+[
+  {
+    "engine": "chromium",
+    "viewport": [
+      320,
+      640
+    ],
+    "theme": "dark",
+    "touch": [
+      {
+        "hover": true,
+        "background": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "focusVisible": false
+      },
+      {
+        "hover": true,
+        "background": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "focusVisible": false
+      },
+      {
+        "hover": true,
+        "background": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "focusVisible": false
+      }
+    ],
+    "stack": {
+      "gap": 0,
+      "back": {
+        "x": 12,
+        "y": 68,
+        "width": 296,
+        "height": 48,
+        "top": 68,
+        "right": 308,
+        "bottom": 116,
+        "left": 12
+      },
+      "rail": {
+        "x": 0,
+        "y": 116,
+        "width": 320,
+        "height": 64,
+        "top": 116,
+        "right": 320,
+        "bottom": 180,
+        "left": 0
+      },
+      "position": "sticky"
+    },
+    "exposed_gap": [],
+    "nav": [
+      {
+        "top": 564.609375,
+        "bottom": 640,
+        "height": 75.390625,
+        "position": "fixed",
+        "viewport": 640
+      },
+      {
+        "top": 564.609375,
+        "bottom": 640,
+        "height": 75.390625,
+        "position": "fixed",
+        "viewport": 640
+      },
+      {
+        "top": 564.609375,
+        "bottom": 640,
+        "height": 75.390625,
+        "position": "fixed",
+        "viewport": 640
+      },
+      {
+        "top": 564.609375,
+        "bottom": 640,
+        "height": 75.390625,
+        "position": "fixed",
+        "viewport": 640
+      },
+      {
+        "top": 564.609375,
+        "bottom": 640,
+        "height": 75.390625,
+        "position": "fixed",
+        "viewport": 640
+      }
+    ],
+    "host_swipe_disable_calls": 1,
+    "findings": [],
+    "errors": []
+  },
+  {
+    "engine": "chromium",
+    "viewport": [
+      320,
+      640
+    ],
+    "theme": "light",
+    "touch": [
+      {
+        "hover": true,
+        "background": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "focusVisible": false
+      },
+      {
+        "hover": true,
+        "background": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "focusVisible": false
+      },
+      {
+        "hover": true,
+        "background": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "focusVisible": false
+      }
+    ],
+    "stack": {
+      "gap": 0,
+      "back": {
+        "x": 12,
+        "y": 68,
+        "width": 296,
+        "height": 48,
+        "top": 68,
+        "right": 308,
+        "bottom": 116,
+        "left": 12
+      },
+      "rail": {
+        "x": 0,
+        "y": 116,
+        "width": 320,
+        "height": 64,
+        "top": 116,
+        "right": 320,
+        "bottom": 180,
+        "left": 0
+      },
+      "position": "sticky"
+    },
+    "exposed_gap": [],
+    "nav": [
+      {
+        "top": 564.609375,
+        "bottom": 640,
+        "height": 75.390625,
+        "position": "fixed",
+        "viewport": 640
+      },
+      {
+        "top": 564.609375,
+        "bottom": 640,
+        "height": 75.390625,
+        "position": "fixed",
+        "viewport": 640
+      },
+      {
+        "top": 564.609375,
+        "bottom": 640,
+        "height": 75.390625,
+        "position": "fixed",
+        "viewport": 640
+      },
+      {
+        "top": 564.609375,
+        "bottom": 640,
+        "height": 75.390625,
+        "position": "fixed",
+        "viewport": 640
+      },
+      {
+        "top": 564.609375,
+        "bottom": 640,
+        "height": 75.390625,
+        "position": "fixed",
+        "viewport": 640
+      }
+    ],
+    "host_swipe_disable_calls": 1,
+    "findings": [],
+    "errors": []
+  },
+  {
+    "engine": "chromium",
+    "viewport": [
+      393,
+      853
+    ],
+    "theme": "dark",
+    "touch": [
+      {
+        "hover": true,
+        "background": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "focusVisible": false
+      },
+      {
+        "hover": true,
+        "background": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "focusVisible": false
+      },
+      {
+        "hover": true,
+        "background": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "focusVisible": false
+      }
+    ],
+    "stack": {
+      "gap": 0,
+      "back": {
+        "x": 13.75,
+        "y": 88,
+        "width": 365.5,
+        "height": 48,
+        "top": 88,
+        "right": 379.25,
+        "bottom": 136,
+        "left": 13.75
+      },
+      "rail": {
+        "x": 0,
+        "y": 136,
+        "width": 393,
+        "height": 64,
+        "top": 136,
+        "right": 393,
+        "bottom": 200,
+        "left": 0
+      },
+      "position": "sticky"
+    },
+    "exposed_gap": [],
+    "nav": [
+      {
+        "top": 760.203125,
+        "bottom": 853,
+        "height": 92.796875,
+        "position": "fixed",
+        "viewport": 853
+      },
+      {
+        "top": 760.203125,
+        "bottom": 853,
+        "height": 92.796875,
+        "position": "fixed",
+        "viewport": 853
+      },
+      {
+        "top": 760.203125,
+        "bottom": 853,
+        "height": 92.796875,
+        "position": "fixed",
+        "viewport": 853
+      },
+      {
+        "top": 760.203125,
+        "bottom": 853,
+        "height": 92.796875,
+        "position": "fixed",
+        "viewport": 853
+      },
+      {
+        "top": 760.203125,
+        "bottom": 853,
+        "height": 92.796875,
+        "position": "fixed",
+        "viewport": 853
+      }
+    ],
+    "host_swipe_disable_calls": 1,
+    "findings": [],
+    "errors": []
+  },
+  {
+    "engine": "chromium",
+    "viewport": [
+      393,
+      853
+    ],
+    "theme": "light",
+    "touch": [
+      {
+        "hover": true,
+        "background": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "focusVisible": false
+      },
+      {
+        "hover": true,
+        "background": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "focusVisible": false
+      },
+      {
+        "hover": true,
+        "background": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "focusVisible": false
+      }
+    ],
+    "stack": {
+      "gap": 0,
+      "back": {
+        "x": 13.75,
+        "y": 88,
+        "width": 365.5,
+        "height": 48,
+        "top": 88,
+        "right": 379.25,
+        "bottom": 136,
+        "left": 13.75
+      },
+      "rail": {
+        "x": 0,
+        "y": 136,
+        "width": 393,
+        "height": 64,
+        "top": 136,
+        "right": 393,
+        "bottom": 200,
+        "left": 0
+      },
+      "position": "sticky"
+    },
+    "exposed_gap": [],
+    "nav": [
+      {
+        "top": 760.203125,
+        "bottom": 853,
+        "height": 92.796875,
+        "position": "fixed",
+        "viewport": 853
+      },
+      {
+        "top": 760.203125,
+        "bottom": 853,
+        "height": 92.796875,
+        "position": "fixed",
+        "viewport": 853
+      },
+      {
+        "top": 760.203125,
+        "bottom": 853,
+        "height": 92.796875,
+        "position": "fixed",
+        "viewport": 853
+      },
+      {
+        "top": 760.203125,
+        "bottom": 853,
+        "height": 92.796875,
+        "position": "fixed",
+        "viewport": 853
+      },
+      {
+        "top": 760.203125,
+        "bottom": 853,
+        "height": 92.796875,
+        "position": "fixed",
+        "viewport": 853
+      }
+    ],
+    "host_swipe_disable_calls": 1,
+    "findings": [],
+    "errors": []
+  },
+  {
+    "engine": "chromium",
+    "viewport": [
+      430,
+      932
+    ],
+    "theme": "dark",
+    "touch": [
+      {
+        "hover": true,
+        "background": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "focusVisible": false
+      },
+      {
+        "hover": true,
+        "background": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "focusVisible": false
+      },
+      {
+        "hover": true,
+        "background": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "focusVisible": false
+      }
+    ],
+    "stack": {
+      "gap": 0,
+      "back": {
+        "x": 15.046875,
+        "y": 115,
+        "width": 399.90625,
+        "height": 48,
+        "top": 115,
+        "right": 414.953125,
+        "bottom": 163,
+        "left": 15.046875
+      },
+      "rail": {
+        "x": 0,
+        "y": 163,
+        "width": 430,
+        "height": 64,
+        "top": 163,
+        "right": 430,
+        "bottom": 227,
+        "left": 0
+      },
+      "position": "sticky"
+    },
+    "exposed_gap": [],
+    "nav": [
+      {
+        "top": 821.203125,
+        "bottom": 932,
+        "height": 110.796875,
+        "position": "fixed",
+        "viewport": 932
+      },
+      {
+        "top": 821.203125,
+        "bottom": 932,
+        "height": 110.796875,
+        "position": "fixed",
+        "viewport": 932
+      },
+      {
+        "top": 821.203125,
+        "bottom": 932,
+        "height": 110.796875,
+        "position": "fixed",
+        "viewport": 932
+      },
+      {
+        "top": 821.203125,
+        "bottom": 932,
+        "height": 110.796875,
+        "position": "fixed",
+        "viewport": 932
+      },
+      {
+        "top": 821.203125,
+        "bottom": 932,
+        "height": 110.796875,
+        "position": "fixed",
+        "viewport": 932
+      }
+    ],
+    "host_swipe_disable_calls": 1,
+    "findings": [],
+    "errors": []
+  },
+  {
+    "engine": "chromium",
+    "viewport": [
+      430,
+      932
+    ],
+    "theme": "light",
+    "touch": [
+      {
+        "hover": true,
+        "background": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "focusVisible": false
+      },
+      {
+        "hover": true,
+        "background": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "focusVisible": false
+      },
+      {
+        "hover": true,
+        "background": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "focusVisible": false
+      }
+    ],
+    "stack": {
+      "gap": 0,
+      "back": {
+        "x": 15.046875,
+        "y": 115,
+        "width": 399.90625,
+        "height": 48,
+        "top": 115,
+        "right": 414.953125,
+        "bottom": 163,
+        "left": 15.046875
+      },
+      "rail": {
+        "x": 0,
+        "y": 163,
+        "width": 430,
+        "height": 64,
+        "top": 163,
+        "right": 430,
+        "bottom": 227,
+        "left": 0
+      },
+      "position": "sticky"
+    },
+    "exposed_gap": [],
+    "nav": [
+      {
+        "top": 821.203125,
+        "bottom": 932,
+        "height": 110.796875,
+        "position": "fixed",
+        "viewport": 932
+      },
+      {
+        "top": 821.203125,
+        "bottom": 932,
+        "height": 110.796875,
+        "position": "fixed",
+        "viewport": 932
+      },
+      {
+        "top": 821.203125,
+        "bottom": 932,
+        "height": 110.796875,
+        "position": "fixed",
+        "viewport": 932
+      },
+      {
+        "top": 821.203125,
+        "bottom": 932,
+        "height": 110.796875,
+        "position": "fixed",
+        "viewport": 932
+      },
+      {
+        "top": 821.203125,
+        "bottom": 932,
+        "height": 110.796875,
+        "position": "fixed",
+        "viewport": 932
+      }
+    ],
+    "host_swipe_disable_calls": 1,
+    "findings": [],
+    "errors": []
+  },
+  {
+    "engine": "chromium",
+    "viewport": [
+      844,
+      390
+    ],
+    "theme": "dark",
+    "touch": [
+      {
+        "hover": true,
+        "background": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "focusVisible": false
+      },
+      {
+        "hover": true,
+        "background": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "focusVisible": false
+      },
+      {
+        "hover": true,
+        "background": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "focusVisible": false
+      }
+    ],
+    "stack": {
+      "gap": 186.5,
+      "back": {
+        "x": 18,
+        "y": -540,
+        "width": 808,
+        "height": 48,
+        "top": -540,
+        "right": 826,
+        "bottom": -492,
+        "left": 18
+      },
+      "rail": {
+        "x": 0,
+        "y": -305.5,
+        "width": 844,
+        "height": 64,
+        "top": -305.5,
+        "right": 844,
+        "bottom": -241.5,
+        "left": 0
+      },
+      "position": "static"
+    },
+    "exposed_gap": [],
+    "nav": [
+      {
+        "top": 292.203125,
+        "bottom": 390,
+        "height": 97.796875,
+        "position": "fixed",
+        "viewport": 390
+      },
+      {
+        "top": 292.203125,
+        "bottom": 390,
+        "height": 97.796875,
+        "position": "fixed",
+        "viewport": 390
+      },
+      {
+        "top": 292.203125,
+        "bottom": 390,
+        "height": 97.796875,
+        "position": "fixed",
+        "viewport": 390
+      },
+      {
+        "top": 292.203125,
+        "bottom": 390,
+        "height": 97.796875,
+        "position": "fixed",
+        "viewport": 390
+      },
+      {
+        "top": 292.203125,
+        "bottom": 390,
+        "height": 97.796875,
+        "position": "fixed",
+        "viewport": 390
+      }
+    ],
+    "host_swipe_disable_calls": 1,
+    "findings": [],
+    "errors": []
+  },
+  {
+    "engine": "chromium",
+    "viewport": [
+      844,
+      390
+    ],
+    "theme": "light",
+    "touch": [
+      {
+        "hover": true,
+        "background": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "focusVisible": false
+      },
+      {
+        "hover": true,
+        "background": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "focusVisible": false
+      },
+      {
+        "hover": true,
+        "background": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "focusVisible": false
+      }
+    ],
+    "stack": {
+      "gap": 186.5,
+      "back": {
+        "x": 18,
+        "y": -540,
+        "width": 808,
+        "height": 48,
+        "top": -540,
+        "right": 826,
+        "bottom": -492,
+        "left": 18
+      },
+      "rail": {
+        "x": 0,
+        "y": -305.5,
+        "width": 844,
+        "height": 64,
+        "top": -305.5,
+        "right": 844,
+        "bottom": -241.5,
+        "left": 0
+      },
+      "position": "static"
+    },
+    "exposed_gap": [],
+    "nav": [
+      {
+        "top": 292.203125,
+        "bottom": 390,
+        "height": 97.796875,
+        "position": "fixed",
+        "viewport": 390
+      },
+      {
+        "top": 292.203125,
+        "bottom": 390,
+        "height": 97.796875,
+        "position": "fixed",
+        "viewport": 390
+      },
+      {
+        "top": 292.203125,
+        "bottom": 390,
+        "height": 97.796875,
+        "position": "fixed",
+        "viewport": 390
+      },
+      {
+        "top": 292.203125,
+        "bottom": 390,
+        "height": 97.796875,
+        "position": "fixed",
+        "viewport": 390
+      },
+      {
+        "top": 292.203125,
+        "bottom": 390,
+        "height": 97.796875,
+        "position": "fixed",
+        "viewport": 390
+      }
+    ],
+    "host_swipe_disable_calls": 1,
+    "findings": [],
+    "errors": []
+  },
+  {
+    "engine": "chromium",
+    "mode": "desktop",
+    "findings": [],
+    "errors": []
+  },
+  {
+    "engine": "chromium",
+    "mode": "old-sdk",
+    "findings": [],
+    "errors": []
+  }
+]

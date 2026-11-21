@@ -1,0 +1,210 @@
+[
+  {
+    "engine": "chromium",
+    "viewport": [
+      393,
+      853
+    ],
+    "theme": "dark",
+    "touch": [
+      {
+        "hover": true,
+        "background": "color(srgb 0.0705882 0.152941 0.101961 / 0.12)",
+        "transform": "none",
+        "focusVisible": false
+      },
+      {
+        "hover": true,
+        "background": "color(srgb 0.0705882 0.152941 0.101961 / 0.12)",
+        "transform": "none",
+        "focusVisible": false
+      },
+      {
+        "hover": true,
+        "background": "color(srgb 0.0705882 0.152941 0.101961 / 0.12)",
+        "transform": "none",
+        "focusVisible": false
+      }
+    ],
+    "stack": {
+      "gap": 2,
+      "back": {
+        "x": 13.75,
+        "y": 88,
+        "width": 365.5,
+        "height": 46,
+        "top": 88,
+        "right": 379.25,
+        "bottom": 134,
+        "left": 13.75
+      },
+      "rail": {
+        "x": 0,
+        "y": 136,
+        "width": 393,
+        "height": 64,
+        "top": 136,
+        "right": 393,
+        "bottom": 200,
+        "left": 0
+      },
+      "position": "sticky"
+    },
+    "exposed_gap": [
+      {
+        "y": 135,
+        "tag": "SPAN",
+        "cls": "name"
+      }
+    ],
+    "nav": [
+      {
+        "top": 760.203125,
+        "bottom": 853,
+        "height": 92.796875,
+        "position": "fixed",
+        "viewport": 853
+      },
+      {
+        "top": 760.203125,
+        "bottom": 853,
+        "height": 92.796875,
+        "position": "fixed",
+        "viewport": 853
+      },
+      {
+        "top": 760.203125,
+        "bottom": 853,
+        "height": 92.796875,
+        "position": "fixed",
+        "viewport": 853
+      },
+      {
+        "top": 760.203125,
+        "bottom": 853,
+        "height": 92.796875,
+        "position": "fixed",
+        "viewport": 853
+      },
+      {
+        "top": 760.203125,
+        "bottom": 853,
+        "height": 92.796875,
+        "position": "fixed",
+        "viewport": 853
+      }
+    ],
+    "host_swipe_disable_calls": 0,
+    "findings": [
+      "touch-hover-retained",
+      "gap-between-sticky-bars",
+      "content-visible-in-sticky-gap",
+      "host-vertical-swipes-enabled"
+    ],
+    "errors": []
+  },
+  {
+    "engine": "chromium",
+    "viewport": [
+      393,
+      853
+    ],
+    "theme": "light",
+    "touch": [
+      {
+        "hover": true,
+        "background": "color(srgb 0.968627 0.980392 0.929412 / 0.12)",
+        "transform": "none",
+        "focusVisible": false
+      },
+      {
+        "hover": true,
+        "background": "color(srgb 0.968627 0.980392 0.929412 / 0.12)",
+        "transform": "none",
+        "focusVisible": false
+      },
+      {
+        "hover": true,
+        "background": "color(srgb 0.968627 0.980392 0.929412 / 0.12)",
+        "transform": "none",
+        "focusVisible": false
+      }
+    ],
+    "stack": {
+      "gap": 2,
+      "back": {
+        "x": 13.75,
+        "y": 88,
+        "width": 365.5,
+        "height": 46,
+        "top": 88,
+        "right": 379.25,
+        "bottom": 134,
+        "left": 13.75
+      },
+      "rail": {
+        "x": 0,
+        "y": 136,
+        "width": 393,
+        "height": 64,
+        "top": 136,
+        "right": 393,
+        "bottom": 200,
+        "left": 0
+      },
+      "position": "sticky"
+    },
+    "exposed_gap": [
+      {
+        "y": 135,
+        "tag": "SPAN",
+        "cls": "name"
+      }
+    ],
+    "nav": [
+      {
+        "top": 760.203125,
+        "bottom": 853,
+        "height": 92.796875,
+        "position": "fixed",
+        "viewport": 853
+      },
+      {
+        "top": 760.203125,
+        "bottom": 853,
+        "height": 92.796875,
+        "position": "fixed",
+        "viewport": 853
+      },
+      {
+        "top": 760.203125,
+        "bottom": 853,
+        "height": 92.796875,
+        "position": "fixed",
+        "viewport": 853
+      },
+      {
+        "top": 760.203125,
+        "bottom": 853,
+        "height": 92.796875,
+        "position": "fixed",
+        "viewport": 853
+      },
+      {
+        "top": 760.203125,
+        "bottom": 853,
+        "height": 92.796875,
+        "position": "fixed",
+        "viewport": 853
+      }
+    ],
+    "host_swipe_disable_calls": 0,
+    "findings": [
+      "touch-hover-retained",
+      "gap-between-sticky-bars",
+      "content-visible-in-sticky-gap",
+      "host-vertical-swipes-enabled"
+    ],
+    "errors": []
+  }
+]

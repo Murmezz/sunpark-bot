@@ -49,6 +49,13 @@ function refinedDock(root,box){
 }
 function refinedTag(element,status){if(refinedDesign)element.dataset.status=status;}
 if(refinedDesign){
+  // Keep page scrolling inside the Mini App instead of dragging its host sheet.
+  try{if(tg?.isVersionAtLeast?.('7.7')&&typeof tg.disableVerticalSwipes==='function')tg.disableVerticalSwipes();}catch(_){}
+  const menuBack=$('back-to-sections');
+  if(typeof ResizeObserver==='function')new ResizeObserver(()=>{
+    const height=Math.ceil(menuBack.getBoundingClientRect().height);
+    if(height)document.documentElement.style.setProperty('--menu-back-height',height+'px');
+  }).observe(menuBack);
   const sheetActions=node('div','dish-actions');sheetActions.append($('dish-quantity'),$('dish-add'),$('dish-remove'));dialog.append(sheetActions);
   const cartActions=node('div','cart-actions');cartActions.id='refined-cart-actions';cartActions.hidden=true;
   cartActions.append(...['preorder-checkout','cart-clear','cart-clear-confirm'].map($).filter(Boolean));$('cart-view').append(cartActions);
