@@ -1,4 +1,55 @@
 // Opt-in UI refinement. Shared booking, payment and storage contracts stay intact.
+const appScroll = refinedDesign ? node('div') : null;
+
+function pageScrollTop() {
+  return appScroll ? appScroll.scrollTop : window.scrollY;
+}
+
+function scrollPage(top = 0) {
+  if (appScroll) appScroll.scrollTop = top;
+  else window.scrollTo(0, top);
+}
+
+function containVerticalGestures() {
+  let gesture;
+  for (const type of ['touchend', 'touchcancel']) {
+    document.addEventListener(type, () => { gesture = null; }, { passive: true });
+  }
+  document.addEventListener('touchstart', event => {
+    const touch = event.touches[0];
+    gesture = event.touches.length === 1 && event.target instanceof Element
+      ? { x: touch.clientX, y: touch.clientY, lastY: touch.clientY, target: event.target }
+      : null;
+  }, { passive: true });
+
+  document.addEventListener('touchmove', event => {
+    if (!gesture || event.touches.length !== 1 || !event.cancelable) return;
+    const touch = event.touches[0];
+    if (!gesture.axis) {
+      const x = Math.abs(touch.clientX - gesture.x);
+      const y = Math.abs(touch.clientY - gesture.y);
+      if (Math.max(x, y) < 4) return;
+      gesture.axis = y > x ? 'vertical' : 'horizontal';
+    }
+    if (gesture.axis !== 'vertical') return;
+
+    const delta = gesture.lastY - touch.clientY;
+    gesture.lastY = touch.clientY;
+    if (!delta) return;
+
+    for (let el = gesture.target; el && el !== document.body; el = el.parentElement) {
+      const remaining = el.scrollHeight - el.clientHeight;
+      if (remaining <= 1) continue;
+      const style = getComputedStyle(el);
+      if (!['auto', 'scroll'].includes(style.overflowY)) continue;
+      if (delta > 0 ? el.scrollTop < remaining - 1 : el.scrollTop > 1) return;
+      if (el === appScroll || el instanceof HTMLDialogElement || style.overscrollBehaviorY === 'none') break;
+    }
+    // Suppress the outward pan at the edge, including WebViews that stretch their root.
+    event.preventDefault();
+  }, { passive: false });
+}
+
 let refinedDockObserver=null;
 let refinedDockContentObserver=null;
 function refinedPlaces(n){const m=n%100;return n+' '+(m>=11&&m<=14?'мест':n%10===1?'место':n%10>=2&&n%10<=4?'места':'мест');}
@@ -49,6 +100,10 @@ function refinedDock(root,box){
 }
 function refinedTag(element,status){if(refinedDesign)element.dataset.status=status;}
 if(refinedDesign){
+  appScroll.id = 'app-scroll';
+  $('status').before(appScroll);
+  appScroll.append($('status'), $('app-shell'));
+  containVerticalGestures();
   // Keep page scrolling inside the Mini App instead of dragging its host sheet.
   try{if(tg?.isVersionAtLeast?.('7.7')&&typeof tg.disableVerticalSwipes==='function')tg.disableVerticalSwipes();}catch(_){}
   const menuBack=$('back-to-sections');

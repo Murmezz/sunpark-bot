@@ -34,11 +34,11 @@ function renderHomeLocation(){
   const root=$('home-location');root.replaceChildren(node('p','',catalog.services?.address||'Санкт-Петербург, ул. Никольская, 9'));
   const links=node('div','location-actions');links.append(mapLink('Маршрут'),button('Контакты','location-link',()=>openNative('info',{},true)));root.append(links);
 }
-function closeService(){setView(serviceOrigin);window.scrollTo(0,serviceScroll);}
+function closeService(){setView(serviceOrigin);scrollPage(serviceScroll);}
 function openService(id,origin=serviceOrigin){
   const service=catalog.services?.items.find(s=>s.id===id);if(!service)return;
   if(id!=='restaurant'&&catalog.booking_features?.ready){openConcept('landing',{service:id},true);return;}
-  currentServiceId=id;if(appView!=='service'){serviceScroll=window.scrollY;serviceOrigin=origin;}
+  currentServiceId=id;if(appView!=='service'){serviceScroll=pageScrollTop();serviceOrigin=origin;}
   const root=$('service-view');root.replaceChildren();
   const top=node('div','service-topline'),back=button('','back-link',closeService);back.append(icon('arrow-left'),node('span','','Главная'));back.setAttribute('aria-label','На главную');
   const call=serviceLink(service.phone_label,'tel:'+service.phone,'service-call');call.setAttribute('aria-label',`Позвонить: ${service.title}, ${service.phone_label}`);top.append(back,call);root.append(top);
@@ -72,5 +72,5 @@ function openService(id,origin=serviceOrigin){
   const about=node('details','service-about');about.append(node('summary','',id==='restaurant'?'О ресторане':id==='hotel'?'Об отеле':id==='wave'?'О катании на волне':'О вейкпарке'),node('p','service-description',service.description));root.append(about);
   if(service.additional_phone)root.append(serviceLink('Городской · '+service.additional_phone_label,'tel:'+service.additional_phone,'service-phone'));
   const contact=node('section','service-contact');contact.append(node('h2','','Как добраться'),node('p','',catalog.services.address),mapLink());root.append(contact);
-  setView('service');window.scrollTo(0,0);heading.focus({preventScroll:true});
+  setView('service');scrollPage();heading.focus({preventScroll:true});
 }

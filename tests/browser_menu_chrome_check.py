@@ -12,6 +12,65 @@ ROOT=Path(__file__).resolve().parents[1]
 OUT=ROOT/'artifacts/menu-chrome'
 PHOTOS=Path('/workspace/sites/sunpark-design-review/public/assets')
 
+async def scroll_content(page, top):
+    await page.evaluate('top => (document.querySelector("#app-scroll") || document.scrollingElement).scrollTop = top', top)
+
+
+async def check_scroll_edges(target):
+    """Exercise the touch boundary handler without relying on native overscroll effects."""
+    metrics = await target.evaluate('''element => {
+        const scroller = document.querySelector('#app-scroll');
+        const before = scroller.scrollTop;
+        const nav = document.querySelector('#app-nav').getBoundingClientRect();
+        function dispatch(type, clientX, clientY) {
+            const event = new Event(type, {bubbles: true, cancelable: true});
+            Object.defineProperty(event, 'touches', {value: [{clientX, clientY}]});
+            return element.dispatchEvent(event);
+        }
+        function swipe(y, endX = 100) {
+            dispatch('touchstart', 100, 250);
+            const allowed = dispatch('touchmove', endX, y);
+            element.dispatchEvent(new Event('touchend', {bubbles: true}));
+            return allowed;
+        }
+        scroller.scrollTop = 0;
+        const topBlocked = !swipe(340);
+        const horizontalAllowed = swipe(252, 200);
+        const scrollable = scroller.scrollHeight > scroller.clientHeight + 1;
+        const inwardAllowed = swipe(160);
+        scroller.scrollTop = scroller.scrollHeight;
+        const bottomBlocked = !swipe(160);
+        window.scrollTo(0, 200);
+        const viewportStill = window.scrollY === 0 && Math.abs(nav.bottom - innerHeight) < 1
+            && nav.top === document.querySelector('#app-nav').getBoundingClientRect().top;
+        scroller.scrollTop = before;
+        return {topBlocked, bottomBlocked, horizontalAllowed, inwardAllowed, scrollable, viewportStill};
+    }''')
+    assert metrics['topBlocked'] and metrics['bottomBlocked'] and metrics['horizontalAllowed'] and metrics['viewportStill'],metrics
+    assert metrics['inwardAllowed'] == metrics['scrollable'],metrics
+
+
+async def check_native_swipe(page, context):
+    cdp = await context.new_cdp_session(page)
+    async def swipe(start, end):
+        x = 110
+        await cdp.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': [{'x': x, 'y': start}]})
+        for step in range(1, 9):
+            await cdp.send('Input.dispatchTouchEvent', {'type': 'touchMove', 'touchPoints': [{'x': x, 'y': start+(end-start)*step/8}]})
+            assert await page.locator('#app-nav').evaluate('e => window.scrollY === 0 && Math.abs(e.getBoundingClientRect().bottom - innerHeight) < 1')
+        await cdp.send('Input.dispatchTouchEvent', {'type': 'touchEnd', 'touchPoints': []})
+
+    await scroll_content(page, 0)
+    await swipe(530, 680)
+    assert await page.locator('#app-scroll').evaluate('e => e.scrollTop === 0')
+    await swipe(650, 390)
+    await page.wait_for_function("() => document.querySelector('#app-scroll').scrollTop > 100")
+    await scroll_content(page, 100000)
+    await swipe(650, 410)
+    assert await page.locator('#app-scroll').evaluate('e => Math.abs(e.scrollHeight - e.clientHeight - e.scrollTop) <= 1')
+    await cdp.detach()
+
+
 async def main():
     OUT.mkdir(parents=True,exist_ok=True)
     fixture.bot=AppHarness();await fixture.bot.config()
@@ -44,7 +103,7 @@ async def main():
                 if any(x['background'] not in ['rgba(0, 0, 0, 0)','transparent'] for x in touch):findings.append('touch-hover-retained')
                 if any(x['transform']!='none' for x in touch):findings.append('touch-press-retained')
                 await page.screenshot(path=str(OUT/(f'{engine}-{theme}-{width}-'+('before' if baseline else 'after')+'-touch.png')))
-                await page.evaluate('window.scrollTo(0,600)');await page.wait_for_timeout(220)
+                await scroll_content(page, 600);await page.wait_for_timeout(220)
                 stack=await page.evaluate("""()=>{const b=document.querySelector('#back-to-sections'),c=document.querySelector('#categories'),br=b.getBoundingClientRect(),cr=c.getBoundingClientRect();return {gap:cr.top-br.bottom,back:br.toJSON(),rail:cr.toJSON(),position:getComputedStyle(c).position};}""")
                 if stack['position']=='sticky' and abs(stack['gap'])>1:findings.append('gap-between-sticky-bars')
                 if stack['position']=='sticky':
@@ -53,17 +112,30 @@ async def main():
                 else:sealed=[]
                 nav=[]
                 for y in [0,200,600,100000,0]:
-                    await page.evaluate('(y)=>window.scrollTo(0,y)',y);await page.wait_for_timeout(60)
+                    await scroll_content(page, y);await page.wait_for_timeout(60)
                     nav.append(await page.locator('#app-nav').evaluate("e=>({top:e.getBoundingClientRect().top,bottom:e.getBoundingClientRect().bottom,height:e.getBoundingClientRect().height,position:getComputedStyle(e).position,viewport:innerHeight})"))
                 if any(x['position']!='fixed' or abs(x['bottom']-x['viewport'])>1 for x in nav) or max(x['top'] for x in nav)-min(x['top'] for x in nav)>1:findings.append('navigation-moved-on-scroll')
                 calls=await page.evaluate('window.__disableSwipesCalls')
                 if calls!=1:findings.append('host-vertical-swipes-enabled')
-                await page.evaluate('window.scrollTo(0,600)');await page.wait_for_timeout(120)
+                await scroll_content(page, 600);await page.wait_for_timeout(120)
                 launcher=await page.locator('#cart-launcher').bounding_box();bar=await page.locator('#app-nav').bounding_box()
                 assert launcher['y']+launcher['height']<=bar['y']+1
                 await page.screenshot(path=str(OUT/(f'{engine}-{theme}-{width}-'+('before' if baseline else 'after')+'-scroll.png')))
                 # Keyboard hides the nav, blur restores its original bottom anchor.
-                await page.evaluate('window.scrollTo(0,0)');await page.locator('#search').focus()
+                if not baseline:
+                    await check_scroll_edges(page.locator('#menu-view'))
+                    if engine=='chromium' and width==393:await check_native_swipe(page, context)
+                    await scroll_content(page, 400)
+                    menu_top=await page.locator('#app-scroll').evaluate('e => e.scrollTop')
+                    await page.locator('#cart-launcher').tap();await page.locator('#cart-back').tap()
+                    assert await page.locator('#app-scroll').evaluate('(e, top) => Math.abs(e.scrollTop-top) < 1',menu_top)
+                    dish=page.locator('.item-open').first
+                    await scroll_content(page, 0)
+                    await dish.scroll_into_view_if_needed();await dish.tap()
+                    dish_top=await page.locator('#app-scroll').evaluate('e => e.scrollTop')
+                    await page.get_by_role('button', name='Закрыть состав').tap()
+                    assert await page.locator('#app-scroll').evaluate('(e, top) => Math.abs(e.scrollTop-top) < 1',dish_top)
+                await scroll_content(page, 0);await page.locator('#search').focus()
                 await page.set_viewport_size({'width':width,'height':max(270,height-250)})
                 if height>=640:
                     await page.wait_for_function("()=>document.body.classList.contains('is-keyboard-open')")

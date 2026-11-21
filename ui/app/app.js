@@ -142,15 +142,15 @@
   function adjustCartLine(key,delta){changeCartLine(key,delta);const row=[...$('cart-items').children].find(e=>e.dataset.cartKey===key);(row?.querySelector(`[data-change="${delta}"]`)||$('cart-title')).focus({preventScroll:true});}
   function openCart() {
     if(!catalog||cartOpen) return;
-    closeDish(); cartScroll=window.scrollY; cartOrigin=appView; cartOpen=true;setView('cart');
+    closeDish(); cartScroll=pageScrollTop(); cartOrigin=appView; cartOpen=true;setView('cart');
     $('cart-back').lastChild.textContent=cartOrigin==='service'?'К ресторану':'К меню';
     $('menu-search').hidden=true; $('menu-hub').hidden=true; $('catalog-view').hidden=true; $('cart-view').hidden=false;
-    renderCart(); updateBackButton(); window.scrollTo(0,0);
+    renderCart(); updateBackButton(); scrollPage();
   }
   function closeCart() {
     cartOpen=false; $('cart-view').hidden=true; $('menu-search').hidden=false;
     renderHub();
-    setView(cartOrigin);renderCart(); updateBackButton(); window.scrollTo(0,cartScroll);
+    setView(cartOrigin);renderCart(); updateBackButton(); scrollPage(cartScroll);
   }
   function updateDishAction() {
     if(!currentDish) return;
@@ -190,8 +190,10 @@
   function lockMenuScroll() {
     if(menuScroll) return;
     const body=document.body;
-    menuScroll={x:window.scrollX,y:window.scrollY,top:body.style.top,left:body.style.left};
-    body.style.top=`-${menuScroll.y}px`; body.style.left=`-${menuScroll.x}px`;
+    menuScroll={x:window.scrollX,y:pageScrollTop(),top:body.style.top,left:body.style.left};
+    if (!appScroll) {
+      body.style.top=`-${menuScroll.y}px`; body.style.left=`-${menuScroll.x}px`;
+    }
     document.documentElement.classList.add('modal-open'); body.classList.add('modal-open');
   }
   function unlockMenuScroll() {
@@ -199,7 +201,8 @@
     const saved=menuScroll; menuScroll=null;
     document.documentElement.classList.remove('modal-open'); document.body.classList.remove('modal-open');
     document.body.style.top=saved.top; document.body.style.left=saved.left;
-    window.scrollTo(saved.x,saved.y);
+    if (appScroll) scrollPage(saved.y);
+    else window.scrollTo(saved.x,saved.y);
   }
   function closeDish() {
     if(dialog.open) dialog.close();
@@ -207,7 +210,7 @@
   }
   function showHub() {
     closeDish(); setView('menu');query = ''; $('search').value = '';
-    renderHub(); updateBackButton(); window.scrollTo(0,0);
+    renderHub(); updateBackButton(); scrollPage();
   }
   function showDish(item, category, editKey=null) {
     const editing=cart.get(editKey);
@@ -240,7 +243,7 @@
     const group=catalog.groups[groupIndex], keys=group?.keys||[];
     if(!keys.includes(categoryKey))categoryKey=keys[0]||'';
     catalog.groups.forEach((group,i)=>{
-      const b=button(groupName(group.title),'',()=>{groupIndex=i;categoryKey='';query='';$('search').value='';renderHub();revealContent($('items'));window.scrollTo(0,0);});
+      const b=button(groupName(group.title),'',()=>{groupIndex=i;categoryKey='';query='';$('search').value='';renderHub();revealContent($('items'));scrollPage();});
       b.setAttribute('aria-pressed',String(groupIndex===i));$('groups').append(b);
     });
     $('categories').replaceChildren();$('categories').hidden=!!query;
@@ -371,9 +374,9 @@
     else if(appView==='menu')openService('restaurant','home');
     else if(appView==='more')openInbox('guest');
     else if(appView==='chat')openInbox(chatScope);
-    else {setView('home');window.scrollTo(0,0);}
+    else {setView('home');scrollPage();}
   }
-  function goMenu() {setView('menu');renderHub();window.scrollTo(0,0);}
+  function goMenu() {setView('menu');renderHub();scrollPage();}
   function renderHome() {
     renderServiceLinks();renderHomeLocation();
   }
@@ -471,7 +474,7 @@
       if(input.type==='number'){input.min='1';input.max=field==='guests'?'200':'100000';}
       input.placeholder=field==='phone'?'+7 900 123-45-67':field==='telegram_username'?'@username':'';
     }
-    setView('flow');window.scrollTo(0,0);
+    setView('flow');scrollPage();
   }
   async function sendFlowText(text) {
     if(busy)return;
@@ -493,7 +496,7 @@
   function statusLabel(status) {return ({draft:'Заполняется',waiting:'Новая',active:'В работе',waiting_guest:'Ждём ответа гостя',closed:'Закрыта'})[status]||status;}
   async function openChat(number,scope) {
     if(chatNumber!==number){if(pendingUpload?.preview)URL.revokeObjectURL(pendingUpload.preview);for(const url of mediaCache.values())URL.revokeObjectURL(url);mediaCache.clear();pendingUpload=null;}
-    chatNumber=number;chatScope=scope;resetNativeChat(number,scope);setView('chat');window.scrollTo(0,0);await refreshChat();
+    chatNumber=number;chatScope=scope;resetNativeChat(number,scope);setView('chat');scrollPage();await refreshChat();
   }
   async function loadMedia(message) {
     if(mediaCache.has(message.id))return mediaCache.get(message.id);
@@ -524,11 +527,11 @@
     try {const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.onerror=reject;reader.readAsDataURL(file);});const uploaded=await api('upload',{name:file.name,data});if(nativeChatKey!==uploadKey)return;pendingUpload={...uploaded,size:file.size,preview:file.type.startsWith('image/')?URL.createObjectURL(file):null};renderAttachment();toast('Вложение готово к отправке');}
     catch(error){toast(error.message);}finally{busy=false;$('attach-button').disabled=false;e.target.value='';}
   });
-  $('flow-back').addEventListener('click',()=>{setView('home');window.scrollTo(0,0);});
+  $('flow-back').addEventListener('click',()=>{setView('home');scrollPage();});
   $('chat-back').addEventListener('click',()=>openInbox(chatScope));
   $('inbox-reload').addEventListener('click',()=>openInbox());
   document.querySelectorAll('#inbox-scope [data-scope]').forEach(b=>b.addEventListener('click',()=>openInbox(b.dataset.scope)));
-  document.querySelectorAll('#app-nav [data-view]').forEach(b=>b.addEventListener('click',()=>{const view=b.dataset.view;if(view==='inbox')openInbox('guest');else if(view==='plans')openConcept('plans',{},true);else{setView(view);window.scrollTo(0,0);}}));
+  document.querySelectorAll('#app-nav [data-view]').forEach(b=>b.addEventListener('click',()=>{const view=b.dataset.view;if(view==='inbox')openInbox('guest');else if(view==='plans')openConcept('plans',{},true);else{setView(view);scrollPage();}}));
   setInterval(()=>{if(!authExpired&&!document.hidden&&appView==='chat'&&!busy)refreshChat();},6000);
   let expandedViewport={width:innerWidth,height:innerHeight};
   function resize(){

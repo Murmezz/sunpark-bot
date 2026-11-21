@@ -10,6 +10,7 @@ from urllib.parse import unquote
 from playwright.async_api import async_playwright
 import serve_mini_app as fixture
 from browser_services_check import telegram_mock
+from browser_menu_chrome_check import check_scroll_edges, scroll_content
 from test_app_bookings import BookingHarness, BookingTests
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -79,6 +80,8 @@ async def main():
                         action=docks.first.locator('.primary-button').first
                         assert await action.evaluate("e=>{const r=e.getBoundingClientRect();return r.height>=44&&document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.closest('button')===e;}"),(width,height,name,'primary action obscured')
                 states.append(name)
+                if refined and width==393 and name in ('home-dark','wave','hotel-dates','arrival','qr','chat'):
+                    await check_scroll_edges(page.locator('#app-shell > section:not([hidden])'))
                 if screenshot:
                     await page.screenshot(path=str(OUT/f'{engine}-{name}-{width}x{height}.png'))
 
@@ -102,10 +105,10 @@ async def main():
             assert leaf['y']>=decoration['y']-.5 and leaf['y']+leaf['height']<=decoration['y']+decoration['height']+.5,(width,leaf,decoration)
             assert await page.locator('.complex-decoration').evaluate("e=>getComputedStyle(e).overflowX==='hidden'"),(width,'decoration clipping')
             assert await page.locator('body').evaluate("e=>getComputedStyle(e).overflowX==='hidden'"),(width,'viewport clipping')
-            await page.evaluate('window.scrollTo(0,document.body.scrollHeight)')
+            await scroll_content(page, 100000)
             footer=await page.locator('#home-location').bounding_box();nav=await page.locator('#app-nav').bounding_box()
             assert footer['y']+footer['height']<=nav['y']+1,(width,height,footer,nav)
-            await page.evaluate('window.scrollTo(0,0)')
+            await scroll_content(page, 0)
             await page.locator('[data-service=wave]').click();await page.get_by_role('heading',name='Волна',exact=True).wait_for();await check('wave')
             await page.get_by_role('button',name='Выбрать дату',exact=True).click();await page.get_by_role('heading',name='Дата и время',exact=True).wait_for();await check('time')
             await page.locator('.date-control').click();await page.locator('#picker-dialog').wait_for(state='visible');await page.wait_for_timeout(160);await check('calendar')
