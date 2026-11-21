@@ -15,7 +15,7 @@ function message(root,text,kind='hint'){const p=node('p','native-'+kind,text);if
 function draftKey(kind){return `sunpark:request-draft:v2:${catalog?.user?.id}:${kind}`;}
 function saveNativeDraft(){if(!nativeState||!['booking','banquet'].includes(nativeState.screen))return;try{localStorage.setItem(draftKey(nativeState.screen),JSON.stringify(nativeState.values));}catch(_){}}
 function getNativeDraft(kind){try{const value=JSON.parse(localStorage.getItem(draftKey(kind))||'null');return value&&typeof value==='object'&&!Array.isArray(value)?value:{};}catch(_){return {};}}
-function nativeBack(){nativeSequence++;saveNativeDraft();if(nativeState&&['booking','banquet'].includes(nativeState.screen)&&nativeState.step>0){nativeState.step--;renderNative();return;}if(nativeStack.length){nativeState=nativeStack.pop();nativeOrigin=nativeState.origin||'home';setView('native');renderNative();}else{const current=nativeState?.screen;if(['event','event_edit','manual','register','event_guests'].includes(current)){openNative(current==='event'?'events':'event',{...nativeState.args},true);return;}if(nativeOrigin==='restaurant'){openService('restaurant','home');return;}if(nativeOrigin==='messages'){openInbox('guest');return;}setView(nativeOrigin==='management'?'more':'home');window.scrollTo(0,0);}}
+function nativeBack(){nativeSequence++;saveNativeDraft();if(nativeState&&['booking','banquet'].includes(nativeState.screen)&&nativeState.step>0){nativeState.step--;renderNative();return;}if(nativeStack.length){nativeState=nativeStack.pop();nativeOrigin=nativeState.origin||'home';setView('native');renderNative();}else{const current=nativeState?.screen;if(['event','event_edit','manual','register','event_guests'].includes(current)){openNative(current==='event'?'events':'event',{...nativeState.args},true);return;}if(nativeOrigin==='restaurant'){openService('restaurant','home');return;}if(nativeOrigin==='messages'){openInbox('guest');return;}setView(nativeOrigin==='management'?'more':'home');scrollPage();}}
 $('native-back').addEventListener('click',()=>appView==='more'?openInbox('guest'):nativeBack());
 function rememberNative(){if(nativeState){const saved=clone(nativeState);saved.origin=nativeState.origin||nativeOrigin;nativeStack.push(saved);}}
 async function openNative(screen,args={},root=false){
@@ -26,7 +26,7 @@ async function openNative(screen,args={},root=false){
   else if(appView==='more'||args.scope==='staff')origin='management';
   else if(appView!=='native')origin='home';
   saveNativeDraft();if(root===true)nativeStack=[];else if(root!=='replace'&&appView==='native'&&nativeState?.data)rememberNative();nativeOrigin=origin;
-  const sequence=++nativeSequence;nativeState={screen,args,data:null,values:{},step:0,origin:nativeOrigin};setView('native');window.scrollTo(0,0);
+  const sequence=++nativeSequence;nativeState={screen,args,data:null,values:{},step:0,origin:nativeOrigin};setView('native');scrollPage();
   $('native-content').replaceChildren(node('p','empty-state','Загружаем…'));$('native-content').setAttribute('aria-busy','true');
   try{
     const data=await api('screen',{screen,...args});
@@ -41,7 +41,7 @@ async function openNative(screen,args={},root=false){
 }
 function openLocalForm(kind,data={},args={}){if(appView==='native'&&nativeState)rememberNative();nativeOrigin='management';nativeState={origin:nativeOrigin,screen:'local_form',args:{scope:'staff',...args},kind,values:{...data},data:{today:new Date().toISOString().slice(0,10)}};setView('native');renderNative();}
 function renderNative(){
-  const root=$('native-content');root.replaceChildren();root.classList.remove('request-screen');$('native-content').removeAttribute('aria-busy');setView('native');window.scrollTo(0,0);
+  const root=$('native-content');root.replaceChildren();root.classList.remove('request-screen');$('native-content').removeAttribute('aria-busy');setView('native');scrollPage();
   const s=nativeState;if(!s)return;
   if(['booking','banquet'].includes(s.screen))return renderRequest(root,s);
   if(s.screen==='dashboard')return renderDashboard(root,s);
@@ -220,7 +220,7 @@ function renderTicketList(root,s){
     const last=node('span','request-last',t.preview);if(t.unread){last.append(node('strong','unread-count',String(t.unread)));}b.append(last);root.append(b);
   }
   pagers(root,s.data.page,s.data.more,page=>openNative('tickets',{...s.args,page},'replace'));
-  if(!staff&&catalog.admin){const links=node('div','message-tools');links.append(button('Управление','text-button',()=>{setView('more');window.scrollTo(0,0);}));root.append(links);}
+  if(!staff&&catalog.admin){const links=node('div','message-tools');links.append(button('Управление','text-button',()=>{setView('more');scrollPage();}));root.append(links);}
 }
 function renderEventList(root,s){
   const staff=s.args.scope==='staff';heading(root,staff?'Мероприятия':'Встречи в SUNPARK');if(staff)root.append(button('Создать мероприятие','primary-button',()=>openNative('event_create',{scope:'staff'})));

@@ -104,9 +104,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .cart-actions > .secondary-button { min-height: 44px; padding: 8px; border-color: transparent; background: transparent; color: var(--muted); font-size: 14px; }
 #cart-view:has(.cart-actions:not([hidden])) { padding-bottom: calc(var(--dock-height, 112px) + 20px); }
 .concept-footer.refined-dock .text-button { margin: 0; padding: 8px; }
-html { scroll-padding-top: calc(var(--safe-top) + 12px); scroll-padding-bottom: calc(var(--nav-clearance) + 16px); }
-html:has(#concept-view:not([hidden]) .refined-dock), html:has(#cart-view:not([hidden]) .cart-actions:not([hidden])) { scroll-padding-bottom: calc(var(--nav-clearance) + 144px); }
-html:has(body.is-keyboard-open) { scroll-padding-bottom: 16px; }
+#app-scroll { scroll-padding-top: calc(var(--safe-top) + 12px); scroll-padding-bottom: 16px; }
+#app-scroll:has(#concept-view:not([hidden]) .refined-dock), #app-scroll:has(#cart-view:not([hidden]) .cart-actions:not([hidden])) { scroll-padding-bottom: 144px; }
+.is-keyboard-open #app-scroll { scroll-padding-bottom: 16px; }
 body.is-keyboard-open .concept-footer.refined-dock { position: static; margin-top: 20px; }
 body.is-keyboard-open #concept-content.has-refined-dock { padding-bottom: 0; }
 .concept-month-controls { margin: 20px 0 14px; gap: 10px; }
@@ -272,7 +272,20 @@ dialog h3 { font-size: 16px; font-weight: 600; }
 .chat-status { font-size: 12px; }
 .chat-form textarea, .chat-compose textarea { min-height: 48px; border-radius: 16px; }
 #chat-send { border-radius: 15px; background: var(--green); color: var(--button-ink); }
-html, body { overscroll-behavior-y: none; }
+/* Only the content scrolls. The Telegram WebView and its bottom controls stay still. */
+html { overflow: hidden; overscroll-behavior: none; }
+body[data-design] { position: fixed; inset: 0; min-height: 0; padding: 0; overflow: hidden; overscroll-behavior: none; }
+#app-scroll {
+  position: fixed; inset: 0 0 var(--nav-clearance) 0;
+  overflow: hidden auto; overscroll-behavior: none; scrollbar-width: none;
+  padding-bottom: 20px;
+}
+body.has-cart #app-scroll { padding-bottom: 92px; }
+body.chat-open #app-scroll { padding-bottom: 0; }
+body.is-keyboard-open #app-scroll { bottom: auto; height: var(--viewport-height); }
+body.modal-open #app-scroll { overflow-y: hidden; }
+dialog, .concept-wheel, .wheel-column, #chat-log { overscroll-behavior-y: none; }
+body.chat-typing { --nav-clearance: 0px; }
 .app-nav { position: fixed; left: 0; right: 0; bottom: 0; background: var(--paper); border-top: 1px solid var(--line); touch-action: none; }
 .app-nav button { min-height: 54px; padding: 7px 4px; border-radius: 14px; color: var(--muted); font-size: 12px; font-weight: 500; line-height: 1.4; }
 .app-nav button[aria-current=page] { background: var(--soft); color: var(--ink); font-weight: 600; }
