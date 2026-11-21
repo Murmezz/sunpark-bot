@@ -1,0 +1,61 @@
+{
+  "previous_version": "690a31e9-a1f6-43ce-aa55-b804c772880d",
+  "version": "5a5eb316-cfa1-4fa7-a904-7b2261ec2771",
+  "deployment": "1b7513a7-ba78-4929-8a8a-3fe0b9498de6",
+  "published_at": "2026-11-21T11:49:09.17239Z",
+  "source_commit": "59eeeacc31db8142bc60e2930702a9e664fc0efd",
+  "changed_modules": [
+    {
+      "path": "mini_app_assets.py",
+      "sha256": "3b264d7c130d14e68a56ef2958be17bc2c6c5fc213dfae78b2d2c7946ae9c23a"
+    }
+  ],
+  "module_count": 48,
+  "main_commit": "43a3fb9d049fa0c4d998bb3c03f27e3bf5f30ac3",
+  "main_guard_build": "f6ab1ad1-8316-4344-84d5-fe250a774cff",
+  "main_guard_build_outcome": "success",
+  "build_commands_restored": true,
+  "live_verified_after_main_push": "5a5eb316-cfa1-4fa7-a904-7b2261ec2771",
+  "backup_tag": "miniapp-before-menu-chrome-fix-20261121",
+  "tests": {
+    "unit_development": 91,
+    "unit_main": 66,
+    "touch_browser_cases": {
+      "chromium": 8,
+      "webkit": 8
+    },
+    "desktop_hover_focus_and_old_sdk_cases": {
+      "chromium": 2,
+      "webkit": 2
+    },
+    "responsive_widths": [
+      320,
+      393,
+      844
+    ],
+    "development_ci": [
+      {
+        "name": "Tests",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/Murmezz/sunpark-bot/actions/runs/44900833188"
+      }
+    ],
+    "main_ci": [
+      {
+        "name": "Tests",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/Murmezz/sunpark-bot/actions/runs/44900928763"
+      }
+    ]
+  },
+  "verification": {
+    "static_endpoints_match": true,
+    "unauthenticated_api_status": 401,
+    "primary_presentation_unchanged": true,
+    "legacy_bundle_unchanged": true,
+    "development_button_preserved": true,
+    "physical_telegram_device_test": false
+  }
+}
